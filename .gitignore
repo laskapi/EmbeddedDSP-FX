@@ -1,0 +1,40 @@
+# ==============================================================================
+# 1. ARTEFAKTY KOMPILACJI I CMAKE
+# ==============================================================================
+build/
+bin/
+obj/
+cmake-build-*/
+.cmake/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# Binaria i mapy pamięci
+*.elf
+*.bin
+*.hex
+*.map
+*.o
+*.obj
+*.la
+*.lo
+
+# ==============================================================================
+# 2. PLIKI TYMCZASOWE IDE & EDYTORÓW
+# ==============================================================================
+.idea/
+.vscode/
+*.user
+*.pro.user
+.qmake.stash
+*.mxproject
+
+# ==============================================================================
+# 3. LOKALNE PLIKI ROBOCZE I SYSTEMOWE
+# ==============================================================================
+content.md
+status.txt
+.DS_Store
+Thumbs.db
