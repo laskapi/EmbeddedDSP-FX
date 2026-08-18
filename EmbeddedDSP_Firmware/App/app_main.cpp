@@ -2,6 +2,7 @@
 #include "DynamicAudioPipeline.h"
 #include "DelayEffect.h"
 #include "OverdriveEffect.h"
+#include "ProtocolParser.h"
 
 #include <algorithm>
 #include <array>
@@ -25,6 +26,8 @@ alignas(4) std::array<std::int16_t, DMA_BUF_SIZE> dmaTxBuffer{};
 
 DynamicAudioPipeline<2> audioPipeline;
 std::atomic<BufferState> activeBufferState{BufferState::None};
+
+ProtocolParser protocolParser{audioPipeline};
 
 /**
  * @brief Processes half of the interleaved stereo DMA buffer using float conversion and DSP pipeline.
@@ -52,6 +55,11 @@ void process_buffer_half(std::size_t offset) {
 } // namespace
 
 extern "C" {
+
+// C bridge callback invoked from usbd_cdc_if.c on incoming USB data
+void ProtocolParser_OnBytesReceived(const uint8_t* Buf, uint32_t Len) {
+    protocolParser.onBytesReceived(Buf, Len);
+}
 
 void app_main(I2S_HandleTypeDef* audio_i2s) {
     // Slot 0: Overdrive Effect Setup
@@ -83,6 +91,9 @@ void app_main(I2S_HandleTypeDef* audio_i2s) {
 
     // Event loop processing DMA audio buffers outside ISR context
     while (1) {
+        // Poll and execute incoming commands from the USB RX queue
+        protocolParser.processRxQueue();
+
         BufferState stateToProcess = activeBufferState.exchange(BufferState::None, std::memory_order_relaxed);
         switch (stateToProcess) {
         case BufferState::HalfReady:
@@ -93,7 +104,7 @@ void app_main(I2S_HandleTypeDef* audio_i2s) {
             break;
         case BufferState::None:
         default:
-            // Sleep CPU until the next DMA interrupt triggers
+            // Sleep CPU until the next DMA interrupt or USB interrupt triggers
             __WFI();
             break;
         }

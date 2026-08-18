@@ -14,13 +14,29 @@
  */
 class DelayEffect {
 public:
-    static constexpr float SAMPLE_RATE{48000.0f};
-
     // 24000 samples * 2 bytes (int16_t) = 48 KB SRAM (500 ms delay line at 48 kHz)
     static constexpr std::size_t MAX_DELAY_SAMPLES{24000};
     static constexpr float INT16_SCALE{32767.0f};
 
     DelayEffect() = default;
+
+    /**
+     * @brief Inicjalizuje efekt pod konkretną częstotliwość próbkowania i czyści bufor.
+     * @param newSampleRate Częstotliwość próbkowania systemu (np. 48000.0f)
+     */
+    void prepare(float newSampleRate) noexcept {
+        sampleRate = newSampleRate;
+        reset();
+    }
+
+    /**
+     * @brief Czyści bufor opóźnienia i resetuje wskaźniki (przydatne np. przy przełączaniu presetów)
+     */
+    void reset() noexcept {
+        delayBufferMono.fill(0);
+        writeIndex = 0;
+        currentDelaySamples = targetDelaySamples;
+    }
 
     /**
      * @brief Processes one stereo sample pair in-place.
@@ -66,11 +82,12 @@ public:
 
     /**
      * @brief Sets the delay time in seconds.
-     * @param seconds Target delay duration (clamped to [0.001s, 0.495s]).
+     * @param seconds Target delay duration (clamped according to MAX_DELAY_SAMPLES and sampleRate).
      */
     void setDelayTime(float seconds) noexcept {
-        seconds = std::clamp(seconds, 0.001f, 0.495f);
-        targetDelaySamples = seconds * SAMPLE_RATE;
+        float maxDelaySeconds = static_cast<float>(MAX_DELAY_SAMPLES - 1) / sampleRate;
+        seconds = std::clamp(seconds, 0.001f, maxDelaySeconds);
+        targetDelaySamples = seconds * sampleRate;
     }
 
     /**
@@ -101,6 +118,7 @@ private:
     std::array<std::int16_t, MAX_DELAY_SAMPLES> delayBufferMono{};
     std::size_t writeIndex{0};
 
+    float sampleRate{48000.0f}; // Elastyczna częstotliwość ustawiana przez prepare()
     float targetDelaySamples{12000.0f}; // Default ~250 ms
     float currentDelaySamples{12000.0f};
     static constexpr float SMOOTHING_FACTOR{0.001f};
