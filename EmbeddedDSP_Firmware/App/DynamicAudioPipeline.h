@@ -3,6 +3,7 @@
 
 #include "AudioEffectConcept.h"
 #include "DelayEffect.h"
+#include "OverdriveEffect.h"
 
 #include <array>
 #include <cstddef>
@@ -24,7 +25,7 @@ public:
 /**
  * @brief Type alias containing all available Audio Processing Units in the system.
  */
-using EffectVariant = std::variant<EmptyEffect, DelayEffect /*, OverdriveEffect */>;
+using EffectVariant = std::variant<EmptyEffect, DelayEffect, OverdriveEffect>;
 
 /**
  * @brief Static-polymorphic audio processing pipeline using std::variant and std::visit.

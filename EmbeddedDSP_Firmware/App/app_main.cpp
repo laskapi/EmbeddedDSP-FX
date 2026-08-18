@@ -1,6 +1,7 @@
 #include "app_main.h"
 #include "DynamicAudioPipeline.h"
 #include "DelayEffect.h"
+#include "OverdriveEffect.h"
 
 #include <algorithm>
 #include <array>
@@ -10,6 +11,7 @@ namespace {
 constexpr std::size_t DMA_BUF_SIZE = 512;
 constexpr std::size_t HALF_BUF_SIZE = DMA_BUF_SIZE / 2;
 constexpr float AUDIO_SCALE_FACTOR = 32768.0f;
+constexpr float SYSTEM_SAMPLE_RATE = 48000.0f;
 
 enum class BufferState : int8_t {
     None,
@@ -36,6 +38,7 @@ void process_buffer_half(std::size_t offset) {
         float leftSample = static_cast<float>(dmaRxBuffer[idx]) / AUDIO_SCALE_FACTOR;
         float rightSample = static_cast<float>(dmaRxBuffer[idx + 1]) / AUDIO_SCALE_FACTOR;
 
+        // Pass stereo audio frame through processing pipeline (Overdrive -> Delay)
         audioPipeline.process(leftSample, rightSample);
 
         // Convert normalized float back to Q15 PCM with hard-clamping to prevent wrap-around distortion
@@ -51,15 +54,26 @@ void process_buffer_half(std::size_t offset) {
 extern "C" {
 
 void app_main(I2S_HandleTypeDef* audio_i2s) {
-    // Construct effect directly in slot 0 to avoid stack duplication
-    audioPipeline.setEffectInSlot(0, DelayEffect{});
-
-    if (auto* delay = std::get_if<DelayEffect>(&audioPipeline.getSlot(0))) {
-        delay->setDelayTime(0.35f); // 350 ms
-        delay->setFeedback(0.4f);
-        delay->setDryWet(0.5f);
+    // Slot 0: Overdrive Effect Setup
+    audioPipeline.setEffectInSlot(0, OverdriveEffect{});
+    if (auto* overdrive = std::get_if<OverdriveEffect>(&audioPipeline.getSlot(0))) {
+        overdrive->prepare(SYSTEM_SAMPLE_RATE);
+        overdrive->setDrive(6.0f);         // Soft/Medium saturation
+        overdrive->setTone(3500.0f);       // Cut high-frequency harshness at 3.5 kHz
+        overdrive->setWet(1.0f);           // 100% processed audio
+        overdrive->setLevel(0.9f);         // Output gain balance
     }
 
+    // Slot 1: Delay Effect Setup
+    audioPipeline.setEffectInSlot(1, DelayEffect{});
+    if (auto* delay = std::get_if<DelayEffect>(&audioPipeline.getSlot(1))) {
+        delay->prepare(SYSTEM_SAMPLE_RATE);
+        delay->setDelayTime(0.35f);        // 350 ms delay
+        delay->setFeedback(0.4f);         // 40% feedback
+        delay->setDryWet(0.4f);           // 40% wet signal mix
+    }
+
+    // Start Circular DMA Transmit/Receive over I2S Bus
     HAL_I2SEx_TransmitReceive_DMA(
         audio_i2s,
         reinterpret_cast<uint16_t*>(dmaTxBuffer.data()),
@@ -95,14 +109,14 @@ void app_audio_transfer_complete_cb(void) {
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
-    // User Button (B1) debounce and bypass toggle
+    // User Button (B1) debounce and Overdrive bypass toggle
     if (GPIO_Pin == GPIO_PIN_13) {
         static uint32_t lastInterruptTime = 0;
         uint32_t currentTime = HAL_GetTick();
 
         if (currentTime - lastInterruptTime > 200) {
-            if (auto* delay = std::get_if<DelayEffect>(&audioPipeline.getSlot(0))) {
-                delay->toggleBypass();
+            if (auto* overdrive = std::get_if<OverdriveEffect>(&audioPipeline.getSlot(0))) {
+                overdrive->toggleBypass();
             }
             lastInterruptTime = currentTime;
         }

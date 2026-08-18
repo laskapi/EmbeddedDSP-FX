@@ -41,7 +41,8 @@ add_executable(${CMAKE_PROJECT_NAME}
         App/app_main.h
         App/DelayEffect.h
         App/DynamicAudioPipeline.h
-        App/AudioEffectConcept.h)
+        App/AudioEffectConcept.h
+        App/OverdriveEffect.h)
 
 # Add STM32CubeMX generated sources
 add_subdirectory(cmake/stm32cubemx)
