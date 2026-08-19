@@ -1,5 +1,5 @@
-#ifndef OVERDRIVE_EFFECT_H
-#define OVERDRIVE_EFFECT_H
+#ifndef EMBEDDEDDSP_FIRMWARE_OVERDRIVE_EFFECT_H
+#define EMBEDDEDDSP_FIRMWARE_OVERDRIVE_EFFECT_H
 
 #include <algorithm>
 #include <cmath>
@@ -12,6 +12,47 @@
  * Fully compliant with C++20 AudioEffect concept. Zero dynamic allocation.
  */
 class OverdriveEffect {
+private:
+    // --- PRIVATE MEMBERS (DSP STATE & PARAMETERS) ---
+    float m_sampleRate{48000.0f};
+    float m_drive{5.0f};
+    float m_toneCutoffHz{3000.0f};
+    float m_wet{1.0f};
+    float m_level{1.0f};
+    bool m_bypassed{false};
+
+    // IIR Tone Filter State
+    float m_filterState{0.0f};
+    float m_b0{1.0f};
+    float m_a1{0.0f};
+
+    /**
+     * @brief Fast polynomial approximation of soft-clipping curve.
+     * Computes f(x) = x - (x^3 / 6.75) for x in [-1.5, 1.5].
+     * Translates directly to ARM Cortex-M4 FMA instructions.
+     */
+    [[nodiscard]] static constexpr float fastSaturate(float x) noexcept {
+        if (x <= -1.5f) {
+            return -1.0f;
+        }
+        if (x >= 1.5f) {
+            return 1.0f;
+        }
+        // 1/6.75 approx 0.148148148f
+        return x * (1.0f - (x * x) * 0.148148148f);
+    }
+
+    /**
+     * @brief Recalculates single-pole IIR filter coefficients.
+     */
+    void updateToneCoefficients() noexcept {
+        if (m_sampleRate <= 0.0f) return;
+
+        const float w0 = 2.0f * 3.14159265358979323846f * m_toneCutoffHz / m_sampleRate;
+        m_a1 = std::exp(-w0);
+        m_b0 = 1.0f - m_a1;
+    }
+
 public:
     constexpr OverdriveEffect() noexcept = default;
 
@@ -80,46 +121,12 @@ public:
         m_level = std::clamp(level, 0.0f, 2.0f);
     }
 
-private:
-    /**
-     * @brief Fast polynomial approximation of soft-clipping curve.
-     * Computes f(x) = x - (x^3 / 6.75) for x in [-1.5, 1.5].
-     * Translates directly to ARM Cortex-M4 FMA instructions.
-     */
-    [[nodiscard]] static constexpr float fastSaturate(float x) noexcept {
-        if (x <= -1.5f) {
-            return -1.0f;
-        }
-        if (x >= 1.5f) {
-            return 1.0f;
-        }
-        // 1/6.75 approx 0.148148148f
-        return x * (1.0f - (x * x) * 0.148148148f);
-    }
+    // --- GETTERS (FOR UNIT TESTING & GUI SYNC) ---
 
-    /**
-     * @brief Recalculates single-pole IIR filter coefficients.
-     */
-    void updateToneCoefficients() noexcept {
-        if (m_sampleRate <= 0.0f) return;
-
-        const float w0 = 2.0f * 3.14159265358979323846f * m_toneCutoffHz / m_sampleRate;
-        m_a1 = std::exp(-w0);
-        m_b0 = 1.0f - m_a1;
-    }
-
-    // DSP State & Parameters
-    float m_sampleRate{48000.0f};
-    float m_drive{5.0f};
-    float m_toneCutoffHz{3000.0f};
-    float m_wet{1.0f};
-    float m_level{1.0f};
-    bool m_bypassed{false};
-
-    // IIR Tone Filter State
-    float m_filterState{0.0f};
-    float m_b0{1.0f};
-    float m_a1{0.0f};
+    [[nodiscard]] float getDrive() const noexcept { return m_drive; }
+    [[nodiscard]] float getTone() const noexcept { return m_toneCutoffHz; }
+    [[nodiscard]] float getWet() const noexcept { return m_wet; }
+    [[nodiscard]] float getLevel() const noexcept { return m_level; }
 };
 
-#endif // OVERDRIVE_EFFECT_H
+#endif // EMBEDDEDDSP_FIRMWARE_OVERDRIVE_EFFECT_H

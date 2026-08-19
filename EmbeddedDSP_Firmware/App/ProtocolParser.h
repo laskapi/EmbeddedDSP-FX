@@ -1,5 +1,5 @@
-#ifndef PROTOCOL_PARSER_H
-#define PROTOCOL_PARSER_H
+#ifndef EMBEDDEDDSP_PROTOCOL_PARSER_H
+#define EMBEDDEDDSP_PROTOCOL_PARSER_H
 
 #include "Protocol.h"
 #include "LockFreeQueue.h"
@@ -10,22 +10,33 @@
 #include <cstring>
 #include <variant>
 
-template <size_t SlotsCount = 2>
+/**
+ * @brief Stateful parser processing incoming USB byte stream and dispatching
+ *        control packets directly to DSP pipeline slots.
+ * @tparam SlotsCount Number of audio effect slots in the dynamic pipeline.
+ */
+
 class ProtocolParser {
 public:
     static constexpr size_t RxBufferSize = 256;
 
-    explicit ProtocolParser(DynamicAudioPipeline<SlotsCount>& pipeline) noexcept
+    explicit ProtocolParser(DynamicAudioPipeline& pipeline) noexcept
         : pipeline_{pipeline} {}
 
-    // Metoda wywoływana przez przerwanie USB
+    /**
+     * @brief Called by USB ISR/callback to push incoming raw bytes into the lock-free queue.
+     * @param data Pointer to received byte buffer.
+     * @param len Number of received bytes.
+     */
     void onBytesReceived(const uint8_t* data, size_t len) noexcept {
         for (size_t i = 0; i < len; ++i) {
             rxQueue_.push(data[i]);
         }
     }
 
-    // Metoda wywoływana cyklicznie w pętli głównej (while(1))
+    /**
+     * @brief Periodically called in the main background loop to process queued bytes.
+     */
     void processRxQueue() noexcept {
         while (auto byteOpt = rxQueue_.pop()) {
             parseByte(*byteOpt);
@@ -33,14 +44,14 @@ public:
     }
 
 private:
-    DynamicAudioPipeline<SlotsCount>& pipeline_;
+    DynamicAudioPipeline& pipeline_;
     LockFreeQueue<uint8_t, RxBufferSize> rxQueue_{};
 
     std::array<uint8_t, sizeof(Protocol::ControlPacket)> frameBuffer_{};
     size_t rxIndex_{0};
 
     void parseByte(uint8_t byte) noexcept {
-        // Szukanie bajtu startowego SOF (0xA5)
+        // Search for Start of Frame (SOF) byte (0xA5)
         if (rxIndex_ == 0) {
             if (byte == 0xA5) {
                 frameBuffer_[0] = byte;
@@ -49,10 +60,10 @@ private:
             return;
         }
 
-        // Gromadzenie reszty ramki
+        // Accumulate remaining packet bytes
         frameBuffer_[rxIndex_++] = byte;
 
-        // Gdy odebrano pełną ramkę (9 bajtów)
+        // Process frame once full length (9 bytes) is reached
         if (rxIndex_ == sizeof(Protocol::ControlPacket)) {
             Protocol::ControlPacket packet;
             std::memcpy(&packet, frameBuffer_.data(), sizeof(Protocol::ControlPacket));
@@ -61,7 +72,7 @@ private:
                 applyPacket(packet);
             }
 
-            rxIndex_ = 0; // Reset pod kolejną ramkę
+            rxIndex_ = 0; // Reset index for the next frame
         }
     }
 
@@ -75,7 +86,7 @@ private:
                 if constexpr (std::is_same_v<T, OverdriveEffect>) {
                     switch (paramId) {
                         case 0: effect.setDrive(val); break;
-                        case 1: effect.setTone(val); break; // Dopasowano do setTone w app_main
+                        case 1: effect.setTone(val); break;
                         case 2: effect.setWet(val); break;
                         case 3: effect.setLevel(val); break;
                     }
@@ -92,4 +103,4 @@ private:
     }
 };
 
-#endif // PROTOCOL_PARSER_H
+#endif // EMBEDDEDDSP_PROTOCOL_PARSER_H

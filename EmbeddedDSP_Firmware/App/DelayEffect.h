@@ -1,5 +1,5 @@
-#ifndef EMBEDDEDDSP_FIRMWARE_DELAYEFFECT_H
-#define EMBEDDEDDSP_FIRMWARE_DELAYEFFECT_H
+#ifndef EMBEDDEDDSP_FIRMWARE_DELAY_EFFECT_H
+#define EMBEDDEDDSP_FIRMWARE_DELAY_EFFECT_H
 
 #include <algorithm>
 #include <array>
@@ -18,11 +18,26 @@ public:
     static constexpr std::size_t MAX_DELAY_SAMPLES{24000};
     static constexpr float INT16_SCALE{32767.0f};
 
+private:
+    // --- PRIVATE MEMBERS (MEMBER VARIABLES) ---
+    std::array<std::int16_t, MAX_DELAY_SAMPLES> delayBufferMono{};
+    std::size_t writeIndex{0};
+
+    float sampleRate{48000.0f};          // System sample rate configured via prepare()
+    float targetDelaySamples{12000.0f};  // Default ~250 ms
+    float currentDelaySamples{12000.0f};
+    static constexpr float SMOOTHING_FACTOR{0.001f};
+
+    float feedback{0.4f};
+    float dryWet{0.5f};
+    bool bypassed{false};
+
+public:
     DelayEffect() = default;
 
     /**
-     * @brief Inicjalizuje efekt pod konkretną częstotliwość próbkowania i czyści bufor.
-     * @param newSampleRate Częstotliwość próbkowania systemu (np. 48000.0f)
+     * @brief Initializes the effect for a specific sampling frequency and resets buffers.
+     * @param newSampleRate System sampling rate (e.g. 48000.0f)
      */
     void prepare(float newSampleRate) noexcept {
         sampleRate = newSampleRate;
@@ -30,7 +45,7 @@ public:
     }
 
     /**
-     * @brief Czyści bufor opóźnienia i resetuje wskaźniki (przydatne np. przy przełączaniu presetów)
+     * @brief Clears the delay buffer and resets indices (useful when changing presets).
      */
     void reset() noexcept {
         delayBufferMono.fill(0);
@@ -114,18 +129,10 @@ public:
         return bypassed;
     }
 
-private:
-    std::array<std::int16_t, MAX_DELAY_SAMPLES> delayBufferMono{};
-    std::size_t writeIndex{0};
+    // --- GETTERS (FOR UNIT TESTING & GUI SYNC) ---
 
-    float sampleRate{48000.0f}; // Elastyczna częstotliwość ustawiana przez prepare()
-    float targetDelaySamples{12000.0f}; // Default ~250 ms
-    float currentDelaySamples{12000.0f};
-    static constexpr float SMOOTHING_FACTOR{0.001f};
-
-    float feedback{0.4f};
-    float dryWet{0.5f};
-    bool bypassed{false};
+    [[nodiscard]] float getFeedback() const noexcept { return feedback; }
+    [[nodiscard]] float getDryWet() const noexcept { return dryWet; }
 };
 
-#endif // EMBEDDEDDSP_FIRMWARE_DELAYEFFECT_H
+#endif // EMBEDDEDDSP_FIRMWARE_DELAY_EFFECT_H
