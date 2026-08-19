@@ -79,6 +79,7 @@ add_executable(${CMAKE_PROJECT_NAME}
 
         # Startup Assembly File
         startup_stm32f411xe.s
+
 )
 
 # Prevent CMake from appending .exe extension on Windows host
