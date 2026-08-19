@@ -1,6 +1,7 @@
 #ifndef EMBEDDEDDSP_PROTOCOL_H
 #define EMBEDDEDDSP_PROTOCOL_H
 
+#include <cstddef>
 #include <cstdint>
 #include <cstring> // For std::memcpy
 
@@ -10,28 +11,38 @@ namespace Protocol {
      * @brief Identifiers for protocol commands sent over USB VCP.
      */
     enum class Command : uint8_t {
-        SetParam      = 0x01,
-        SetEffectType = 0x02,
-        BypassToggle  = 0x03
+        SetParam       = 0x01,
+        SetEffectType  = 0x02,
+        BypassToggle   = 0x03,
+        ClearSlot      = 0x04,
+        SwapSlots      = 0x05,
+        SetActiveSlots = 0x06
     };
 
 #pragma pack(push, 1)
     /**
      * @brief Binary control packet structure sent between PC and MCU.
+     *
+     * Shared fixed 9-byte layout:
+     * - ClearSlot: uses slotId
+     * - SwapSlots: uses slotId (source) and paramId (target slot index)
+     * - SetActiveSlots: uses slotId as the count of active slots
      */
     struct ControlPacket {
         uint8_t sof{0xA5};
         Command command{Command::SetParam};
         uint8_t slotId{0};
         uint8_t paramId{0};
+
     private:
-        float rawValue{0.0f}; // Private to prevent direct unaligned FPU access on ARM
+        float m_rawValue{0.0f}; // Private to prevent direct unaligned FPU access on ARM
+
     public:
         uint8_t crc{0};
 
-        [[nodiscard]] static uint8_t calculateCRC(const uint8_t* data, size_t len) noexcept {
+        [[nodiscard]] static uint8_t calculateCRC(const uint8_t* data, std::size_t len) noexcept {
             uint8_t crc = 0xFF;
-            for (size_t i = 0; i < len; ++i) {
+            for (std::size_t i = 0; i < len; ++i) {
                 crc ^= data[i];
             }
             return crc;
@@ -48,7 +59,7 @@ namespace Protocol {
          */
         [[nodiscard]] float getValue() const noexcept {
             float temp{0.0f};
-            std::memcpy(&temp, &rawValue, sizeof(float));
+            std::memcpy(&temp, &m_rawValue, sizeof(float));
             return temp;
         }
 
@@ -56,7 +67,7 @@ namespace Protocol {
          * @brief Safe float write avoiding unaligned write issues.
          */
         void setValue(float val) noexcept {
-            std::memcpy(&rawValue, &val, sizeof(float));
+            std::memcpy(&m_rawValue, &val, sizeof(float));
         }
     };
 #pragma pack(pop)

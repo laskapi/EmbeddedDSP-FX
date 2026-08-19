@@ -11,7 +11,6 @@ TEST(ProtocolTest, PacketValidationSuccess) {
     packet.paramId = 2;
     packet.setValue(0.75f);
 
-    // Calculate CRC over the first 8 bytes (excluding the CRC field itself)
     const auto* bytes = reinterpret_cast<const uint8_t*>(&packet);
     packet.crc = Protocol::ControlPacket::calculateCRC(bytes, sizeof(Protocol::ControlPacket) - 1);
 
@@ -49,7 +48,6 @@ TEST(ProtocolParserTest, ParseValidByteStreamAndApplyParam) {
     DynamicAudioPipeline pipeline{};
     ProtocolParser parser{pipeline};
 
-    // Correctly instantiate and assign Overdrive to slot 0
     pipeline.setEffectInSlot(0, OverdriveEffect{});
 
     Protocol::ControlPacket originalPacket{};
@@ -57,18 +55,14 @@ TEST(ProtocolParserTest, ParseValidByteStreamAndApplyParam) {
     originalPacket.command = Protocol::Command::SetParam;
     originalPacket.slotId = 0;
     originalPacket.paramId = 0; // Drive parameter
-    originalPacket.setValue(8.5f); // Valid value within range [1.0f, 20.0f]
+    originalPacket.setValue(8.5f);
 
     const auto* bytes = reinterpret_cast<const uint8_t*>(&originalPacket);
     originalPacket.crc = Protocol::ControlPacket::calculateCRC(bytes, sizeof(Protocol::ControlPacket) - 1);
 
-    // Simulate byte reception from USB ISR
     parser.onBytesReceived(bytes, sizeof(Protocol::ControlPacket));
-
-    // Process queued bytes in main loop execution
     parser.processRxQueue();
 
-    // Verify parameter was correctly applied via visitor/variant
     std::visit([](auto& effect) {
         using T = std::decay_t<decltype(effect)>;
         if constexpr (std::is_same_v<T, OverdriveEffect>) {
@@ -83,7 +77,6 @@ TEST(ProtocolParserTest, IgnoreNoiseBeforeSOF) {
     DynamicAudioPipeline pipeline{};
     ProtocolParser parser{pipeline};
 
-    // Correctly instantiate and assign Delay to slot 0
     pipeline.setEffectInSlot(0, DelayEffect{});
 
     Protocol::ControlPacket originalPacket{};
@@ -96,7 +89,6 @@ TEST(ProtocolParserTest, IgnoreNoiseBeforeSOF) {
     const auto* bytes = reinterpret_cast<const uint8_t*>(&originalPacket);
     originalPacket.crc = Protocol::ControlPacket::calculateCRC(bytes, sizeof(Protocol::ControlPacket) - 1);
 
-    // Simulate noise bytes before a valid SOF packet
     const uint8_t noiseBytes[] = {0x12, 0x34, 0xFF, 0x00};
     parser.onBytesReceived(noiseBytes, sizeof(noiseBytes));
     parser.onBytesReceived(bytes, sizeof(Protocol::ControlPacket));
@@ -111,4 +103,66 @@ TEST(ProtocolParserTest, IgnoreNoiseBeforeSOF) {
             FAIL() << "Expected DelayEffect in slot 0";
         }
     }, pipeline.getSlot(0));
+}
+
+TEST(ProtocolParserTest, ClearSlotCommand) {
+    DynamicAudioPipeline pipeline{};
+    ProtocolParser parser{pipeline};
+
+    pipeline.setEffectInSlot(0, OverdriveEffect{});
+    EXPECT_FALSE(std::holds_alternative<EmptyEffect>(pipeline.getSlot(0)));
+
+    Protocol::ControlPacket packet{};
+    packet.sof = 0xA5;
+    packet.command = Protocol::Command::ClearSlot;
+    packet.slotId = 0;
+
+    const auto* bytes = reinterpret_cast<const uint8_t*>(&packet);
+    packet.crc = Protocol::ControlPacket::calculateCRC(bytes, sizeof(Protocol::ControlPacket) - 1);
+
+    parser.onBytesReceived(bytes, sizeof(Protocol::ControlPacket));
+    parser.processRxQueue();
+
+    EXPECT_TRUE(std::holds_alternative<EmptyEffect>(pipeline.getSlot(0)));
+}
+
+TEST(ProtocolParserTest, SwapSlotsCommand) {
+    DynamicAudioPipeline pipeline{};
+    ProtocolParser parser{pipeline};
+
+    pipeline.setEffectInSlot(0, OverdriveEffect{});
+    pipeline.setEffectInSlot(1, DelayEffect{});
+
+    Protocol::ControlPacket packet{};
+    packet.sof = 0xA5;
+    packet.command = Protocol::Command::SwapSlots;
+    packet.slotId = 0;
+    packet.paramId = 1; // Target slot to swap with
+
+    const auto* bytes = reinterpret_cast<const uint8_t*>(&packet);
+    packet.crc = Protocol::ControlPacket::calculateCRC(bytes, sizeof(Protocol::ControlPacket) - 1);
+
+    parser.onBytesReceived(bytes, sizeof(Protocol::ControlPacket));
+    parser.processRxQueue();
+
+    EXPECT_TRUE(std::holds_alternative<DelayEffect>(pipeline.getSlot(0)));
+    EXPECT_TRUE(std::holds_alternative<OverdriveEffect>(pipeline.getSlot(1)));
+}
+
+TEST(ProtocolParserTest, SetActiveSlotsCommand) {
+    DynamicAudioPipeline pipeline{};
+    ProtocolParser parser{pipeline};
+
+    Protocol::ControlPacket packet{};
+    packet.sof = 0xA5;
+    packet.command = Protocol::Command::SetActiveSlots;
+    packet.slotId = 2; // Set active count to 2
+
+    const auto* bytes = reinterpret_cast<const uint8_t*>(&packet);
+    packet.crc = Protocol::ControlPacket::calculateCRC(bytes, sizeof(Protocol::ControlPacket) - 1);
+
+    parser.onBytesReceived(bytes, sizeof(Protocol::ControlPacket));
+    parser.processRxQueue();
+
+    EXPECT_EQ(pipeline.getActiveSlotsCount(), 2);
 }
