@@ -19,10 +19,10 @@ add_executable(dsp_unit_tests
         test_dsp.cpp
 
         # Podpinamy same nagłówki logiki C++ z firmware
-        ../EmbeddedDSP_Firmware/App/ProtocolParser.h
-        ../EmbeddedDSP_Firmware/App/LockFreeQueue.h
-        ../EmbeddedDSP_Firmware/App/OverdriveEffect.h
-        ../EmbeddedDSP_Firmware/App/DelayEffect.h
+        ../EmbeddedDSP_Firmware/App/Protocol/ControlParser.h
+        ../EmbeddedDSP_Firmware/App/Protocol/SpscQueue.h
+        ../EmbeddedDSP_Firmware/App/DSP/OverdriveEffect.h
+        ../EmbeddedDSP_Firmware/App/DSP/DelayEffect.h
 )
 
 # Wymuszenie C++20 oraz jawne nadanie rozszerzenia .exe dla Windows/MinGW

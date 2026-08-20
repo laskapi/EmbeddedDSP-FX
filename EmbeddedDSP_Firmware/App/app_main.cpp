@@ -1,8 +1,11 @@
 #include "app_main.h"
-#include "DynamicAudioPipeline.h"
-#include "DelayEffect.h"
-#include "OverdriveEffect.h"
-#include "ProtocolParser.h"
+#include "DSP/DynamicAudioPipeline.h"
+#include "DSP/DelayEffect.h"
+#include "DSP/OverdriveEffect.h"
+#include "Protocol/ControlParser.h"
+#include "Protocol/AudioFramePacket.h"
+#include "Protocol/Crc16Calculator.h"
+#include "Protocol/SpscQueue.h"
 
 #include "stm32f4xx_ll_dma.h"
 #include "stm32f4xx_ll_spi.h"
@@ -11,6 +14,9 @@
 #include <atomic>
 #include <cmath>
 #include <cstdint>
+
+// Usb Virtual COM Port Tx declaration (provided by USB Device stack)
+extern "C" uint8_t CDC_Transmit_FS(uint8_t* Buf, uint16_t Len);
 
 namespace {
 constexpr std::size_t DMA_BUF_SIZE = 512;
@@ -32,7 +38,15 @@ alignas(4) std::array<std::int16_t, DMA_BUF_SIZE> dmaTxBuffer{};
 DynamicAudioPipeline audioPipeline;
 std::atomic<BufferState> activeBufferState{BufferState::None};
 
-ProtocolParser protocolParser{audioPipeline};
+ControlParser protocolParser{audioPipeline};
+
+// Audio Tx queue and packet assembly buffer
+using AudioTxQueue = SpscQueue<AudioFramePacket, 8>;
+AudioTxQueue g_audioTxQueue{};
+
+std::array<int16_t, AUDIO_PACKET_SAMPLES> g_txSampleAccumulator{};
+std::size_t g_txSampleCount = 0;
+uint8_t g_audioSequenceNumber = 0;
 
 // Converts float stereo pair (Left, Right) to packed 32-bit Q15 format [R:31..16 | L:15..0]
 [[nodiscard]] inline std::uint32_t floatToQ15SaturateStereo(float left, float right) noexcept {
@@ -74,7 +88,32 @@ void process_buffer_half(std::size_t offset) {
         audioPipeline.process(leftSample, rightSample);
 
         // Pack and saturate processed audio using SIMD
-        txPtr32[i] = floatToQ15SaturateStereo(leftSample, rightSample);
+        const std::uint32_t packedProcessed = floatToQ15SaturateStereo(leftSample, rightSample);
+        txPtr32[i] = packedProcessed;
+
+        // Collect processed left channel sample (Q15) for FFT desktop visualization
+        if (g_txSampleCount < AUDIO_PACKET_SAMPLES) {
+            g_txSampleAccumulator[g_txSampleCount++] = static_cast<int16_t>(packedProcessed & 0xFFFF);
+        }
+
+        // When 128 samples are accumulated, pack frame and push to SPSC Tx queue
+        if (g_txSampleCount == AUDIO_PACKET_SAMPLES) {
+            AudioFramePacket packet{};
+            packet.sof = 0xA6;
+            packet.sequenceNumber = g_audioSequenceNumber++;
+            packet.payloadLength = static_cast<uint16_t>(AUDIO_PACKET_SAMPLES * sizeof(int16_t));
+            packet.samples = g_txSampleAccumulator;
+
+            // Calculate CRC-16 CCITT checksum over header and data
+            const auto* rawBytes = reinterpret_cast<const uint8_t*>(&packet);
+            constexpr std::size_t headerAndDataLen = sizeof(AudioFramePacket) - sizeof(uint16_t);
+            packet.crc16 = Crc16Calculator::calculate(rawBytes, headerAndDataLen);
+
+            // Lock-free push to Tx queue
+            g_audioTxQueue.push(packet);
+
+            g_txSampleCount = 0;
+        }
     }
 }
 
@@ -146,8 +185,17 @@ void app_main(I2S_HandleTypeDef* audio_i2s) {
 
     // Processing loop
     while (1) {
+        // 1. Process control commands from PC -> STM32
         protocolParser.processRxQueue();
 
+        // 2. Process audio streaming packets STM32 -> PC
+        auto audioPacketOpt = g_audioTxQueue.pop();
+        if (audioPacketOpt.has_value()) {
+            AudioFramePacket packet = *audioPacketOpt;
+            CDC_Transmit_FS(reinterpret_cast<uint8_t*>(&packet), static_cast<uint16_t>(sizeof(packet)));
+        }
+
+        // 3. Process DMA audio buffers
         BufferState stateToProcess = activeBufferState.exchange(BufferState::None, std::memory_order_relaxed);
         switch (stateToProcess) {
         case BufferState::HalfReady:

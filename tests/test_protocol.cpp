@@ -1,41 +1,41 @@
 #include <gtest/gtest.h>
-#include "Protocol.h"
-#include "ProtocolParser.h"
-#include "DynamicAudioPipeline.h"
+#include "../EmbeddedDSP_Firmware/App/Protocol/ControlPacket.h"
+#include "../EmbeddedDSP_Firmware/App/Protocol/ControlParser.h"
+#include "../EmbeddedDSP_Firmware/App/DSP/DynamicAudioPipeline.h"
 
 TEST(ProtocolTest, PacketValidationSuccess) {
-    Protocol::ControlPacket packet{};
+    ControlPacket::ControlPacket packet{};
     packet.sof = 0xA5;
-    packet.command = Protocol::Command::SetParam;
+    packet.command = ControlPacket::Command::SetParam;
     packet.slotId = 1;
     packet.paramId = 2;
     packet.setValue(0.75f);
 
     const auto* bytes = reinterpret_cast<const uint8_t*>(&packet);
-    packet.crc = Protocol::ControlPacket::calculateCRC(bytes, sizeof(Protocol::ControlPacket) - 1);
+    packet.crc = ControlPacket::ControlPacket::calculateCRC(bytes, sizeof(ControlPacket::ControlPacket) - 1);
 
     EXPECT_TRUE(packet.isValid());
     EXPECT_FLOAT_EQ(packet.getValue(), 0.75f);
 }
 
 TEST(ProtocolTest, PacketValidationInvalidSOF) {
-    Protocol::ControlPacket packet{};
+    ControlPacket::ControlPacket packet{};
     packet.sof = 0xFF; // Invalid SOF byte
-    packet.command = Protocol::Command::SetParam;
+    packet.command = ControlPacket::Command::SetParam;
     packet.slotId = 0;
     packet.paramId = 0;
     packet.setValue(1.0f);
 
     const auto* bytes = reinterpret_cast<const uint8_t*>(&packet);
-    packet.crc = Protocol::ControlPacket::calculateCRC(bytes, sizeof(Protocol::ControlPacket) - 1);
+    packet.crc = ControlPacket::ControlPacket::calculateCRC(bytes, sizeof(ControlPacket::ControlPacket) - 1);
 
     EXPECT_FALSE(packet.isValid());
 }
 
 TEST(ProtocolTest, PacketValidationInvalidCRC) {
-    Protocol::ControlPacket packet{};
+    ControlPacket::ControlPacket packet{};
     packet.sof = 0xA5;
-    packet.command = Protocol::Command::SetParam;
+    packet.command = ControlPacket::Command::SetParam;
     packet.slotId = 0;
     packet.paramId = 0;
     packet.setValue(1.0f);
@@ -46,21 +46,21 @@ TEST(ProtocolTest, PacketValidationInvalidCRC) {
 
 TEST(ProtocolParserTest, ParseValidByteStreamAndApplyParam) {
     DynamicAudioPipeline pipeline{};
-    ProtocolParser parser{pipeline};
+    ControlParser parser{pipeline};
 
     pipeline.setEffectInSlot(0, OverdriveEffect{});
 
-    Protocol::ControlPacket originalPacket{};
+    ControlPacket::ControlPacket originalPacket{};
     originalPacket.sof = 0xA5;
-    originalPacket.command = Protocol::Command::SetParam;
+    originalPacket.command = ControlPacket::Command::SetParam;
     originalPacket.slotId = 0;
     originalPacket.paramId = 0; // Drive parameter
     originalPacket.setValue(8.5f);
 
     const auto* bytes = reinterpret_cast<const uint8_t*>(&originalPacket);
-    originalPacket.crc = Protocol::ControlPacket::calculateCRC(bytes, sizeof(Protocol::ControlPacket) - 1);
+    originalPacket.crc = ControlPacket::ControlPacket::calculateCRC(bytes, sizeof(ControlPacket::ControlPacket) - 1);
 
-    parser.onBytesReceived(bytes, sizeof(Protocol::ControlPacket));
+    parser.onBytesReceived(bytes, sizeof(ControlPacket::ControlPacket));
     parser.processRxQueue();
 
     std::visit([](auto& effect) {
@@ -75,23 +75,23 @@ TEST(ProtocolParserTest, ParseValidByteStreamAndApplyParam) {
 
 TEST(ProtocolParserTest, IgnoreNoiseBeforeSOF) {
     DynamicAudioPipeline pipeline{};
-    ProtocolParser parser{pipeline};
+    ControlParser parser{pipeline};
 
     pipeline.setEffectInSlot(0, DelayEffect{});
 
-    Protocol::ControlPacket originalPacket{};
+    ControlPacket::ControlPacket originalPacket{};
     originalPacket.sof = 0xA5;
-    originalPacket.command = Protocol::Command::SetParam;
+    originalPacket.command = ControlPacket::Command::SetParam;
     originalPacket.slotId = 0;
     originalPacket.paramId = 1; // Feedback parameter
     originalPacket.setValue(0.4f);
 
     const auto* bytes = reinterpret_cast<const uint8_t*>(&originalPacket);
-    originalPacket.crc = Protocol::ControlPacket::calculateCRC(bytes, sizeof(Protocol::ControlPacket) - 1);
+    originalPacket.crc = ControlPacket::ControlPacket::calculateCRC(bytes, sizeof(ControlPacket::ControlPacket) - 1);
 
     const uint8_t noiseBytes[] = {0x12, 0x34, 0xFF, 0x00};
     parser.onBytesReceived(noiseBytes, sizeof(noiseBytes));
-    parser.onBytesReceived(bytes, sizeof(Protocol::ControlPacket));
+    parser.onBytesReceived(bytes, sizeof(ControlPacket::ControlPacket));
 
     parser.processRxQueue();
 
@@ -107,20 +107,20 @@ TEST(ProtocolParserTest, IgnoreNoiseBeforeSOF) {
 
 TEST(ProtocolParserTest, ClearSlotCommand) {
     DynamicAudioPipeline pipeline{};
-    ProtocolParser parser{pipeline};
+    ControlParser parser{pipeline};
 
     pipeline.setEffectInSlot(0, OverdriveEffect{});
     EXPECT_FALSE(std::holds_alternative<EmptyEffect>(pipeline.getSlot(0)));
 
-    Protocol::ControlPacket packet{};
+    ControlPacket::ControlPacket packet{};
     packet.sof = 0xA5;
-    packet.command = Protocol::Command::ClearSlot;
+    packet.command = ControlPacket::Command::ClearSlot;
     packet.slotId = 0;
 
     const auto* bytes = reinterpret_cast<const uint8_t*>(&packet);
-    packet.crc = Protocol::ControlPacket::calculateCRC(bytes, sizeof(Protocol::ControlPacket) - 1);
+    packet.crc = ControlPacket::ControlPacket::calculateCRC(bytes, sizeof(ControlPacket::ControlPacket) - 1);
 
-    parser.onBytesReceived(bytes, sizeof(Protocol::ControlPacket));
+    parser.onBytesReceived(bytes, sizeof(ControlPacket::ControlPacket));
     parser.processRxQueue();
 
     EXPECT_TRUE(std::holds_alternative<EmptyEffect>(pipeline.getSlot(0)));
@@ -128,21 +128,21 @@ TEST(ProtocolParserTest, ClearSlotCommand) {
 
 TEST(ProtocolParserTest, SwapSlotsCommand) {
     DynamicAudioPipeline pipeline{};
-    ProtocolParser parser{pipeline};
+    ControlParser parser{pipeline};
 
     pipeline.setEffectInSlot(0, OverdriveEffect{});
     pipeline.setEffectInSlot(1, DelayEffect{});
 
-    Protocol::ControlPacket packet{};
+    ControlPacket::ControlPacket packet{};
     packet.sof = 0xA5;
-    packet.command = Protocol::Command::SwapSlots;
+    packet.command = ControlPacket::Command::SwapSlots;
     packet.slotId = 0;
     packet.paramId = 1; // Target slot to swap with
 
     const auto* bytes = reinterpret_cast<const uint8_t*>(&packet);
-    packet.crc = Protocol::ControlPacket::calculateCRC(bytes, sizeof(Protocol::ControlPacket) - 1);
+    packet.crc = ControlPacket::ControlPacket::calculateCRC(bytes, sizeof(ControlPacket::ControlPacket) - 1);
 
-    parser.onBytesReceived(bytes, sizeof(Protocol::ControlPacket));
+    parser.onBytesReceived(bytes, sizeof(ControlPacket::ControlPacket));
     parser.processRxQueue();
 
     EXPECT_TRUE(std::holds_alternative<DelayEffect>(pipeline.getSlot(0)));
@@ -151,17 +151,17 @@ TEST(ProtocolParserTest, SwapSlotsCommand) {
 
 TEST(ProtocolParserTest, SetActiveSlotsCommand) {
     DynamicAudioPipeline pipeline{};
-    ProtocolParser parser{pipeline};
+    ControlParser parser{pipeline};
 
-    Protocol::ControlPacket packet{};
+    ControlPacket::ControlPacket packet{};
     packet.sof = 0xA5;
-    packet.command = Protocol::Command::SetActiveSlots;
+    packet.command = ControlPacket::Command::SetActiveSlots;
     packet.slotId = 2; // Set active count to 2
 
     const auto* bytes = reinterpret_cast<const uint8_t*>(&packet);
-    packet.crc = Protocol::ControlPacket::calculateCRC(bytes, sizeof(Protocol::ControlPacket) - 1);
+    packet.crc = ControlPacket::ControlPacket::calculateCRC(bytes, sizeof(ControlPacket::ControlPacket) - 1);
 
-    parser.onBytesReceived(bytes, sizeof(Protocol::ControlPacket));
+    parser.onBytesReceived(bytes, sizeof(ControlPacket::ControlPacket));
     parser.processRxQueue();
 
     EXPECT_EQ(pipeline.getActiveSlotsCount(), 2);

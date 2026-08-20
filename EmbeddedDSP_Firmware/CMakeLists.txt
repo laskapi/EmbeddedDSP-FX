@@ -52,13 +52,13 @@ add_executable(${CMAKE_PROJECT_NAME}
         # C++ Application Logic
         App/app_main.cpp
         App/app_main.h
-        App/DelayEffect.h
-        App/DynamicAudioPipeline.h
-        App/AudioEffectConcept.h
-        App/OverdriveEffect.h
-        App/Protocol.h
-        App/LockFreeQueue.h
-        App/ProtocolParser.h
+        App/DSP/DelayEffect.h
+        App/DSP/DynamicAudioPipeline.h
+        App/DSP/AudioEffectConcept.h
+        App/DSP/OverdriveEffect.h
+        App/Protocol/ControlPacket.h
+        App/Protocol/SpscQueue.h
+        App/Protocol/ControlParser.h
 
         # USB Device Stack
         USB_DEVICE/Target/usbd_conf.c
@@ -79,6 +79,8 @@ add_executable(${CMAKE_PROJECT_NAME}
 
         # Startup Assembly File
         startup_stm32f411xe.s
+        App/Protocol/AudioFramePacket.h
+        App/Protocol/Crc16Calculator.h
 
 )
 

@@ -1,11 +1,11 @@
-#ifndef EMBEDDEDDSP_PROTOCOL_PARSER_H
-#define EMBEDDEDDSP_PROTOCOL_PARSER_H
+#ifndef EMBEDDEDDSP_CONTROL_PARSER_H
+#define EMBEDDEDDSP_CONTROL_PARSER_H
 
-#include "DelayEffect.h"
-#include "DynamicAudioPipeline.h"
-#include "LockFreeQueue.h"
-#include "OverdriveEffect.h"
-#include "Protocol.h"
+#include "../DSP/DelayEffect.h"
+#include "../DSP/DynamicAudioPipeline.h"
+#include "SpscQueue.h"
+#include "../DSP/OverdriveEffect.h"
+#include "ControlPacket.h"
 
 #include <array>
 #include <cstddef>
@@ -18,13 +18,13 @@
  * @brief Stateful parser processing incoming USB byte stream and dispatching
  *        control packets directly to DSP pipeline slots.
  */
-class ProtocolParser {
+class ControlParser {
 public:
     static constexpr std::size_t RxBufferSize = 256;
 
 private:
-    LockFreeQueue<uint8_t, RxBufferSize> m_rxQueue{};
-    std::array<uint8_t, sizeof(Protocol::ControlPacket)> m_frameBuffer{};
+    SpscQueue<uint8_t, RxBufferSize> m_rxQueue{};
+    std::array<uint8_t, sizeof(ControlPacket::ControlPacket)> m_frameBuffer{};
     std::size_t m_rxIndex{0};
     DynamicAudioPipeline& m_pipeline;
 
@@ -42,9 +42,9 @@ private:
         m_frameBuffer[m_rxIndex++] = byte;
 
         // Process frame once full length (9 bytes) is reached
-        if (m_rxIndex == sizeof(Protocol::ControlPacket)) {
-            Protocol::ControlPacket packet;
-            std::memcpy(&packet, m_frameBuffer.data(), sizeof(Protocol::ControlPacket));
+        if (m_rxIndex == sizeof(ControlPacket::ControlPacket)) {
+            ControlPacket::ControlPacket packet;
+            std::memcpy(&packet, m_frameBuffer.data(), sizeof(ControlPacket::ControlPacket));
 
             if (packet.isValid()) {
                 applyPacket(packet);
@@ -54,12 +54,12 @@ private:
         }
     }
 
-    void applyPacket(const Protocol::ControlPacket& packet) noexcept {
+    void applyPacket(const ControlPacket::ControlPacket& packet) noexcept {
         const float val = packet.getValue();
         const uint8_t slotId = packet.slotId;
 
         switch (packet.command) {
-            case Protocol::Command::SetParam: {
+            case ControlPacket::Command::SetParam: {
                 if (slotId < MAX_AUDIO_SLOTS) {
                     std::visit([paramId = packet.paramId, val](auto& effect) {
                         using T = std::decay_t<decltype(effect)>;
@@ -86,7 +86,7 @@ private:
                 break;
             }
 
-            case Protocol::Command::SetEffectType: {
+            case ControlPacket::Command::SetEffectType: {
                 if (slotId < MAX_AUDIO_SLOTS) {
                     const auto effectType = static_cast<uint8_t>(val);
                     switch (effectType) {
@@ -99,7 +99,7 @@ private:
                 break;
             }
 
-            case Protocol::Command::BypassToggle: {
+            case ControlPacket::Command::BypassToggle: {
                 if (slotId < MAX_AUDIO_SLOTS) {
                     std::visit([](auto& fx) {
                         fx.toggleBypass();
@@ -108,17 +108,17 @@ private:
                 break;
             }
 
-            case Protocol::Command::ClearSlot: {
+            case ControlPacket::Command::ClearSlot: {
                 m_pipeline.clearSlot(slotId);
                 break;
             }
 
-            case Protocol::Command::SwapSlots: {
+            case ControlPacket::Command::SwapSlots: {
                 m_pipeline.swapSlots(slotId, packet.paramId);
                 break;
             }
 
-            case Protocol::Command::SetActiveSlots: {
+            case ControlPacket::Command::SetActiveSlots: {
                 m_pipeline.setActiveSlotsCount(slotId);
                 break;
             }
@@ -126,7 +126,7 @@ private:
     }
 
 public:
-    explicit ProtocolParser(DynamicAudioPipeline& pipeline) noexcept
+    explicit ControlParser(DynamicAudioPipeline& pipeline) noexcept
         : m_pipeline{pipeline} {}
 
     /**
@@ -150,4 +150,4 @@ public:
     }
 };
 
-#endif // EMBEDDEDDSP_PROTOCOL_PARSER_H
+#endif // EMBEDDEDDSP_CONTROL_PARSER_H

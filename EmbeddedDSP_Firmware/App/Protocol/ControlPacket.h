@@ -1,14 +1,14 @@
-#ifndef EMBEDDEDDSP_PROTOCOL_H
-#define EMBEDDEDDSP_PROTOCOL_H
+#ifndef EMBEDDEDDSP_CONTROL_PACKET_H
+#define EMBEDDEDDSP_CONTROL_PACKET_H
 
 #include <cstddef>
 #include <cstdint>
 #include <cstring> // For std::memcpy
 
-namespace Protocol {
+namespace ControlPacket {
 
     /**
-     * @brief Identifiers for protocol commands sent over USB VCP.
+     * @brief Identifiers for control packet commands sent over USB VCP.
      */
     enum class Command : uint8_t {
         SetParam       = 0x01,
@@ -74,6 +74,6 @@ namespace Protocol {
 
     static_assert(sizeof(ControlPacket) == 9, "ControlPacket must be exactly 9 bytes");
 
-} // namespace Protocol
+}
 
-#endif // EMBEDDEDDSP_PROTOCOL_H
+#endif // EMBEDDEDDSP_CONTROL_PACKET_H
