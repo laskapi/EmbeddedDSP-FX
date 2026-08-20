@@ -4,14 +4,19 @@
 #include "OverdriveEffect.h"
 #include "ProtocolParser.h"
 
-#include <algorithm>
+#include "stm32f4xx_ll_dma.h"
+#include "stm32f4xx_ll_spi.h"
+
 #include <array>
 #include <atomic>
+#include <cmath>
+#include <cstdint>
 
 namespace {
 constexpr std::size_t DMA_BUF_SIZE = 512;
 constexpr std::size_t HALF_BUF_SIZE = DMA_BUF_SIZE / 2;
 constexpr float AUDIO_SCALE_FACTOR = 32768.0f;
+constexpr float INV_AUDIO_SCALE_FACTOR = 1.0f / 32768.0f;
 constexpr float SYSTEM_SAMPLE_RATE = 48000.0f;
 
 enum class BufferState : int8_t {
@@ -20,78 +25,127 @@ enum class BufferState : int8_t {
     FullReady
 };
 
-// Align buffers to 4-byte boundaries for hardware DMA transfer compatibility
+// Align buffers to 4-byte boundaries for 32-bit DMA/SIMD access
 alignas(4) std::array<std::int16_t, DMA_BUF_SIZE> dmaRxBuffer{};
 alignas(4) std::array<std::int16_t, DMA_BUF_SIZE> dmaTxBuffer{};
 
-DynamicAudioPipeline<2> audioPipeline;
+DynamicAudioPipeline audioPipeline;
 std::atomic<BufferState> activeBufferState{BufferState::None};
 
 ProtocolParser protocolParser{audioPipeline};
 
-/**
- * @brief Processes half of the interleaved stereo DMA buffer using float conversion and DSP pipeline.
- * @param offset Starting index in the DMA buffer (0 for first half, HALF_BUF_SIZE for second half).
- */
+// Converts float stereo pair (Left, Right) to packed 32-bit Q15 format [R:31..16 | L:15..0]
+[[nodiscard]] inline std::uint32_t floatToQ15SaturateStereo(float left, float right) noexcept {
+    const auto left32  = static_cast<std::int32_t>(std::lroundf(left  * AUDIO_SCALE_FACTOR));
+    const auto right32 = static_cast<std::int32_t>(std::lroundf(right * AUDIO_SCALE_FACTOR));
+
+    // Pack left (lower 16 bits) and right (upper 16 bits) into a single 32-bit register
+    std::uint32_t packedInput{0};
+    asm volatile("pkhbt %0, %1, %2, lsl #16"
+                 : "=r"(packedInput)
+                 : "r"(left32), "r"(right32));
+
+    // Parallel SIMD saturation of both channels using Cortex-M4 SSAT16
+    std::uint32_t packedResult{0};
+    asm volatile("ssat16 %0, #16, %1"
+                 : "=r"(packedResult)
+                 : "r"(packedInput));
+
+    return packedResult;
+}
+
+// Processes half of the DMA buffer using 32-bit SIMD access and float DSP
 void process_buffer_half(std::size_t offset) {
-    for (std::size_t i = 0; i < HALF_BUF_SIZE; i += 2) {
-        std::size_t idx = offset + i;
+    const auto* __restrict rxPtr32 = reinterpret_cast<const std::uint32_t*>(&dmaRxBuffer[offset]);
+    auto*       __restrict txPtr32 = reinterpret_cast<std::uint32_t*>(&dmaTxBuffer[offset]);
 
-        // Convert Q15 PCM to normalized float range [-1.0f, 1.0f]
-        float leftSample = static_cast<float>(dmaRxBuffer[idx]) / AUDIO_SCALE_FACTOR;
-        float rightSample = static_cast<float>(dmaRxBuffer[idx + 1]) / AUDIO_SCALE_FACTOR;
+    constexpr std::size_t STEREO_SAMPLES_COUNT = HALF_BUF_SIZE / 2;
 
-        // Pass stereo audio frame through processing pipeline (Overdrive -> Delay)
+    for (std::size_t i = 0; i < STEREO_SAMPLES_COUNT; ++i) {
+        // Read packed stereo sample (32-bit)
+        const std::uint32_t packedRx = rxPtr32[i];
+
+        const auto leftInt  = static_cast<std::int16_t>(packedRx & 0xFFFF);
+        const auto rightInt = static_cast<std::int16_t>(packedRx >> 16);
+
+        float leftSample  = static_cast<float>(leftInt)  * INV_AUDIO_SCALE_FACTOR;
+        float rightSample = static_cast<float>(rightInt) * INV_AUDIO_SCALE_FACTOR;
+
         audioPipeline.process(leftSample, rightSample);
 
-        // Convert normalized float back to Q15 PCM with hard-clamping to prevent wrap-around distortion
-        float clampedLeft = std::clamp(leftSample * AUDIO_SCALE_FACTOR, -AUDIO_SCALE_FACTOR, AUDIO_SCALE_FACTOR - 1.0f);
-        float clampedRight = std::clamp(rightSample * AUDIO_SCALE_FACTOR, -AUDIO_SCALE_FACTOR, AUDIO_SCALE_FACTOR - 1.0f);
-
-        dmaTxBuffer[idx] = static_cast<std::int16_t>(clampedLeft);
-        dmaTxBuffer[idx + 1] = static_cast<std::int16_t>(clampedRight);
+        // Pack and saturate processed audio using SIMD
+        txPtr32[i] = floatToQ15SaturateStereo(leftSample, rightSample);
     }
 }
+
+// Low-Layer DMA & I2S start routine
+void start_i2s_dma_ll(SPI_TypeDef* i2sInstance, DMA_TypeDef* dmaInstance, uint32_t rxStream, uint32_t txStream) {
+    const uint32_t dataRegAddr = LL_SPI_DMA_GetRegAddr(i2sInstance);
+
+    LL_DMA_SetDataLength(dmaInstance, rxStream, DMA_BUF_SIZE);
+    LL_DMA_SetDataLength(dmaInstance, txStream, DMA_BUF_SIZE);
+
+    LL_DMA_ConfigAddresses(
+        dmaInstance,
+        rxStream,
+        dataRegAddr,
+        reinterpret_cast<uint32_t>(dmaRxBuffer.data()),
+        LL_DMA_DIRECTION_PERIPH_TO_MEMORY
+    );
+
+    LL_DMA_ConfigAddresses(
+        dmaInstance,
+        txStream,
+        reinterpret_cast<uint32_t>(dmaTxBuffer.data()),
+        dataRegAddr,
+        LL_DMA_DIRECTION_MEMORY_TO_PERIPH
+    );
+
+    LL_DMA_EnableStream(dmaInstance, rxStream);
+    LL_DMA_EnableStream(dmaInstance, txStream);
+
+    LL_I2S_EnableDMAReq_RX(i2sInstance);
+    LL_I2S_EnableDMAReq_TX(i2sInstance);
+
+    if (!LL_I2S_IsEnabled(i2sInstance)) {
+        LL_I2S_Enable(i2sInstance);
+    }
+}
+
 } // namespace
 
 extern "C" {
 
-// C bridge callback invoked from usbd_cdc_if.c on incoming USB data
 void ProtocolParser_OnBytesReceived(const uint8_t* Buf, uint32_t Len) {
     protocolParser.onBytesReceived(Buf, Len);
 }
 
 void app_main(I2S_HandleTypeDef* audio_i2s) {
-    // Slot 0: Overdrive Effect Setup
+    // Setup Overdrive
     audioPipeline.setEffectInSlot(0, OverdriveEffect{});
     if (auto* overdrive = std::get_if<OverdriveEffect>(&audioPipeline.getSlot(0))) {
         overdrive->prepare(SYSTEM_SAMPLE_RATE);
-        overdrive->setDrive(6.0f);         // Soft/Medium saturation
-        overdrive->setTone(3500.0f);       // Cut high-frequency harshness at 3.5 kHz
-        overdrive->setWet(1.0f);           // 100% processed audio
-        overdrive->setLevel(0.9f);         // Output gain balance
+        overdrive->setDrive(6.0f);
+        overdrive->setTone(3500.0f);
+        overdrive->setWet(1.0f);
+        overdrive->setLevel(0.9f);
     }
 
-    // Slot 1: Delay Effect Setup
+    // Setup Delay
     audioPipeline.setEffectInSlot(1, DelayEffect{});
     if (auto* delay = std::get_if<DelayEffect>(&audioPipeline.getSlot(1))) {
         delay->prepare(SYSTEM_SAMPLE_RATE);
-        delay->setDelayTime(0.35f);        // 350 ms delay
-        delay->setFeedback(0.4f);         // 40% feedback
-        delay->setDryWet(0.4f);           // 40% wet signal mix
+        delay->setDelayTime(0.35f);
+        delay->setFeedback(0.4f);
+        delay->setDryWet(0.4f);
     }
 
-    // Start Circular DMA Transmit/Receive over I2S Bus
-    HAL_I2SEx_TransmitReceive_DMA(
-        audio_i2s,
-        reinterpret_cast<uint16_t*>(dmaTxBuffer.data()),
-        reinterpret_cast<uint16_t*>(dmaRxBuffer.data()),
-        DMA_BUF_SIZE
-    );
+    if (audio_i2s != nullptr) {
+        start_i2s_dma_ll(SPI2, DMA1, LL_DMA_STREAM_3, LL_DMA_STREAM_4);
+    }
 
-    // Event loop processing DMA audio buffers outside ISR context
+    // Processing loop
     while (1) {
-        // Poll and execute incoming commands from the USB RX queue
         protocolParser.processRxQueue();
 
         BufferState stateToProcess = activeBufferState.exchange(BufferState::None, std::memory_order_relaxed);
@@ -104,7 +158,6 @@ void app_main(I2S_HandleTypeDef* audio_i2s) {
             break;
         case BufferState::None:
         default:
-            // Sleep CPU until the next DMA interrupt or USB interrupt triggers
             __WFI();
             break;
         }
@@ -120,7 +173,6 @@ void app_audio_transfer_complete_cb(void) {
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
-    // User Button (B1) debounce and Overdrive bypass toggle
     if (GPIO_Pin == GPIO_PIN_13) {
         static uint32_t lastInterruptTime = 0;
         uint32_t currentTime = HAL_GetTick();

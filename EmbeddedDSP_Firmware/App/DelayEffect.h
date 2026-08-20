@@ -15,7 +15,7 @@
 class DelayEffect {
 public:
     // 24000 samples * 2 bytes (int16_t) = 48 KB SRAM (500 ms delay line at 48 kHz)
-    static constexpr std::size_t MAX_DELAY_SAMPLES{24000};
+    static constexpr std::size_t MAX_DELAY_SAMPLES{4800};
     static constexpr float INT16_SCALE{32767.0f};
 
 private:
