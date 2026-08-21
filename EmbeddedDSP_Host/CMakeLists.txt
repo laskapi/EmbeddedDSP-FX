@@ -23,6 +23,7 @@ qt_add_executable(EmbeddedDSP_Host
     mainwindow.ui
     SerialManager.h
     SerialManager.cpp
+    FftProcessor.h FftProcessor.cpp
 )
 
 # Include directories: local source and firmware protocols
