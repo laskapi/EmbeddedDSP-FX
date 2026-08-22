@@ -24,6 +24,8 @@ qt_add_executable(EmbeddedDSP_Host
     SerialManager.h
     SerialManager.cpp
     FftProcessor.h FftProcessor.cpp
+    AudioFrameSimulator.h AudioFrameSimulator.cpp
+    SpectrumWidget.h SpectrumWidget.cpp
 )
 
 # Include directories: local source and firmware protocols
