@@ -3,9 +3,9 @@
 
 #include "../DSP/DelayEffect.h"
 #include "../DSP/DynamicAudioPipeline.h"
-#include "SpscQueue.h"
 #include "../DSP/OverdriveEffect.h"
 #include "ControlPacket.h"
+#include "SpscQueue.h"
 
 #include <array>
 #include <cstddef>
@@ -21,15 +21,16 @@
 class ControlParser {
 public:
     static constexpr std::size_t RxBufferSize = 256;
+    static constexpr float DefaultSampleRate = 48000.0f;
 
 private:
     SpscQueue<uint8_t, RxBufferSize> m_rxQueue{};
     std::array<uint8_t, sizeof(ControlPacket::ControlPacket)> m_frameBuffer{};
     std::size_t m_rxIndex{0};
     DynamicAudioPipeline& m_pipeline;
+    float m_sampleRate{DefaultSampleRate};
 
     void parseByte(uint8_t byte) noexcept {
-        // Search for Start of Frame (SOF) byte (0xA5)
         if (m_rxIndex == 0) {
             if (byte == 0xA5) {
                 m_frameBuffer[0] = byte;
@@ -38,10 +39,8 @@ private:
             return;
         }
 
-        // Accumulate remaining packet bytes
         m_frameBuffer[m_rxIndex++] = byte;
 
-        // Process frame once full length (9 bytes) is reached
         if (m_rxIndex == sizeof(ControlPacket::ControlPacket)) {
             ControlPacket::ControlPacket packet;
             std::memcpy(&packet, m_frameBuffer.data(), sizeof(ControlPacket::ControlPacket));
@@ -50,7 +49,7 @@ private:
                 applyPacket(packet);
             }
 
-            m_rxIndex = 0; // Reset index for the next frame
+            m_rxIndex = 0;
         }
     }
 
@@ -90,10 +89,23 @@ private:
                 if (slotId < MAX_AUDIO_SLOTS) {
                     const auto effectType = static_cast<uint8_t>(val);
                     switch (effectType) {
-                        case 0: m_pipeline.clearSlot(slotId); break;
-                        case 1: m_pipeline.setEffectInSlot(slotId, DelayEffect{}); break;
-                        case 2: m_pipeline.setEffectInSlot(slotId, OverdriveEffect{}); break;
-                        default: break;
+                        case 0:
+                            m_pipeline.clearSlot(slotId);
+                            break;
+                        case 1: {
+                            DelayEffect delay{};
+                            delay.prepare(m_sampleRate);
+                            m_pipeline.setEffectInSlot(slotId, std::move(delay));
+                            break;
+                        }
+                        case 2: {
+                            OverdriveEffect overdrive{};
+                            overdrive.prepare(m_sampleRate);
+                            m_pipeline.setEffectInSlot(slotId, std::move(overdrive));
+                            break;
+                        }
+                        default:
+                            break;
                     }
                 }
                 break;
@@ -126,23 +138,25 @@ private:
     }
 
 public:
-    explicit ControlParser(DynamicAudioPipeline& pipeline) noexcept
-        : m_pipeline{pipeline} {}
+    explicit ControlParser(DynamicAudioPipeline& pipeline,
+                           float sampleRate = DefaultSampleRate) noexcept
+        : m_pipeline{pipeline}
+        , m_sampleRate{sampleRate} {}
 
-    /**
-     * @brief Called by USB ISR/callback to push incoming raw bytes into the lock-free queue.
-     * @param data Pointer to received byte buffer.
-     * @param len Number of received bytes.
-     */
+    void setSampleRate(float sampleRate) noexcept {
+        m_sampleRate = (sampleRate > 0.0f) ? sampleRate : DefaultSampleRate;
+    }
+
+    [[nodiscard]] float getSampleRate() const noexcept {
+        return m_sampleRate;
+    }
+
     void onBytesReceived(const uint8_t* data, std::size_t len) noexcept {
         for (std::size_t i = 0; i < len; ++i) {
             m_rxQueue.push(data[i]);
         }
     }
 
-    /**
-     * @brief Periodically called in the main background loop to process queued bytes.
-     */
     void processRxQueue() noexcept {
         while (auto byteOpt = m_rxQueue.pop()) {
             parseByte(*byteOpt);

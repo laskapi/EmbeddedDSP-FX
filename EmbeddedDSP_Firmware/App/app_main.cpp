@@ -42,11 +42,11 @@ ControlParser protocolParser{audioPipeline};
 
 // Audio Tx queue and packet assembly buffer
 using AudioTxQueue = SpscQueue<AudioFramePacket, 8>;
-AudioTxQueue g_audioTxQueue{};
+AudioTxQueue audioTxQueue{};
 
-std::array<int16_t, AUDIO_PACKET_SAMPLES> g_txSampleAccumulator{};
-std::size_t g_txSampleCount = 0;
-uint8_t g_audioSequenceNumber = 0;
+std::array<int16_t, AUDIO_PACKET_SAMPLES> txSampleAccumulator{};
+std::size_t txSampleCount = 0;
+uint8_t audioSequenceNumber = 0;
 
 // Converts float stereo pair (Left, Right) to packed 32-bit Q15 format [R:31..16 | L:15..0]
 [[nodiscard]] inline std::uint32_t floatToQ15SaturateStereo(float left, float right) noexcept {
@@ -92,17 +92,17 @@ void process_buffer_half(std::size_t offset) {
         txPtr32[i] = packedProcessed;
 
         // Collect processed left channel sample (Q15) for FFT desktop visualization
-        if (g_txSampleCount < AUDIO_PACKET_SAMPLES) {
-            g_txSampleAccumulator[g_txSampleCount++] = static_cast<int16_t>(packedProcessed & 0xFFFF);
+        if (txSampleCount < AUDIO_PACKET_SAMPLES) {
+            txSampleAccumulator[txSampleCount++] = static_cast<int16_t>(packedProcessed & 0xFFFF);
         }
 
         // When 128 samples are accumulated, pack frame and push to SPSC Tx queue
-        if (g_txSampleCount == AUDIO_PACKET_SAMPLES) {
+        if (txSampleCount == AUDIO_PACKET_SAMPLES) {
             AudioFramePacket packet{};
             packet.sof = 0xA6;
-            packet.sequenceNumber = g_audioSequenceNumber++;
+            packet.sequenceNumber = audioSequenceNumber++;
             packet.payloadLength = static_cast<uint16_t>(AUDIO_PACKET_SAMPLES * sizeof(int16_t));
-            packet.samples = g_txSampleAccumulator;
+            packet.samples = txSampleAccumulator;
 
             // Calculate CRC-16 CCITT checksum over header and data
             const auto* rawBytes = reinterpret_cast<const uint8_t*>(&packet);
@@ -110,9 +110,9 @@ void process_buffer_half(std::size_t offset) {
             packet.crc16 = Crc16Calculator::calculate(rawBytes, headerAndDataLen);
 
             // Lock-free push to Tx queue
-            g_audioTxQueue.push(packet);
+            audioTxQueue.push(packet);
 
-            g_txSampleCount = 0;
+            txSampleCount = 0;
         }
     }
 }
@@ -154,7 +154,6 @@ void start_i2s_dma_ll(SPI_TypeDef* i2sInstance, DMA_TypeDef* dmaInstance, uint32
 } // namespace
 
 extern "C" {
-
 void ProtocolParser_OnBytesReceived(const uint8_t* Buf, uint32_t Len) {
     protocolParser.onBytesReceived(Buf, Len);
 }
@@ -189,7 +188,7 @@ void app_main(I2S_HandleTypeDef* audio_i2s) {
         protocolParser.processRxQueue();
 
         // 2. Process audio streaming packets STM32 -> PC
-        auto audioPacketOpt = g_audioTxQueue.pop();
+        auto audioPacketOpt = audioTxQueue.pop();
         if (audioPacketOpt.has_value()) {
             AudioFramePacket packet = *audioPacketOpt;
             CDC_Transmit_FS(reinterpret_cast<uint8_t*>(&packet), static_cast<uint16_t>(sizeof(packet)));
@@ -233,5 +232,4 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
         }
     }
 }
-
 } // extern "C"

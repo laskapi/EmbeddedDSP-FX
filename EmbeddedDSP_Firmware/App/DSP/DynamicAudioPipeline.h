@@ -10,7 +10,7 @@
 #include <cstddef>
 #include <utility>
 #include <variant>
-
+#include <type_traits>
 /**
  * @brief Global system constraint defining maximum available processing slots.
  */
@@ -87,12 +87,25 @@ public:
     /**
      * @brief Assigns a concrete audio effect instance to a specified pipeline slot.
      */
+
     template <AudioEffect T>
-    void setEffectInSlot(std::size_t slotIndex, T&& effect) {
-        if (slotIndex < MAX_AUDIO_SLOTS) {
-            m_slots[slotIndex] = std::forward<T>(effect);
+void setEffectInSlot(std::size_t slotIndex, T&& effect) {
+    if (slotIndex >= MAX_AUDIO_SLOTS) {
+        return;
+    }
+
+    // Shared delay line: keep at most one DelayEffect in the pipeline.
+    using DecayT = std::decay_t<T>;
+    if constexpr (std::is_same_v<DecayT, DelayEffect>) {
+        for (std::size_t i = 0; i < MAX_AUDIO_SLOTS; ++i) {
+            if (i != slotIndex && std::holds_alternative<DelayEffect>(m_slots[i])) {
+                m_slots[i] = EmptyEffect{};
+            }
         }
     }
+
+    m_slots[slotIndex] = std::forward<T>(effect);
+}
 
     /**
      * @brief Clears a slot by replacing its content with EmptyEffect.

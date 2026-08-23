@@ -81,6 +81,7 @@ add_executable(${CMAKE_PROJECT_NAME}
         startup_stm32f411xe.s
         App/Protocol/AudioFramePacket.h
         App/Protocol/Crc16Calculator.h
+        App/Protocol/EffectParams.h
 
 )
 
@@ -92,6 +93,8 @@ set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES SUFFIX ".elf")
 # ==============================================================================
 target_link_options(${CMAKE_PROJECT_NAME} PRIVATE
         "-T${CMAKE_CURRENT_SOURCE_DIR}/STM32F411XX_FLASH.ld"
+        "-Wl,-Map=${CMAKE_CURRENT_BINARY_DIR}/embedded-firmware.map"
+        "-Wl,--print-memory-usage"
 )
 
 # ==============================================================================
