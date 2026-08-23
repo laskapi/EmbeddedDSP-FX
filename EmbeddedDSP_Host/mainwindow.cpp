@@ -2,14 +2,17 @@
 #include "./ui_mainwindow.h"
 
 #include <QVBoxLayout>
-#include <QSerialPortInfo>
 #include <QDebug>
 #include <span>
 #include <algorithm>
 
 // Toggle host-side audio simulation (no MCU required).
-// Set to 0 to hide Demo UI.
+// Set to 0 to hide Demo button in ConnectionToolbar.
 #define EMBEDDED_DSP_HOST_ENABLE_SIMULATOR 1
+
+#ifndef EMBEDDED_DSP_HOST_ENABLE_SIMULATOR
+#define EMBEDDED_DSP_HOST_ENABLE_SIMULATOR 0
+#endif
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -18,42 +21,9 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
     setWindowTitle(QStringLiteral("EmbeddedDSP Host"));
 
-    auto *toolbar = new QWidget(this);
-    m_portCombo = new QComboBox(toolbar);
-    m_connectButton = new QPushButton(QStringLiteral("Connect"), toolbar);
-
-    m_topRow = new QHBoxLayout(toolbar);
-    m_topRow->setContentsMargins(8, 8, 8, 8);
-    m_topRow->addWidget(m_portCombo);
-    m_topRow->addWidget(m_connectButton);
-    m_topRow->addStretch();
-
-    m_spectrumWidget = new SpectrumWidget(this);
-    m_spectrumWidget->setSampleRate(48000.0f);
-    m_spectrumWidget->setFftSize(AUDIO_PACKET_SAMPLES);
-    m_spectrumWidget->setDbRange(-100.0f, 0.0f);
-
-    auto *layout = new QVBoxLayout();
-    layout->addWidget(toolbar);
-    layout->addWidget(m_spectrumWidget, 1);
-    ui->centralwidget->setLayout(layout);
-    ui->centralwidget->setLayout(layout);
-
-    refreshPortList();
-
-    connect(m_connectButton, &QPushButton::clicked,
-            this, &MainWindow::onConnectClicked);
-    connect(&m_serialManager, &SerialManager::audioFrameReceived,
-            this, &MainWindow::onAudioFrameReceived);
-    connect(&m_serialManager, &SerialManager::portStatusChanged,
-            this, &MainWindow::onPortStatusChanged);
-    connect(&m_serialManager, &SerialManager::errorOccurred,
-            this, &MainWindow::onSerialError);
-
-#if EMBEDDED_DSP_HOST_ENABLE_SIMULATOR
-    setupAudioSimulator(); // one call: Demo button + signal wiring
-#endif
-
+    setupUiLayout();
+    wireConnectionToolbar();
+    wireAudioPipeline();
 }
 
 MainWindow::~MainWindow()
@@ -61,38 +31,83 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-void MainWindow::refreshPortList()
+void MainWindow::setupUiLayout()
 {
-    m_portCombo->clear();
+    m_connectionToolbar = new ConnectionToolbar(
+        EMBEDDED_DSP_HOST_ENABLE_SIMULATOR != 0, this);
 
-    const auto ports = QSerialPortInfo::availablePorts();
-    for (const QSerialPortInfo &info : ports) {
-        const QString label = QStringLiteral("%1  (%2)")
-        .arg(info.portName(), info.description());
-        m_portCombo->addItem(label, info.portName());
-    }
+    m_spectrumWidget = new SpectrumWidget(this);
+    m_spectrumWidget->setSampleRate(48000.0f);
+    m_spectrumWidget->setFftSize(AUDIO_PACKET_SAMPLES);
+    m_spectrumWidget->setDbRange(-100.0f, 0.0f);
 
-    m_connectButton->setEnabled(m_portCombo->count() > 0);
+    auto *layout = new QVBoxLayout();
+    layout->addWidget(m_connectionToolbar);
+    layout->addWidget(m_spectrumWidget, 1);
+    ui->centralwidget->setLayout(layout);
 }
 
-void MainWindow::onConnectClicked()
+void MainWindow::wireConnectionToolbar()
 {
-    if (m_simulator.isRunning()) {
-        m_simulator.stop();
-    }
+    connect(m_connectionToolbar, &ConnectionToolbar::connectRequested,
+            this, [this](const QString &portName) {
+                if (m_simulator.isRunning()) {
+                    m_simulator.stop();
+                }
 
-    if (m_serialManager.isOpen()) {
-        m_serialManager.closePort();
-        return;
-    }
+                if (portName.isEmpty()) {
+                    statusBar()->showMessage(QStringLiteral("No serial port selected."));
+                    return;
+                }
 
-    const QString portName = m_portCombo->currentData().toString();
-    if (portName.isEmpty()) {
-        statusBar()->showMessage(QStringLiteral("No serial port selected."));
-        return;
-    }
+                m_serialManager.openPort(portName, 115200);
+            });
 
-    m_serialManager.openPort(portName, 115200);
+    connect(m_connectionToolbar, &ConnectionToolbar::disconnectRequested,
+            this, [this]() {
+                m_serialManager.closePort();
+            });
+
+#if EMBEDDED_DSP_HOST_ENABLE_SIMULATOR
+    connect(m_connectionToolbar, &ConnectionToolbar::demoStartRequested,
+            this, [this]() {
+                if (m_serialManager.isOpen()) {
+                    m_serialManager.closePort();
+                }
+                m_simulator.start();
+            });
+
+    connect(m_connectionToolbar, &ConnectionToolbar::demoStopRequested,
+            this, [this]() {
+                m_simulator.stop();
+            });
+
+    connect(&m_simulator, &AudioFrameSimulator::runningChanged,
+            this, [this](bool running) {
+                m_connectionToolbar->setDemoRunning(running);
+                if (running) {
+                    statusBar()->showMessage(
+                        QStringLiteral("Demo: %1 Hz synthetic tone")
+                            .arg(static_cast<double>(m_simulator.frequencyHz()), 0, 'f', 0));
+                }
+            });
+#endif
+}
+
+void MainWindow::wireAudioPipeline()
+{
+    connect(&m_serialManager, &SerialManager::audioFrameReceived,
+            this, &MainWindow::onAudioFrameReceived);
+
+#if EMBEDDED_DSP_HOST_ENABLE_SIMULATOR
+    connect(&m_simulator, &AudioFrameSimulator::audioFrameReceived,
+            this, &MainWindow::onAudioFrameReceived);
+#endif
+
+    connect(&m_serialManager, &SerialManager::portStatusChanged,
+            this, &MainWindow::onPortStatusChanged);
+    connect(&m_serialManager, &SerialManager::errorOccurred,
+            this, &MainWindow::onSerialError);
 }
 
 void MainWindow::onAudioFrameReceived(const AudioFramePacket &frame)
@@ -119,9 +134,7 @@ void MainWindow::onAudioFrameReceived(const AudioFramePacket &frame)
 
 void MainWindow::onPortStatusChanged(bool isOpen, const QString &portName)
 {
-    m_connectButton->setText(isOpen ? QStringLiteral("Disconnect")
-                                    : QStringLiteral("Connect"));
-    m_portCombo->setEnabled(!isOpen);
+    m_connectionToolbar->setConnected(isOpen);
 
     statusBar()->showMessage(isOpen
                                  ? QStringLiteral("Connected: %1").arg(portName)
@@ -132,35 +145,4 @@ void MainWindow::onSerialError(const QString &errorMessage)
 {
     qDebug() << "Serial error:" << errorMessage;
     statusBar()->showMessage(errorMessage, 4000);
-}
-
-void MainWindow::setupAudioSimulator()
-{
-    m_demoButton = new QPushButton(QStringLiteral("Demo"), m_portCombo->parentWidget());
-    m_topRow->addWidget(m_demoButton);
-
-    connect(m_demoButton, &QPushButton::clicked, this, [this]() {
-        if (m_simulator.isRunning()) {
-            m_simulator.stop();
-            return;
-        }
-        if (m_serialManager.isOpen()) {
-            m_serialManager.closePort();
-        }
-        m_simulator.start();
-    });
-
-    connect(&m_simulator, &AudioFrameSimulator::audioFrameReceived,
-            this, &MainWindow::onAudioFrameReceived);
-
-    connect(&m_simulator, &AudioFrameSimulator::runningChanged,
-            this, [this](bool running) {
-                m_demoButton->setText(running ? QStringLiteral("Stop Demo")
-                                              : QStringLiteral("Demo"));
-                if (running) {
-                    statusBar()->showMessage(
-                        QStringLiteral("Demo: %1 Hz synthetic tone")
-                            .arg(static_cast<double>(m_simulator.frequencyHz()), 0, 'f', 0));
-                }
-            });
 }
