@@ -1,6 +1,7 @@
 #ifndef EMBEDDEDDSP_HOST_MAINWINDOW_H
 #define EMBEDDEDDSP_HOST_MAINWINDOW_H
 
+#include <EffectsRack.h>
 #include <QMainWindow>
 #include <vector>
 
@@ -32,6 +33,7 @@ private:
     void setupUiLayout();
     void wireConnectionToolbar();
     void wireAudioPipeline();
+    void wireControlPipeline();
 
     Ui::MainWindow *ui{nullptr};
     SerialManager m_serialManager;
@@ -40,6 +42,7 @@ private:
 
     ConnectionToolbar *m_connectionToolbar{nullptr};
     SpectrumWidget *m_spectrumWidget{nullptr};
+    EffectsRack *m_effectsRack{nullptr};
 
     std::vector<float> m_lastSpectrumDb;
 };

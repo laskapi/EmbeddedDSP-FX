@@ -27,6 +27,8 @@ qt_add_executable(EmbeddedDSP_Host
     AudioFrameSimulator.h AudioFrameSimulator.cpp
     SpectrumWidget.h SpectrumWidget.cpp
     ConnectionToolbar.h ConnectionToolbar.cpp
+    EffectWidget.h EffectWidget.cpp
+    EffectsRack.h EffectsRack.cpp
 )
 
 # Include directories: local source and firmware protocols

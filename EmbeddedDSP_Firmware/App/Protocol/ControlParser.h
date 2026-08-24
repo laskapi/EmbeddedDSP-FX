@@ -1,10 +1,11 @@
-#ifndef EMBEDDEDDSP_CONTROL_PARSER_H
-#define EMBEDDEDDSP_CONTROL_PARSER_H
+#ifndef EMBEDDEDDSP_FIRMWARE_CONTROL_PARSER_H
+#define EMBEDDEDDSP_FIRMWARE_CONTROL_PARSER_H
 
 #include "../DSP/DelayEffect.h"
 #include "../DSP/DynamicAudioPipeline.h"
 #include "../DSP/OverdriveEffect.h"
 #include "ControlPacket.h"
+#include "EffectParams.h"
 #include "SpscQueue.h"
 
 #include <array>
@@ -15,8 +16,8 @@
 #include <variant>
 
 /**
- * @brief Stateful parser processing incoming USB byte stream and dispatching
- *        control packets directly to DSP pipeline slots.
+ * @brief Stateful parser processing incoming USB control stream.
+ *        Dispatches packets to DSP pipeline slots using EffectParams schema.
  */
 class ControlParser {
 public:
@@ -32,7 +33,7 @@ private:
 
     void parseByte(uint8_t byte) noexcept {
         if (m_rxIndex == 0) {
-            if (byte == 0xA5) {
+            if (byte == 0xA5) { // SOF
                 m_frameBuffer[0] = byte;
                 m_rxIndex = 1;
             }
@@ -48,7 +49,6 @@ private:
             if (packet.isValid()) {
                 applyPacket(packet);
             }
-
             m_rxIndex = 0;
         }
     }
@@ -64,19 +64,19 @@ private:
                         using T = std::decay_t<decltype(effect)>;
 
                         if constexpr (std::is_same_v<T, OverdriveEffect>) {
-                            switch (paramId) {
-                                case 0: effect.setDrive(val); break;
-                                case 1: effect.setTone(val); break;
-                                case 2: effect.setWet(val); break;
-                                case 3: effect.setLevel(val); break;
+                            switch (static_cast<EffectParams::OverdriveParam>(paramId)) {
+                                case EffectParams::OverdriveParam::Drive: effect.setDrive(val); break;
+                                case EffectParams::OverdriveParam::Tone:  effect.setTone(val); break;
+                                case EffectParams::OverdriveParam::Wet:   effect.setWet(val); break;
+                                case EffectParams::OverdriveParam::Level: effect.setLevel(val); break;
                                 default: break;
                             }
                         }
                         else if constexpr (std::is_same_v<T, DelayEffect>) {
-                            switch (paramId) {
-                                case 0: effect.setDelayTime(val); break;
-                                case 1: effect.setFeedback(val); break;
-                                case 2: effect.setDryWet(val); break;
+                            switch (static_cast<EffectParams::DelayParam>(paramId)) {
+                                case EffectParams::DelayParam::Time:     effect.setDelayTime(val); break;
+                                case EffectParams::DelayParam::Feedback: effect.setFeedback(val); break;
+                                case EffectParams::DelayParam::DryWet:   effect.setDryWet(val); break;
                                 default: break;
                             }
                         }
@@ -87,25 +87,23 @@ private:
 
             case ControlPacket::Command::SetEffectType: {
                 if (slotId < MAX_AUDIO_SLOTS) {
-                    const auto effectType = static_cast<uint8_t>(val);
-                    switch (effectType) {
-                        case 0:
+                    const auto type = static_cast<EffectParams::EffectType>(packet.paramId);
+                    switch (type) {
+                        case EffectParams::EffectType::Empty:
                             m_pipeline.clearSlot(slotId);
                             break;
-                        case 1: {
+                        case EffectParams::EffectType::Delay: {
                             DelayEffect delay{};
                             delay.prepare(m_sampleRate);
                             m_pipeline.setEffectInSlot(slotId, std::move(delay));
                             break;
                         }
-                        case 2: {
+                        case EffectParams::EffectType::Overdrive: {
                             OverdriveEffect overdrive{};
                             overdrive.prepare(m_sampleRate);
                             m_pipeline.setEffectInSlot(slotId, std::move(overdrive));
                             break;
                         }
-                        default:
-                            break;
                     }
                 }
                 break;
@@ -164,4 +162,4 @@ public:
     }
 };
 
-#endif // EMBEDDEDDSP_CONTROL_PARSER_H
+#endif // EMBEDDEDDSP_FIRMWARE_CONTROL_PARSER_H

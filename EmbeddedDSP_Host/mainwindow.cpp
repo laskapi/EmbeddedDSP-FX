@@ -6,13 +6,11 @@
 #include <span>
 #include <algorithm>
 
+#include "EffectsRack.h"
+
 // Toggle host-side audio simulation (no MCU required).
 // Set to 0 to hide Demo button in ConnectionToolbar.
 #define EMBEDDED_DSP_HOST_ENABLE_SIMULATOR 1
-
-#ifndef EMBEDDED_DSP_HOST_ENABLE_SIMULATOR
-#define EMBEDDED_DSP_HOST_ENABLE_SIMULATOR 0
-#endif
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -24,6 +22,7 @@ MainWindow::MainWindow(QWidget *parent)
     setupUiLayout();
     wireConnectionToolbar();
     wireAudioPipeline();
+    wireControlPipeline(); // Don't forget to wire control signals!
 }
 
 MainWindow::~MainWindow()
@@ -41,10 +40,26 @@ void MainWindow::setupUiLayout()
     m_spectrumWidget->setFftSize(AUDIO_PACKET_SAMPLES);
     m_spectrumWidget->setDbRange(-100.0f, 0.0f);
 
+    // Initialize the new effects rack
+    m_effectsRack = new EffectsRack(this);
+
     auto *layout = new QVBoxLayout();
     layout->addWidget(m_connectionToolbar);
     layout->addWidget(m_spectrumWidget, 1);
+    layout->addWidget(m_effectsRack, 1); // Add rack below spectrum
+
     ui->centralwidget->setLayout(layout);
+}
+
+void MainWindow::wireControlPipeline()
+{
+    // Using lambda to handle the bool return from sendControlPacket
+    // and provide feedback to the user via status bar.
+    connect(m_effectsRack, &EffectsRack::controlPacketReady, this, [this](const ControlPacket::ControlPacket &pkt) {
+        if (!m_serialManager.sendControlPacket(pkt)) {
+            statusBar()->showMessage(tr("Serial Error: Command not sent"), 2000);
+        }
+    });
 }
 
 void MainWindow::wireConnectionToolbar()

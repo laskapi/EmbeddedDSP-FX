@@ -34,10 +34,7 @@ private slots:
 
 private:
     void processRxBuffer();
-
-    // Fast CRC16 verification helper for AudioFramePacket
-    [[nodiscard]] static uint16_t calculateCRC16(const uint8_t *data, std::size_t length) noexcept;
-
+   
     QSerialPort m_serialPort;
     QByteArray m_rxBuffer;
 };
