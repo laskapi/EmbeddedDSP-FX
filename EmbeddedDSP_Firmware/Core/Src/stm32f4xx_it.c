@@ -22,6 +22,7 @@
 #include "stm32f4xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "app_main.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -206,7 +207,15 @@ void SysTick_Handler(void)
 void DMA1_Stream0_IRQHandler(void)
 {
   /* USER CODE BEGIN DMA1_Stream0_IRQn 0 */
-
+  if (LL_DMA_IsActiveFlag_TC0(DMA1)) {
+    LL_DMA_ClearFlag_TC0(DMA1);
+    app_audio_transfer_complete_cb();
+  }
+  if (LL_DMA_IsActiveFlag_HT0(DMA1)) {
+    LL_DMA_ClearFlag_HT0(DMA1);
+    app_audio_half_transfer_cb();
+  }
+  return;
   /* USER CODE END DMA1_Stream0_IRQn 0 */
   HAL_DMA_IRQHandler(&hdma_i2s3_ext_rx);
   /* USER CODE BEGIN DMA1_Stream0_IRQn 1 */
@@ -220,7 +229,11 @@ void DMA1_Stream0_IRQHandler(void)
 void DMA1_Stream5_IRQHandler(void)
 {
   /* USER CODE BEGIN DMA1_Stream5_IRQn 0 */
-
+  if (LL_DMA_IsActiveFlag_TC5(DMA1)) {
+    LL_DMA_ClearFlag_TC5(DMA1);
+    
+  }
+  return;
   /* USER CODE END DMA1_Stream5_IRQn 0 */
   HAL_DMA_IRQHandler(&hdma_spi3_tx);
   /* USER CODE BEGIN DMA1_Stream5_IRQn 1 */

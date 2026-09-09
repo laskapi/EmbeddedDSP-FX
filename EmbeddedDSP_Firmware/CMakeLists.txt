@@ -82,6 +82,8 @@ add_executable(${CMAKE_PROJECT_NAME}
         App/Protocol/AudioFramePacket.h
         App/Protocol/Crc16Calculator.h
         App/Protocol/EffectParams.h
+        Core/Inc/audio_dac.h
+        Core/Src/audio_dac.c
 
 )
 

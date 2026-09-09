@@ -15,6 +15,21 @@ namespace EffectParams
         Overdrive = 2
     };
 
+    // --- TYCH ENUMÓW BRAKOWAŁO ---
+    enum class OverdriveParam : uint8_t {
+        Drive = 0,
+        Tone = 1,
+        Wet = 2,
+        Level = 3
+    };
+
+    enum class DelayParam : uint8_t {
+        Time = 0,
+        Feedback = 1,
+        DryWet = 2
+    };
+    // ----------------------------
+
     struct ParamDesc {
         uint8_t paramId;
         const char* name;
