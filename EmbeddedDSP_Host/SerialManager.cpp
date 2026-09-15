@@ -1,5 +1,6 @@
 #include "SerialManager.h"
 #include <QDebug>
+#include <QSerialPortInfo>
 #include <cstring>
 
 SerialManager::SerialManager(QObject *parent)
@@ -12,6 +13,16 @@ SerialManager::SerialManager(QObject *parent)
 SerialManager::~SerialManager()
 {
     closePort();
+}
+
+QString SerialManager::findDevicePort() {
+    for (const QSerialPortInfo &info : QSerialPortInfo::availablePorts()) {
+        if (info.hasVendorIdentifier() && info.vendorIdentifier() == 0x0483 &&
+            info.hasProductIdentifier() && info.productIdentifier() == 0x5740) {
+            return info.portName();
+        }
+    }
+    return QString();
 }
 
 bool SerialManager::openPort(const QString &portName, qint32 baudRate)
@@ -29,6 +40,7 @@ bool SerialManager::openPort(const QString &portName, qint32 baudRate)
 
     if (m_serialPort.open(QIODevice::ReadWrite)) {
         m_rxBuffer.clear();
+        m_manifestMode = false;
         emit portStatusChanged(true, portName);
         return true;
     }
@@ -43,6 +55,7 @@ void SerialManager::closePort()
     if (m_serialPort.isOpen()) {
         m_serialPort.close();
         m_rxBuffer.clear();
+        m_manifestMode = false;
         emit portStatusChanged(false, m_serialPort.portName());
     }
 }
@@ -52,17 +65,10 @@ bool SerialManager::isOpen() const
     return m_serialPort.isOpen();
 }
 
-bool SerialManager::sendControlPacket(const ControlPacket::ControlPacket &packet)
+bool SerialManager::sendControlPacket(const Protocol::ControlPacket &packet)
 {
-    if (!m_serialPort.isOpen()) {
-        emit errorOccurred("Cannot send command: Serial port is closed.");
-        return false;
-    }
-
-    const char *data = reinterpret_cast<const char*>(&packet);
-    qint64 bytesWritten = m_serialPort.write(data, sizeof(ControlPacket::ControlPacket));
-
-    return (bytesWritten == sizeof(ControlPacket::ControlPacket));
+    if (!m_serialPort.isOpen()) return false;
+    return m_serialPort.write(reinterpret_cast<const char*>(&packet), sizeof(packet)) == sizeof(packet);
 }
 
 void SerialManager::handleReadyRead()
@@ -73,59 +79,60 @@ void SerialManager::handleReadyRead()
 
 void SerialManager::processRxBuffer()
 {
-    while (m_rxBuffer.size() >= 1) {
+    while (!m_rxBuffer.isEmpty()) {
+        if (m_manifestMode) {
+            int nullPos = m_rxBuffer.indexOf('\0');
+            if (nullPos == -1) return;
+
+            m_manifestBuffer.append(m_rxBuffer.left(nullPos));
+            emit manifestReceived(QString::fromUtf8(m_manifestBuffer));
+            
+            m_rxBuffer.remove(0, nullPos + 1); 
+            m_manifestBuffer.clear();
+            m_manifestMode = false;
+            continue; 
+        }
+
         const uint8_t sof = static_cast<uint8_t>(m_rxBuffer.at(0));
 
-        // Audio Frame Header (SOF = 0xA6)
-        if (sof == 0xA6) {
-            if (m_rxBuffer.size() < static_cast<int>(sizeof(AudioFramePacket))) {
-                return; // Czekamy na pełną ramkę
-            }
+        if (sof == Protocol::SOF::Audio) {
+            if (m_rxBuffer.size() < (int)sizeof(Protocol::AudioFramePacket)) return;
+            
+            Protocol::AudioFramePacket frame;
+            std::memcpy(&frame, m_rxBuffer.constData(), sizeof(frame));
 
-            AudioFramePacket frame{};
-            std::memcpy(&frame, m_rxBuffer.constData(), sizeof(AudioFramePacket));
-
-            // Liczymy CRC z całego pakietu z wyłączeniem ostatnich 2 bajtów (pola crc16)
-            const auto *rawBytes = reinterpret_cast<const uint8_t*>(m_rxBuffer.constData());
-            constexpr std::size_t headerAndDataLen = sizeof(AudioFramePacket) - sizeof(uint16_t);
-            const uint16_t computedCRC = Crc16Calculator::calculate(rawBytes, headerAndDataLen);
-
-            if (computedCRC == frame.crc16) {
+            if (frame.isValid()) {
                 emit audioFrameReceived(frame);
-            } else {
-                qDebug() << "AudioFramePacket CRC mismatch! Otrzymano:"
-                         << frame.crc16 << "Obliczono:" << computedCRC;
             }
-
-            m_rxBuffer.remove(0, sizeof(AudioFramePacket));
+            m_rxBuffer.remove(0, sizeof(Protocol::AudioFramePacket));
         }
-        // Control Frame Header (SOF = 0xA5)
-        else if (sof == 0xA5) {
-            if (m_rxBuffer.size() < static_cast<int>(sizeof(ControlPacket::ControlPacket))) {
-                return;
-            }
+        else if (sof == Protocol::SOF::Control) {
+            if (m_rxBuffer.size() < (int)sizeof(Protocol::ControlPacket)) return;
 
-            ControlPacket::ControlPacket packet{};
-            std::memcpy(&packet, m_rxBuffer.constData(), sizeof(ControlPacket::ControlPacket));
+            Protocol::ControlPacket packet;
+            std::memcpy(&packet, m_rxBuffer.constData(), sizeof(packet));
 
             if (packet.isValid()) {
-                emit controlPacketReceived(packet);
-            } else {
-                qDebug() << "ControlPacket CRC mismatch!";
+                if (packet.command == Protocol::Command::ReportState && 
+                    packet.paramId == Protocol::ReservedParam::ManifestSignal) {
+                    m_manifestMode = true;
+                    m_manifestBuffer.clear();
+                } else {
+                    emit controlPacketReceived(packet);
+                }
             }
-
-            m_rxBuffer.remove(0, sizeof(ControlPacket::ControlPacket));
+            m_rxBuffer.remove(0, sizeof(Protocol::ControlPacket));
         }
-        // Błędny bajt synchronizacji -> odrzucamy 1 bajt i wyrównujemy
         else {
             m_rxBuffer.remove(0, 1);
         }
     }
 }
+
 void SerialManager::handleError(QSerialPort::SerialPortError error)
 {
     if (error == QSerialPort::ResourceError) {
-        emit errorOccurred("Device disconnected unexpectedly.");
+        emit errorOccurred(tr("Device disconnected."));
         closePort();
     }
 }

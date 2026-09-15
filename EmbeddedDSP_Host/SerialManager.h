@@ -4,10 +4,9 @@
 #include <QObject>
 #include <QSerialPort>
 #include <QByteArray>
+#include <Protocol/AudioFramePacket.h>
+#include <Protocol/ControlPacket.h>
 
-#include "Protocol/AudioFramePacket.h"
-#include "Protocol/ControlPacket.h"
-#include "Protocol/Crc16Calculator.h"
 class SerialManager : public QObject
 {
     Q_OBJECT
@@ -20,11 +19,13 @@ public:
     void closePort();
     [[nodiscard]] bool isOpen() const;
 
-    bool sendControlPacket(const ControlPacket::ControlPacket &packet);
+    bool sendControlPacket(const Protocol::ControlPacket &packet);
+    static QString findDevicePort();
 
 signals:
-    void audioFrameReceived(const AudioFramePacket &frame);
-    void controlPacketReceived(const ControlPacket::ControlPacket &packet);
+    void manifestReceived(const QString &manifest);
+    void audioFrameReceived(const Protocol::AudioFramePacket &frame);
+    void controlPacketReceived(const Protocol::ControlPacket &packet);
     void portStatusChanged(bool isOpen, const QString &portName);
     void errorOccurred(const QString &errorMessage);
 
@@ -34,9 +35,12 @@ private slots:
 
 private:
     void processRxBuffer();
-   
+    
     QSerialPort m_serialPort;
     QByteArray m_rxBuffer;
+    
+    bool m_manifestMode = false;
+    QByteArray m_manifestBuffer;
 };
 
 #endif // EMBEDDEDDSP_HOST_SERIALMANAGER_H

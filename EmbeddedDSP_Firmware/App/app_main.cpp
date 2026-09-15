@@ -1,13 +1,12 @@
 #include "app_main.h"
 #include "main.h"
-#include "DSP/DynamicAudioPipeline.h"
-#include "DSP/DelayEffect.h"
-#include "DSP/OverdriveEffect.h"
-#include "DSP/VirtualAudioSource.h"
-#include "Protocol/ControlParser.h"
-#include "Protocol/AudioFramePacket.h"
-#include "Protocol/Crc16Calculator.h"
-#include "Protocol/SpscQueue.h"
+#include <DSP/DynamicAudioPipeline.h>
+#include <DSP/DelayEffect.h>
+#include <DSP/OverdriveEffect.h>
+#include <DSP/VirtualAudioSource.h>
+#include <Protocol/ControlParser.h>
+#include <Protocol/AudioFramePacket.h>
+#include <Protocol/SpscQueue.h>
 
 #include "stm32f4xx_ll_dma.h"
 #include "stm32f4xx_ll_spi.h"
@@ -19,13 +18,12 @@
 #include <cstdint>
 #include <optional>
 
-#define APP_USE_VIRTUAL_AUDIO_SOURCE 0 //  0 - Switch to real I2S input!
+#define APP_USE_VIRTUAL_AUDIO_SOURCE 1
 
 extern "C" uint8_t CDC_Transmit_FS(uint8_t* Buf, uint16_t Len);
 
 namespace
 {
-    // DMA and Audio Buffer configuration
     constexpr std::size_t DMA_BUF_SIZE = 512;
     constexpr std::size_t HALF_BUF_SIZE = DMA_BUF_SIZE / 2;
     constexpr float AUDIO_SCALE_FACTOR = 32767.0f;
@@ -39,11 +37,9 @@ namespace
         FullReady
     };
 
-    // Peripheral buffers
     alignas(4) std::array<std::int16_t, DMA_BUF_SIZE> dmaRxBuffer{};
     alignas(4) std::array<std::int16_t, DMA_BUF_SIZE> dmaTxBuffer{};
 
-    // DSP and Control components
     DynamicAudioPipeline audioPipeline;
     std::atomic<BufferState> activeBufferState{BufferState::None};
     ControlParser protocolParser{audioPipeline};
@@ -52,38 +48,27 @@ namespace
     VirtualAudioSource* virtualSource = nullptr;
 #endif
 
-    // Host telemetry communication
-    using AudioTxQueue = SpscQueue<AudioFramePacket, 8>;
+    using AudioTxQueue = Protocol::SpscQueue<Protocol::AudioFramePacket, 8>;
     AudioTxQueue audioTxQueue{};
 
-    std::array<int16_t, AUDIO_PACKET_SAMPLES> txSampleAccumulator{};
+    std::array<int16_t, Protocol::AUDIO_SAMPLES> txSampleAccumulator{};
     std::size_t txSampleCount = 0;
     uint8_t audioSequenceNumber = 0;
 
-    /**
-     * @brief Packs stereo float samples into a single 32-bit word with hardware saturation.
-     * Uses ARM Cortex-M4 DSP instructions for maximum performance.
-     */
     [[nodiscard]] inline std::uint32_t floatToQ15SaturateStereo(float left, float right) noexcept
     {
         const auto left32 = static_cast<std::int32_t>(std::lroundf(left * AUDIO_SCALE_FACTOR));
         const auto right32 = static_cast<std::int32_t>(std::lroundf(right * AUDIO_SCALE_FACTOR));
         
         std::uint32_t packedInput{0};
-        // Pack two 16-bit values into one 32-bit register
         asm volatile("pkhbt %0, %1, %2, lsl #16" : "=r"(packedInput) : "r"(left32), "r"(right32));
         
         std::uint32_t packedResult{0};
-        // Apply hardware saturation for both 16-bit halves simultaneously
         asm volatile("ssat16 %0, #16, %1" : "=r"(packedResult) : "r"(packedInput));
         
         return packedResult;
     }
 
-    /**
-     * @brief Processes one half of the DMA buffer.
-     * Core loop for audio generation, DSP effects, and telemetry preparation.
-     */
     void process_buffer_half(std::size_t offset)
     {
         uint32_t* txPtr32 = reinterpret_cast<uint32_t*>(&dmaTxBuffer[offset]);
@@ -110,43 +95,27 @@ namespace
             R = static_cast<float>(rxPtr[i * 2 + 1]) * INV_AUDIO_SCALE_FACTOR;
 #endif
 
-            // Apply audio effects
             audioPipeline.process(L, R);
-
-            // Convert to PCM16 with saturation and 0.8 gain headroom
             txPtr32[i] = floatToQ15SaturateStereo(L * 0.8f, R * 0.8f);
 
-            // Prepare spectrum data for host
-            if (txSampleCount < AUDIO_PACKET_SAMPLES)
+            if (txSampleCount < Protocol::AUDIO_SAMPLES)
             {
                 txSampleAccumulator[txSampleCount++] = static_cast<int16_t>(txPtr32[i] & 0xFFFF);
             }
         }
 
-        // Send telemetry packet to host if accumulator is full
-        if (txSampleCount >= AUDIO_PACKET_SAMPLES)
+        if (txSampleCount >= Protocol::AUDIO_SAMPLES)
         {
-            AudioFramePacket pkt;
-            pkt.sof = 0xA6;
+            Protocol::AudioFramePacket pkt;
             pkt.sequenceNumber = audioSequenceNumber++;
-            pkt.payloadLength = AUDIO_PACKET_SAMPLES * sizeof(int16_t);
-
-            for (size_t s = 0; s < AUDIO_PACKET_SAMPLES; ++s)
-            {
-                pkt.samples[s] = txSampleAccumulator[s];
-            }
-
-            const uint8_t* rawData = reinterpret_cast<const uint8_t*>(&pkt);
-            pkt.crc16 = Crc16Calculator::calculate(rawData, sizeof(AudioFramePacket) - 2);
+            pkt.samples = txSampleAccumulator;
+            pkt.applyCRC();
 
             audioTxQueue.push(pkt);
             txSampleCount = 0;
         }
     }
 
-    /**
-     * @brief Initializes I2S DMA transfers using Low-Layer (LL) drivers.
-     */
     void start_i2s_dma_ll()
     {
         const uint32_t txRegAddr = (uint32_t)&(SPI3->DR);
@@ -172,7 +141,7 @@ namespace
         if (!LL_I2S_IsEnabled(SPI3)) LL_I2S_Enable(SPI3);
         if (!LL_I2S_IsEnabled(I2S3ext)) LL_I2S_Enable(I2S3ext);
     }
-} // namespace
+}
 
 extern "C" {
 void ProtocolParser_OnBytesReceived(const uint8_t* Buf, uint32_t Len)
@@ -190,9 +159,6 @@ void app_audio_transfer_complete_cb(void)
     activeBufferState.store(BufferState::FullReady, std::memory_order_relaxed);
 }
 
-/**
- * @brief Application entry point for firmware logic.
- */
 void app_main(I2S_HandleTypeDef* audio_i2s)
 {
     audioPipeline.prepare(SYSTEM_SAMPLE_RATE);
@@ -201,50 +167,57 @@ void app_main(I2S_HandleTypeDef* audio_i2s)
     static VirtualAudioSource sourceInstance(SYSTEM_SAMPLE_RATE);
     virtualSource = &sourceInstance;
     virtualSource->setFrequency(440.0f);
-    virtualSource->setWaveform(VirtualAudioSource::Waveform::Saw); // Sawtooth for better overdrive testing
+    virtualSource->setWaveform(VirtualAudioSource::Waveform::Saw);
 #endif
 
     start_i2s_dma_ll();
 
     uint32_t lastTick = HAL_GetTick();
-    std::optional<AudioFramePacket> pendingPacket;
+    
+    std::optional<Protocol::ControlPacket> pendingControl;
+    std::optional<Protocol::AudioFramePacket> pendingAudio;
 
     while (1)
     {
-        // Handle incoming control packets from PC
         protocolParser.processRxQueue();
 
-        // Manage audio telemetry stream to PC
-        if (!pendingPacket.has_value())
+        if (!pendingControl.has_value())
         {
-            pendingPacket = audioTxQueue.pop();
+            pendingControl = protocolParser.getTxQueue().pop();
         }
 
-        if (pendingPacket.has_value())
+        if (pendingControl.has_value())
         {
-            if (CDC_Transmit_FS(reinterpret_cast<uint8_t*>(&(*pendingPacket)), sizeof(AudioFramePacket)) == 0)
+            if (CDC_Transmit_FS(reinterpret_cast<uint8_t*>(&(*pendingControl)), 
+                                sizeof(Protocol::ControlPacket)) == 0)
             {
-                pendingPacket.reset();
+                pendingControl.reset();
             }
         }
 
-        // Trigger DSP processing when DMA buffer is ready
+        if (!pendingControl.has_value() && !pendingAudio.has_value())
+        {
+            pendingAudio = audioTxQueue.pop();
+        }
+
+        if (pendingAudio.has_value())
+        {
+            if (CDC_Transmit_FS(reinterpret_cast<uint8_t*>(&(*pendingAudio)), 
+                                sizeof(Protocol::AudioFramePacket)) == 0)
+            {
+                pendingAudio.reset();
+            }
+        }
+
         BufferState stateToProcess = activeBufferState.exchange(BufferState::None, std::memory_order_relaxed);
         if (stateToProcess == BufferState::HalfReady) process_buffer_half(0);
         else if (stateToProcess == BufferState::FullReady) process_buffer_half(HALF_BUF_SIZE);
 
-        // System status heartbeat
         if (HAL_GetTick() - lastTick >= 200)
         {
             HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_12);
             lastTick = HAL_GetTick();
         }
-
-        // Power saving: wait for next event if no tasks are pending
-        if (stateToProcess == BufferState::None && !pendingPacket.has_value())
-        {
-            __WFI();
-        }
     }
 }
-} // extern "C"
+}

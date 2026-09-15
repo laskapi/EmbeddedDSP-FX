@@ -4,30 +4,39 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
-#include <cstddef>
 #include <cstdint>
+#include "SharedBuffer.h"
 
-/**
- * @brief Mono delay with shared int16 line @ 16 kHz (~1 s / 32 KB).
- *        Decimation x3 from ~48 kHz system rate. Max one instance in pipeline.
- */
 class DelayEffect {
 public:
-    static constexpr std::size_t MAX_LINE_SAMPLES{16000};
+    static constexpr uint8_t Id = 1;
+    static constexpr const char* Name = "Delay";
+    
+    struct ParamInfo { const char* name; float min; float max; float defaultValue; };
+    static constexpr std::array Params = {
+        ParamInfo{"Time",     0.001f, 1.0f,  0.35f},
+        ParamInfo{"Feedback", 0.0f,   0.95f, 0.4f},
+        ParamInfo{"Mix",      0.0f,   1.0f,  0.5f}
+    };
+    static constexpr uint8_t ParamCount = (uint8_t)Params.size();
+
+    static constexpr std::size_t MAX_LINE_SAMPLES = SharedBuffer::Capacity / sizeof(int16_t);
     static constexpr float LINE_SAMPLE_RATE{16000.0f};
     static constexpr std::size_t DECIMATION{3};
     static constexpr float INT16_SCALE{32767.0f};
-    static constexpr float MAX_DELAY_SECONDS{
-        static_cast<float>(MAX_LINE_SAMPLES - 1) / LINE_SAMPLE_RATE};
 
 private:
+    static int16_t* delayLine() noexcept {
+        return reinterpret_cast<int16_t*>(SharedBuffer::s_buffer);
+    }
+
     float m_sampleRate{48000.0f};
     float m_targetDelayLineSamples{LINE_SAMPLE_RATE * 0.35f};
     float m_currentDelayLineSamples{LINE_SAMPLE_RATE * 0.35f};
     static constexpr float SMOOTHING_FACTOR{0.001f};
-
+    
     float m_feedback{0.4f};
-    float m_dryWet{0.5f};
+    float m_wet{0.5f};
     bool m_bypassed{false};
 
     std::size_t m_writeIndex{0};
@@ -35,115 +44,75 @@ private:
     float m_antiAliasState{0.0f};
     float m_antiAliasCoeff{0.0f};
 
-    alignas(4) inline static std::array<std::int16_t, MAX_LINE_SAMPLES> s_delayLine{};
-
-    [[nodiscard]] static float readLineInterpolated(float readPosition) noexcept
-    {
-        while (readPosition < 0.0f) {
-            readPosition += static_cast<float>(MAX_LINE_SAMPLES);
-        }
-        while (readPosition >= static_cast<float>(MAX_LINE_SAMPLES)) {
-            readPosition -= static_cast<float>(MAX_LINE_SAMPLES);
-        }
-
-        const auto indexA = static_cast<std::size_t>(readPosition);
+    [[nodiscard]] float readLineInterpolated(float readPosition) const noexcept {
+        while (readPosition < 0.0f) readPosition += (float)MAX_LINE_SAMPLES;
+        while (readPosition >= (float)MAX_LINE_SAMPLES) readPosition -= (float)MAX_LINE_SAMPLES;
+        
+        const auto indexA = (std::size_t)readPosition;
         const std::size_t indexB = (indexA + 1) % MAX_LINE_SAMPLES;
-        const float frac = readPosition - static_cast<float>(indexA);
-
-        const float sampleA = static_cast<float>(s_delayLine[indexA]) / INT16_SCALE;
-        const float sampleB = static_cast<float>(s_delayLine[indexB]) / INT16_SCALE;
-        return sampleA + frac * (sampleB - sampleA);
-    }
-
-    static void clearSharedLine() noexcept
-    {
-        s_delayLine.fill(0);
+        const float frac = readPosition - (float)indexA;
+        
+        auto* line = delayLine();
+        return ((float)line[indexA] / INT16_SCALE) + 
+               frac * (((float)line[indexB] / INT16_SCALE) - ((float)line[indexA] / INT16_SCALE));
     }
 
 public:
-    DelayEffect() noexcept = default;
+    constexpr DelayEffect() noexcept = default;
 
-    void prepare(float newSampleRate) noexcept
-    {
+    void prepare(float newSampleRate) noexcept {
         m_sampleRate = (newSampleRate > 0.0f) ? newSampleRate : 48000.0f;
-
-        constexpr float twoPi = 6.28318530718f;
-        const float cutoffHz = 0.4f * (LINE_SAMPLE_RATE * 0.5f);
-        const float x = std::exp(-twoPi * cutoffHz / m_sampleRate);
-        m_antiAliasCoeff = 1.0f - x;
-
+        m_antiAliasCoeff = 1.0f - std::exp(-6.2831853f * (0.4f * (LINE_SAMPLE_RATE * 0.5f)) / m_sampleRate);
         reset();
     }
 
-    void reset() noexcept
-    {
-        clearSharedLine();
+    void reset() noexcept {
+        std::fill(delayLine(), delayLine() + MAX_LINE_SAMPLES, (int16_t)0);
         m_writeIndex = 0;
         m_decimCounter = 0;
         m_antiAliasState = 0.0f;
         m_currentDelayLineSamples = m_targetDelayLineSamples;
     }
 
-    void process(float& left, float& right) noexcept
-    {
-        if (m_bypassed) {
-            return;
-        }
-
-        m_currentDelayLineSamples +=
-            (m_targetDelayLineSamples - m_currentDelayLineSamples) * SMOOTHING_FACTOR;
-
+    void process(float& left, float& right) noexcept {
+        if (m_bypassed) return;
+        m_currentDelayLineSamples += (m_targetDelayLineSamples - m_currentDelayLineSamples) * SMOOTHING_FACTOR;
         const float inputMono = (left + right) * 0.5f;
         m_antiAliasState += m_antiAliasCoeff * (inputMono - m_antiAliasState);
-
-        const float readPosition =
-            static_cast<float>(m_writeIndex) - m_currentDelayLineSamples;
+        const float readPosition = (float)m_writeIndex - m_currentDelayLineSamples;
         const float delayedSample = readLineInterpolated(readPosition);
 
-        ++m_decimCounter;
-        if (m_decimCounter >= DECIMATION) {
+        if (++m_decimCounter >= DECIMATION) {
             m_decimCounter = 0;
-
             const float newDelayValue = m_antiAliasState + (delayedSample * m_feedback);
-            const float clamped =
-                std::clamp(newDelayValue * INT16_SCALE, -INT16_SCALE, INT16_SCALE);
-            s_delayLine[m_writeIndex] = static_cast<std::int16_t>(clamped);
-
+            delayLine()[m_writeIndex] = (std::int16_t)std::clamp(newDelayValue * INT16_SCALE, -INT16_SCALE, INT16_SCALE);
             m_writeIndex = (m_writeIndex + 1) % MAX_LINE_SAMPLES;
         }
-
-        left = (left * (1.0f - m_dryWet)) + (delayedSample * m_dryWet);
-        right = (right * (1.0f - m_dryWet)) + (delayedSample * m_dryWet);
+        left = (left * (1.0f - m_wet)) + (delayedSample * m_wet);
+        right = (right * (1.0f - m_wet)) + (delayedSample * m_wet);
     }
 
-    void setDelayTime(float seconds) noexcept
-    {
-        seconds = std::clamp(seconds, 0.001f, MAX_DELAY_SECONDS);
-        m_targetDelayLineSamples = seconds * LINE_SAMPLE_RATE;
+    void setParamValue(uint8_t id, float val) noexcept {
+        if (id >= ParamCount) return;
+        val = std::clamp(val, Params[id].min, Params[id].max);
+        switch (id) {
+            case 0: m_targetDelayLineSamples = val * LINE_SAMPLE_RATE; break;
+            case 1: m_feedback = val; break;
+            case 2: m_wet = val; break;
+        }
     }
 
-    void setFeedback(float fb) noexcept
-    {
-        m_feedback = std::clamp(fb, 0.0f, 0.95f);
-    }
-
-    void setDryWet(float dw) noexcept
-    {
-        m_dryWet = std::clamp(dw, 0.0f, 1.0f);
+    [[nodiscard]] float getParamValue(uint8_t id) const noexcept {
+        switch (id) {
+            case 0: return m_targetDelayLineSamples / LINE_SAMPLE_RATE;
+            case 1: return m_feedback;
+            case 2: return m_wet;
+            default: return 0.0f;
+        }
     }
 
     void toggleBypass() noexcept { m_bypassed = !m_bypassed; }
-    void setBypass(bool bypassed) noexcept { m_bypassed = bypassed; }
     [[nodiscard]] bool isBypassed() const noexcept { return m_bypassed; }
-
-    [[nodiscard]] float getDelayTime() const noexcept
-    {
-        return m_targetDelayLineSamples / LINE_SAMPLE_RATE;
-    }
-
-    [[nodiscard]] float getFeedback() const noexcept { return m_feedback; }
-    [[nodiscard]] float getDryWet() const noexcept { return m_dryWet; }
-    [[nodiscard]] float getMaxDelayTime() const noexcept { return MAX_DELAY_SECONDS; }
 };
 
-#endif // EMBEDDEDDSP_FIRMWARE_DELAY_EFFECT_H
+#endif

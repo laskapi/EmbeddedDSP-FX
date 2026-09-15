@@ -10,7 +10,7 @@
 #include "SpectrumWidget.h"
 #include "ConnectionToolbar.h"
 #include "AudioFrameSimulator.h"
-#include "Protocol/AudioFramePacket.h"
+#include <Protocol/AudioFramePacket.h>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -25,7 +25,7 @@ public:
     ~MainWindow() override;
 
 private slots:
-    void onAudioFrameReceived(const AudioFramePacket &frame);
+    void onAudioFrameReceived(const Protocol::AudioFramePacket &frame);
     void onPortStatusChanged(bool isOpen, const QString &portName);
     void onSerialError(const QString &errorMessage);
 
@@ -37,7 +37,7 @@ private:
 
     Ui::MainWindow *ui{nullptr};
     SerialManager m_serialManager;
-    FftProcessor m_fftProcessor{AUDIO_PACKET_SAMPLES};
+    FftProcessor m_fftProcessor{Protocol::AUDIO_SAMPLES};
     AudioFrameSimulator m_simulator;
 
     ConnectionToolbar *m_connectionToolbar{nullptr};

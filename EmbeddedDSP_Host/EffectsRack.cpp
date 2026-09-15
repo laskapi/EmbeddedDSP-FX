@@ -1,38 +1,76 @@
 #include "EffectsRack.h"
 #include <QHBoxLayout>
-#include <algorithm>
+#include <QLabel>
+#include <QDebug>
 
 EffectsRack::EffectsRack(QWidget *parent) : QWidget(parent) {
-    auto *layout = new QHBoxLayout(this);
-    layout->setContentsMargins(0, 0, 0, 0);
+    m_mainLayout = new QHBoxLayout(this);
+    m_mainLayout->setContentsMargins(0, 0, 0, 0);
 
-    // 1. Find the maximum number of parameters across all effects using metadata
-    uint8_t maxParams = 0;
-    for (const auto &meta : EffectParams::kMetadata) {
-        if (meta.paramCount > maxParams) {
-            maxParams = meta.paramCount;
+    m_welcomeLabel = new QLabel(tr("Please connect your EmbeddedDSP device..."), this);
+    m_welcomeLabel->setAlignment(Qt::AlignCenter);
+    m_welcomeLabel->setStyleSheet("font-size: 16px; color: #777; font-weight: bold;");
+    m_mainLayout->addWidget(m_welcomeLabel);
+}
+
+void EffectsRack::onManifestReceived(const QString &manifest) {
+    if (!m_slots.empty()) return;
+    m_welcomeLabel->hide();
+
+    QMap<int, EffectMetadata> effectCatalog;
+    int slotCount = 0;
+    const QStringList lines = manifest.split('\n', Qt::SkipEmptyParts);
+
+    for (const QString &line : lines) {
+        if (line.startsWith(QLatin1String("CONF:"))) {
+            if (line.contains(QLatin1String("SLOTS="))) {
+                slotCount = line.section('=', 1).toInt();
+            }
+            continue;
         }
+
+        QStringList parts = line.split(';', Qt::SkipEmptyParts);
+        if (parts.isEmpty()) continue;
+
+        QStringList header = parts[0].split(':');
+        if (header.size() < 3) continue;
+
+        EffectMetadata meta;
+        meta.id = static_cast<uint8_t>(header[1].toInt());
+        meta.name = header[2];
+
+        for (int i = 1; i < parts.size(); ++i) {
+            QStringList p = parts[i].split(':');
+            if (p.size() < 5) continue;
+            meta.params.append({p[1], p[2].toFloat(), p[3].toFloat(), p[4].toFloat()});
+        }
+        effectCatalog[meta.id] = meta;
     }
 
-    // 2. Estimate required height based on UI elements
-    // Header/Title + Combo (~60px) + Bypass Button (~40px) + Layout Spacing
-    // Plus ~50px per parameter (Label + Slider pair)
-    int estimatedHeight = 110 + (maxParams * 50);
+    if (slotCount <= 0) slotCount = 4;
 
-    // 3. Create slots based on global configuration
-    for (uint8_t i = 0; i < static_cast<uint8_t>(EffectParams::kMaxSlots); ++i) {
+    for (uint8_t i = 0; i < slotCount; ++i) {
         auto *slot = new EffectWidget(i, this);
-        
-        // Ensure consistent height regardless of the currently selected effect
-        slot->setMinimumHeight(estimatedHeight);
-        
+        slot->setAvailableEffects(effectCatalog);
+        slot->setMinimumHeight(350);
         m_slots.push_back(slot);
+        m_mainLayout->addWidget(slot, 1);
         
-        // Add widget with stretch factor 1 to ensure equal width for all slots
-        layout->addWidget(slot, 1);
-        
-        // Connect widget signal to rack signal for central packet handling
-        connect(slot, &EffectWidget::controlPacketReady, 
-                this, &EffectsRack::controlPacketReady);
+        connect(slot, &EffectWidget::controlPacketReady, this, &EffectsRack::controlPacketReady);
+    }
+}
+
+void EffectsRack::clear(){
+    for (auto* slot: m_slots){
+        m_mainLayout->removeWidget(slot);
+        delete slot;
+    }
+    m_slots.clear();
+    m_welcomeLabel->show();
+}
+
+void EffectsRack::syncFromDevice(const Protocol::ControlPacket &pkt) {
+    if (pkt.slotId < static_cast<uint8_t>(m_slots.size())) {
+        m_slots[pkt.slotId]->updateFromPacket(pkt);
     }
 }

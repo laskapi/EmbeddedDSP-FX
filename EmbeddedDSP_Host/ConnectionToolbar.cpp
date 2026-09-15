@@ -4,6 +4,7 @@
 #include <QHBoxLayout>
 #include <QPushButton>
 #include <QSerialPortInfo>
+#include <QTimer>
 
 ConnectionToolbar::ConnectionToolbar(bool demoEnabled, QWidget *parent)
     : QWidget(parent)
@@ -29,20 +30,25 @@ ConnectionToolbar::ConnectionToolbar(bool demoEnabled, QWidget *parent)
     connect(m_connectButton, &QPushButton::clicked,
             this, &ConnectionToolbar::onConnectionButtonClicked);
 
-    refreshPortList();
+    QTimer *scanTimer = new QTimer(this);
+    connect(scanTimer, &QTimer::timeout, this, &ConnectionToolbar::refreshPortList);
+    scanTimer->start(2000);
+    QTimer::singleShot(0, this, &ConnectionToolbar::refreshPortList);
 }
 
 void ConnectionToolbar::refreshPortList()
 {
+    QString currentPort = selectedPortName();
+    
     m_portCombo->clear();
-
     const auto ports = QSerialPortInfo::availablePorts();
+    
     for (const QSerialPortInfo &info : ports) {
-        const QString label = QStringLiteral("%1  (%2)")
-        .arg(info.portName(), info.description());
+        const QString label = QStringLiteral("%1  (%2)").arg(info.portName(), info.description());
         m_portCombo->addItem(label, info.portName());
     }
-
+    int idx = m_portCombo->findData(currentPort);
+    if (idx != -1) m_portCombo->setCurrentIndex(idx);
     m_connectButton->setEnabled(m_portCombo->count() > 0);
 }
 
@@ -53,22 +59,25 @@ QString ConnectionToolbar::selectedPortName() const
 
 void ConnectionToolbar::setConnected(bool connected)
 {
-    m_connectButton->setText(connected ? QStringLiteral("Disconnect")
+    m_isConnected=connected;
+
+    m_connectButton->setText(m_isConnected ? QStringLiteral("Disconnect")
                                        : QStringLiteral("Connect"));
-    m_portCombo->setEnabled(!connected);
+    m_portCombo->setEnabled(!m_isConnected);
 }
 
 void ConnectionToolbar::setDemoRunning(bool running)
 {
+    m_isDemoRunning=running;
     if (m_demoButton) {
-        m_demoButton->setText(running ? QStringLiteral("Stop Demo")
+        m_demoButton->setText(m_isDemoRunning ? QStringLiteral("Stop Demo")
                                       : QStringLiteral("Demo"));
     }
 }
 
 void ConnectionToolbar::onConnectionButtonClicked()
 {
-    if (m_connectButton->text() == QStringLiteral("Disconnect")) {
+    if (m_isConnected){
         emit disconnectRequested();
         return;
     }
@@ -78,7 +87,7 @@ void ConnectionToolbar::onConnectionButtonClicked()
 
 void ConnectionToolbar::onDemoButtonClicked()
 {
-    if (m_demoButton && m_demoButton->text() == QStringLiteral("Stop Demo")) {
+    if (m_demoButton && m_isDemoRunning) {
         emit demoStopRequested();
         return;
     }

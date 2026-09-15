@@ -34,7 +34,7 @@ qt_add_executable(EmbeddedDSP_Host
 # Include directories: local source and firmware protocols
 target_include_directories(EmbeddedDSP_Host PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/../EmbeddedDSP_Firmware/App
+    ${CMAKE_CURRENT_SOURCE_DIR}/../EmbeddedDSP_Shared
 )
 
 # Link Qt6 libraries

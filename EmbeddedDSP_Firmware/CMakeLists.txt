@@ -42,6 +42,7 @@ add_link_options(
         -mfloat-abi=hard
         --specs=nano.specs
         --specs=nosys.specs
+        -u _printf_float
         -Wl,--no-warn-rwx-segments
 )
 
@@ -52,13 +53,20 @@ add_executable(${CMAKE_PROJECT_NAME}
         # C++ Application Logic
         App/app_main.cpp
         App/app_main.h
+        App/SharedBuffer.h
         App/DSP/DelayEffect.h
         App/DSP/DynamicAudioPipeline.h
         App/DSP/AudioEffectConcept.h
         App/DSP/OverdriveEffect.h
-        App/Protocol/ControlPacket.h
-        App/Protocol/SpscQueue.h
+        App/DSP/EmptyEffect.h
         App/Protocol/ControlParser.h
+
+        # Shared Protocols (Contract)
+        ../EmbeddedDSP_Shared/Protocol/ControlPacket.h
+        ../EmbeddedDSP_Shared/Protocol/AudioFramePacket.h
+        ../EmbeddedDSP_Shared/Protocol/ProtocolCommon.h
+        ../EmbeddedDSP_Shared/Protocol/Checksums.h
+        ../EmbeddedDSP_Shared/Protocol/SpscQueue.h
 
         # USB Device Stack
         USB_DEVICE/Target/usbd_conf.c
@@ -76,15 +84,11 @@ add_executable(${CMAKE_PROJECT_NAME}
         Core/Src/stm32f4xx_hal_msp.c
         Core/Src/sysmem.c
         Core/Src/syscalls.c
-
-        # Startup Assembly File
-        startup_stm32f411xe.s
-        App/Protocol/AudioFramePacket.h
-        App/Protocol/Crc16Calculator.h
-        App/Protocol/EffectParams.h
         Core/Inc/audio_dac.h
         Core/Src/audio_dac.c
 
+        # Startup Assembly File
+        startup_stm32f411xe.s
 )
 
 # Prevent CMake from appending .exe extension on Windows host
@@ -107,6 +111,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
         Core/Inc
         USB_DEVICE/App
         USB_DEVICE/Target
+        ../EmbeddedDSP_Shared
 )
 
 # Include CubeMX auto-generated target

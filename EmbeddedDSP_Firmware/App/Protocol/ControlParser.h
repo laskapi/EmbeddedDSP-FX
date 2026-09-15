@@ -1,163 +1,132 @@
 #ifndef EMBEDDEDDSP_FIRMWARE_CONTROL_PARSER_H
 #define EMBEDDEDDSP_FIRMWARE_CONTROL_PARSER_H
 
-#include "../DSP/DelayEffect.h"
-#include "../DSP/DynamicAudioPipeline.h"
-#include "../DSP/OverdriveEffect.h"
-#include "ControlPacket.h"
-#include "EffectParams.h"
-#include "SpscQueue.h"
-
-#include <array>
-#include <cstddef>
-#include <cstdint>
+#include <DSP/DynamicAudioPipeline.h>
+#include <Protocol/ControlPacket.h>
+#include <Protocol/SpscQueue.h>
+#include <usbd_cdc_if.h>
 #include <cstring>
-#include <type_traits>
-#include <variant>
+#include <string_view>
 
-/**
- * @brief Stateful parser processing incoming USB control stream.
- *        Dispatches packets to DSP pipeline slots using EffectParams schema.
- */
 class ControlParser {
 public:
     static constexpr std::size_t RxBufferSize = 256;
-    static constexpr float DefaultSampleRate = 48000.0f;
+    using TxQueue = Protocol::SpscQueue<Protocol::ControlPacket, 64>;
 
 private:
-    SpscQueue<uint8_t, RxBufferSize> m_rxQueue{};
-    std::array<uint8_t, sizeof(ControlPacket::ControlPacket)> m_frameBuffer{};
+    Protocol::SpscQueue<uint8_t, RxBufferSize> m_rxQueue{};
+    TxQueue m_txQueue{};
+    std::array<uint8_t, sizeof(Protocol::ControlPacket)> m_frameBuffer{};
     std::size_t m_rxIndex{0};
     DynamicAudioPipeline& m_pipeline;
-    float m_sampleRate{DefaultSampleRate};
+    float m_sampleRate{48000.0f};
 
-    void parseByte(uint8_t byte) noexcept {
-        if (m_rxIndex == 0) {
-            if (byte == 0xA5) { // SOF
-                m_frameBuffer[0] = byte;
-                m_rxIndex = 1;
-            }
-            return;
-        }
+    void applyPacket(const Protocol::ControlPacket& packet) noexcept {
+        const uint8_t slotId = packet.slotId;
+        switch (packet.command) {
+            case Protocol::Command::SetParam:
+                if (slotId < DynamicAudioPipeline::MAX_AUDIO_SLOTS) {
+                    std::visit([id = packet.paramId, val = packet.getValue()](auto& fx) { 
+                        fx.setParamValue(id, val); 
+                    }, m_pipeline.getSlot(slotId));
+                }
+                break;
 
-        m_frameBuffer[m_rxIndex++] = byte;
+            case Protocol::Command::SetEffectType:
+                m_pipeline.setEffectByIndex(slotId, packet.paramId, m_sampleRate);
+                break;
 
-        if (m_rxIndex == sizeof(ControlPacket::ControlPacket)) {
-            ControlPacket::ControlPacket packet;
-            std::memcpy(&packet, m_frameBuffer.data(), sizeof(ControlPacket::ControlPacket));
+            case Protocol::Command::BypassToggle:
+                if (slotId < DynamicAudioPipeline::MAX_AUDIO_SLOTS) {
+                    std::visit([](auto& fx) { fx.toggleBypass(); }, m_pipeline.getSlot(slotId));
+                }
+                break;
 
-            if (packet.isValid()) {
-                applyPacket(packet);
-            }
-            m_rxIndex = 0;
+            case Protocol::Command::ClearSlot:
+                m_pipeline.clearSlot(slotId);
+                break;
+
+            case Protocol::Command::SwapSlots:
+                m_pipeline.swapSlots(slotId, packet.paramId);
+                break;
+
+            case Protocol::Command::SetActiveSlots:
+                m_pipeline.setActiveSlotsCount(slotId);
+                break;
+
+            case Protocol::Command::GetState:
+                handleGetStateRequest();
+                break;
+
+            default: 
+                break;
         }
     }
 
-    void applyPacket(const ControlPacket::ControlPacket& packet) noexcept {
-        const float val = packet.getValue();
-        const uint8_t slotId = packet.slotId;
+    void handleGetStateRequest() noexcept {
+        Protocol::ControlPacket pkt;
+        pkt.command = Protocol::Command::ReportState; 
+        pkt.paramId = Protocol::ReservedParam::ManifestSignal; 
+        pkt.applyCRC();
+        
+        while (CDC_Transmit_FS(reinterpret_cast<uint8_t*>(&pkt), sizeof(pkt)) != 0) {}
 
-        switch (packet.command) {
-            case ControlPacket::Command::SetParam: {
-                if (slotId < MAX_AUDIO_SLOTS) {
-                    std::visit([paramId = packet.paramId, val](auto& effect) {
-                        using T = std::decay_t<decltype(effect)>;
+        auto manifest = m_pipeline.generateGlobalManifest();
+        uint16_t len = static_cast<uint16_t>(manifest.size()) + 1;
+        while (CDC_Transmit_FS(reinterpret_cast<uint8_t*>(const_cast<char*>(manifest.data())), len) != 0) {}
 
-                        if constexpr (std::is_same_v<T, OverdriveEffect>) {
-                            switch (static_cast<EffectParams::OverdriveParam>(paramId)) {
-                                case EffectParams::OverdriveParam::Drive: effect.setDrive(val); break;
-                                case EffectParams::OverdriveParam::Tone:  effect.setTone(val); break;
-                                case EffectParams::OverdriveParam::Wet:   effect.setWet(val); break;
-                                case EffectParams::OverdriveParam::Level: effect.setLevel(val); break;
-                                default: break;
-                            }
-                        }
-                        else if constexpr (std::is_same_v<T, DelayEffect>) {
-                            switch (static_cast<EffectParams::DelayParam>(paramId)) {
-                                case EffectParams::DelayParam::Time:     effect.setDelayTime(val); break;
-                                case EffectParams::DelayParam::Feedback: effect.setFeedback(val); break;
-                                case EffectParams::DelayParam::DryWet:   effect.setDryWet(val); break;
-                                default: break;
-                            }
-                        }
-                    }, m_pipeline.getSlot(slotId));
+        reportFullState();
+    }
+
+    void sendReport(Protocol::Command cmd, uint8_t slot, uint8_t param, float val) noexcept {
+        Protocol::ControlPacket pkt;
+        pkt.command = cmd; 
+        pkt.slotId = slot; 
+        pkt.paramId = param; 
+        pkt.setValue(val);
+        pkt.applyCRC();
+        while (!m_txQueue.push(pkt)) {}
+    }
+
+    void reportFullState() noexcept {
+        for (uint8_t slotId = 0; slotId < DynamicAudioPipeline::MAX_AUDIO_SLOTS; ++slotId) {
+            std::visit([this, slotId](auto& fx) {
+                using T = std::decay_t<decltype(fx)>;
+                sendReport(Protocol::Command::SetEffectType, slotId, static_cast<uint8_t>(T::Id), 0.0f);
+                sendReport(Protocol::Command::BypassToggle, slotId, 0, fx.isBypassed() ? 1.0f : 0.0f);
+                for (uint8_t p = 0; p < T::ParamCount; ++p) {
+                    sendReport(Protocol::Command::SetParam, slotId, p, fx.getParamValue(p));
                 }
-                break;
-            }
-
-            case ControlPacket::Command::SetEffectType: {
-                if (slotId < MAX_AUDIO_SLOTS) {
-                    const auto type = static_cast<EffectParams::EffectType>(packet.paramId);
-                    switch (type) {
-                        case EffectParams::EffectType::Empty:
-                            m_pipeline.clearSlot(slotId);
-                            break;
-                        case EffectParams::EffectType::Delay: {
-                            DelayEffect delay{};
-                            delay.prepare(m_sampleRate);
-                            m_pipeline.setEffectInSlot(slotId, std::move(delay));
-                            break;
-                        }
-                        case EffectParams::EffectType::Overdrive: {
-                            OverdriveEffect overdrive{};
-                            overdrive.prepare(m_sampleRate);
-                            m_pipeline.setEffectInSlot(slotId, std::move(overdrive));
-                            break;
-                        }
-                    }
-                }
-                break;
-            }
-
-            case ControlPacket::Command::BypassToggle: {
-                if (slotId < MAX_AUDIO_SLOTS) {
-                    std::visit([](auto& fx) {
-                        fx.toggleBypass();
-                    }, m_pipeline.getSlot(slotId));
-                }
-                break;
-            }
-
-            case ControlPacket::Command::ClearSlot: {
-                m_pipeline.clearSlot(slotId);
-                break;
-            }
-
-            case ControlPacket::Command::SwapSlots: {
-                m_pipeline.swapSlots(slotId, packet.paramId);
-                break;
-            }
-
-            case ControlPacket::Command::SetActiveSlots: {
-                m_pipeline.setActiveSlotsCount(slotId);
-                break;
-            }
+            }, m_pipeline.getSlot(slotId));
         }
     }
 
 public:
-    explicit ControlParser(DynamicAudioPipeline& pipeline,
-                           float sampleRate = DefaultSampleRate) noexcept
-        : m_pipeline{pipeline}
-        , m_sampleRate{sampleRate} {}
-
-    void setSampleRate(float sampleRate) noexcept {
-        m_sampleRate = (sampleRate > 0.0f) ? sampleRate : DefaultSampleRate;
+    explicit ControlParser(DynamicAudioPipeline& p) : m_pipeline(p) {}
+    
+    void processRxQueue() { 
+        while (auto b = m_rxQueue.pop()) parseByte(*b); 
     }
-
-    [[nodiscard]] float getSampleRate() const noexcept {
-        return m_sampleRate;
+    
+    void onBytesReceived(const uint8_t* d, std::size_t l) { 
+        for (size_t i=0; i<l; ++i) m_rxQueue.push(d[i]); 
     }
+    
+    TxQueue& getTxQueue() { return m_txQueue; }
+    void setSampleRate(float sr) { m_sampleRate = sr; }
 
-    void onBytesReceived(const uint8_t* data, std::size_t len) noexcept {
-        for (std::size_t i = 0; i < len; ++i) {
-            m_rxQueue.push(data[i]);
-        }
-    }
-
-    void processRxQueue() noexcept {
-        while (auto byteOpt = m_rxQueue.pop()) {
-            parseByte(*byteOpt);
+private:
+    void parseByte(uint8_t byte) {
+        if (m_rxIndex == 0 && byte != Protocol::SOF::Control) return;
+        m_frameBuffer[m_rxIndex++] = byte;
+        
+        if (m_rxIndex == sizeof(Protocol::ControlPacket)) {
+            Protocol::ControlPacket pkt;
+            std::memcpy(&pkt, m_frameBuffer.data(), sizeof(pkt));
+            if (pkt.isValid()) {
+                applyPacket(pkt);
+            }
+            m_rxIndex = 0;
         }
     }
 };

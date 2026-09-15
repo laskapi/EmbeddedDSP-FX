@@ -30,7 +30,7 @@ public:
     [[nodiscard]] float amplitude() const;
 
 signals:
-    void audioFrameReceived(const AudioFramePacket &frame);
+    void audioFrameReceived(const Protocol::AudioFramePacket &frame);
     void runningChanged(bool running);
 
 private slots:

@@ -7,10 +7,6 @@ class QComboBox;
 class QPushButton;
 class QHBoxLayout;
 
-/**
- * @brief Top toolbar: COM port selection, Connect/Disconnect, optional Demo toggle.
- *        UI only — emits user intents; does not own SerialManager or simulators.
- */
 class ConnectionToolbar : public QWidget
 {
     Q_OBJECT
@@ -41,6 +37,8 @@ private:
     QPushButton *m_connectButton{nullptr};
     QPushButton *m_demoButton{nullptr};
     bool m_demoEnabled{true};
+    bool m_isConnected{false};
+    bool m_isDemoRunning{false};
 };
 
 #endif // EMBEDDEDDSP_HOST_CONNECTIONTOOLBAR_H
