@@ -25,7 +25,14 @@ namespace Protocol {
         uint8_t  sof{SOF::Control};
         Command  command{Command::SetParam};
         uint8_t  slotId{0};
-        uint8_t  paramId{0};
+        
+        union {
+            uint8_t paramId{0};
+            uint8_t effectTypeId;
+            uint8_t targetSlotId;
+            uint8_t signalId;
+        };
+
     private:
         float    m_rawValue{0.0f};
     public:

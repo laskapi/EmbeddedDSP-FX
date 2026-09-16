@@ -6,35 +6,35 @@
 using namespace Protocol;
 
 TEST(ProtocolTest, PacketValidationSuccess) {
-    ControlPacket packet{};
-    packet.sof = 0xA5;
-    packet.command = Command::SetParam;
-    packet.slotId = 1;
-    packet.paramId = 2;
-    packet.setValue(0.75f);
-    packet.applyCRC();
+    ControlPacket pkt{};
+    pkt.sof = 0xA5;
+    pkt.command = Command::SetParam;
+    pkt.slotId = 1;
+    pkt.paramId = 2;
+    pkt.setValue(0.75f);
+    pkt.applyCRC();
 
-    EXPECT_TRUE(packet.isValid());
-    EXPECT_FLOAT_EQ(packet.getValue(), 0.75f);
+    EXPECT_TRUE(pkt.isValid());
+    EXPECT_FLOAT_EQ(pkt.getValue(), 0.75f);
 }
 
 TEST(ProtocolTest, PacketValidationInvalidSOF) {
-    ControlPacket packet{};
-    packet.sof = 0xFF; // Invalid SOF byte
-    packet.command = Command::SetParam;
-    packet.applyCRC();
+    ControlPacket pkt{};
+    pkt.sof = 0xFF; // Invalid SOF byte
+    pkt.command = Command::SetParam;
+    pkt.applyCRC();
 
-    EXPECT_FALSE(packet.isValid());
+    EXPECT_FALSE(pkt.isValid());
 }
 
 TEST(ProtocolTest, PacketValidationInvalidCRC) {
-    ControlPacket packet{};
-    packet.sof = 0xA5;
-    packet.command = Command::SetParam;
-    packet.setValue(1.0f);
-    packet.crc = 0x00; // Corrupted CRC
+    ControlPacket pkt{};
+    pkt.sof = 0xA5;
+    pkt.command = Command::SetParam;
+    pkt.setValue(1.0f);
+    pkt.crc = 0x00; // Corrupted CRC
 
-    EXPECT_FALSE(packet.isValid());
+    EXPECT_FALSE(pkt.isValid());
 }
 
 TEST(ProtocolParserTest, ParseValidByteStreamAndApplyParam) {
@@ -44,14 +44,14 @@ TEST(ProtocolParserTest, ParseValidByteStreamAndApplyParam) {
     // Discovery manifest would normally set this up, but we do it manually for test
     pipeline.setEffectByIndex(0, 2, 48000.0f); // 2 is OverdriveEffect ID
 
-    ControlPacket originalPacket{};
-    originalPacket.command = Command::SetParam;
-    originalPacket.slotId = 0;
-    originalPacket.paramId = 0; // Drive parameter
-    originalPacket.setValue(8.5f);
-    originalPacket.applyCRC();
+    ControlPacket originalPkt{};
+    originalPkt.command = Command::SetParam;
+    originalPkt.slotId = 0;
+    originalPkt.paramId = 0; // Drive parameter
+    originalPkt.setValue(8.5f);
+    originalPkt.applyCRC();
 
-    const auto* bytes = reinterpret_cast<const uint8_t*>(&originalPacket);
+    const auto* bytes = reinterpret_cast<const uint8_t*>(&originalPkt);
     parser.onBytesReceived(bytes, sizeof(ControlPacket));
     parser.processRxQueue();
 
@@ -71,14 +71,14 @@ TEST(ProtocolParserTest, IgnoreNoiseBeforeSOF) {
 
     pipeline.setEffectByIndex(0, 1, 48000.0f); // 1 is DelayEffect ID
 
-    ControlPacket originalPacket{};
-    originalPacket.command = Command::SetParam;
-    originalPacket.slotId = 0;
-    originalPacket.paramId = 1; // Feedback parameter
-    originalPacket.setValue(0.4f);
-    originalPacket.applyCRC();
+    ControlPacket originalPkt{};
+    originalPkt.command = Command::SetParam;
+    originalPkt.slotId = 0;
+    originalPkt.paramId = 1; // Feedback parameter
+    originalPkt.setValue(0.4f);
+    originalPkt.applyCRC();
 
-    const auto* bytes = reinterpret_cast<const uint8_t*>(&originalPacket);
+    const auto* bytes = reinterpret_cast<const uint8_t*>(&originalPkt);
     const uint8_t noiseBytes[] = {0x12, 0x34, 0xFF, 0x00};
     parser.onBytesReceived(noiseBytes, sizeof(noiseBytes));
     parser.onBytesReceived(bytes, sizeof(ControlPacket));
@@ -102,14 +102,14 @@ TEST(ProtocolParserTest, ClearSlotCommand) {
     pipeline.setEffectByIndex(0, 2, 48000.0f);
     EXPECT_FALSE(std::holds_alternative<EmptyEffect>(pipeline.getSlot(0)));
 
-    ControlPacket packet{};
-    packet.command = Command::ClearSlot; // We need to handle this in parser if we want it to work
-    packet.slotId = 0;
-    packet.applyCRC();
+    ControlPacket pkt{};
+    pkt.command = Command::ClearSlot; 
+    pkt.slotId = 0;
+    pkt.applyCRC();
 
-    const auto* bytes = reinterpret_cast<const uint8_t*>(&packet);
+    const auto* bytes = reinterpret_cast<const uint8_t*>(&pkt);
     parser.onBytesReceived(bytes, sizeof(ControlPacket));
     parser.processRxQueue();
 
-    // Note: ControlParser needs to handle ClearSlot command!
+    EXPECT_TRUE(std::holds_alternative<EmptyEffect>(pipeline.getSlot(0)));
 }

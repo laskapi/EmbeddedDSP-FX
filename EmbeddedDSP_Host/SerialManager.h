@@ -19,13 +19,13 @@ public:
     void closePort();
     [[nodiscard]] bool isOpen() const;
 
-    bool sendControlPacket(const Protocol::ControlPacket &packet);
+    bool sendControlPacket(const Protocol::ControlPacket &pkt);
     static QString findDevicePort();
 
 signals:
     void manifestReceived(const QString &manifest);
     void audioFrameReceived(const Protocol::AudioFramePacket &frame);
-    void controlPacketReceived(const Protocol::ControlPacket &packet);
+    void controlPacketReceived(const Protocol::ControlPacket &pkt);
     void portStatusChanged(bool isOpen, const QString &portName);
     void errorOccurred(const QString &errorMessage);
 

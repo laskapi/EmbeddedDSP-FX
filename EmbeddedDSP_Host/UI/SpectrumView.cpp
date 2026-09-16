@@ -1,4 +1,4 @@
-#include "SpectrumWidget.h"
+#include "SpectrumView.h"
 #include <QPainter>
 #include <QPainterPath>
 #include <QPaintEvent>
@@ -6,48 +6,40 @@
 #include <cmath>
 
 namespace {
-    // Standard audio frequency limits for the logarithmic scale
     constexpr float MIN_FREQ = 20.0f;
     constexpr float MAX_FREQ = 20000.0f;
 }
 
-SpectrumWidget::SpectrumWidget(QWidget *parent)
-    : QWidget(parent)
-{
+namespace UI {
+
+SpectrumView::SpectrumView(QWidget *parent)
+    : QWidget(parent) {
     setMinimumHeight(220);
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     setAutoFillBackground(false);
 }
 
-void SpectrumWidget::setDbRange(float minDb, float maxDb)
-{
+void SpectrumView::setDbRange(float minDb, float maxDb) {
     if (maxDb <= minDb) return;
     m_minDb = minDb;
     m_maxDb = maxDb;
     update();
 }
 
-void SpectrumWidget::setSampleRate(float sampleRateHz)
-{
+void SpectrumView::setSampleRate(float sampleRateHz) {
     m_sampleRate = sampleRateHz;
     update();
 }
 
-void SpectrumWidget::setFftSize(int fftSize)
-{
+void SpectrumView::setFftSize(int fftSize) {
     m_fftSize = std::max(2, fftSize);
     update();
 }
 
-void SpectrumWidget::updateSpectrum(const std::vector<float> &magnitudeDb)
-{
-    // If sizes don't match (e.g., first frame), just copy the data
+void SpectrumView::updateSpectrum(const std::vector<float> &magnitudeDb) {
     if (m_magnitudeDb.size() != magnitudeDb.size()) {
         m_magnitudeDb = magnitudeDb;
     } else {
-        // Professional Smoothing: Exponential Moving Average (EMA)
-        // alpha = 0.2 means the new frame has a 20% weight, preserving 80% of history.
-        // This eliminates nervous jitter while keeping the UI responsive.
         const float alpha = 0.2f;
         for (size_t i = 0; i < magnitudeDb.size(); ++i) {
             m_magnitudeDb[i] = (alpha * magnitudeDb[i]) + ((1.0f - alpha) * m_magnitudeDb[i]);
@@ -56,8 +48,7 @@ void SpectrumWidget::updateSpectrum(const std::vector<float> &magnitudeDb)
     update();
 }
 
-QRect SpectrumWidget::plotRect() const
-{
+QRect SpectrumView::plotRect() const {
     constexpr int left = 48;
     constexpr int right = 12;
     constexpr int top = 12;
@@ -65,8 +56,7 @@ QRect SpectrumWidget::plotRect() const
     return rect().adjusted(left, top, -right, -bottom);
 }
 
-void SpectrumWidget::paintEvent(QPaintEvent * /*event*/)
-{
+void SpectrumView::paintEvent(QPaintEvent * /*event*/) {
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing, true);
 
@@ -77,26 +67,22 @@ void SpectrumWidget::paintEvent(QPaintEvent * /*event*/)
     drawAxesLabels(painter, plot);
 }
 
-void SpectrumWidget::drawBackground(QPainter &painter, const QRect &plot) const
-{
+void SpectrumView::drawBackground(QPainter &painter, const QRect &plot) const {
     painter.fillRect(rect(), m_bgColor);
     painter.fillRect(plot, QColor(18, 20, 24));
     painter.setPen(QPen(m_gridColor, 1));
     painter.drawRect(plot);
 }
 
-void SpectrumWidget::drawGrid(QPainter &painter, const QRect &plot) const
-{
+void SpectrumView::drawGrid(QPainter &painter, const QRect &plot) const {
     painter.setPen(QPen(m_gridColor, 1, Qt::DotLine));
 
-    // Horizontal dB grid
     for (float db = m_minDb; db <= m_maxDb; db += 20.0f) {
         const float t = (db - m_minDb) / (m_maxDb - m_minDb);
         const int y = plot.bottom() - static_cast<int>(t * plot.height());
         painter.drawLine(plot.left(), y, plot.right(), y);
     }
 
-    // Vertical Logarithmic Frequency grid
     const float freqs[] = {100.0f, 1000.0f, 10000.0f};
     const float logMin = std::log10(MIN_FREQ);
     const float logMax = std::log10(MAX_FREQ);
@@ -110,8 +96,7 @@ void SpectrumWidget::drawGrid(QPainter &painter, const QRect &plot) const
     }
 }
 
-void SpectrumWidget::drawBars(QPainter &painter, const QRect &plot) const
-{
+void SpectrumView::drawBars(QPainter &painter, const QRect &plot) const {
     if (m_magnitudeDb.empty() || plot.width() <= 0 || plot.height() <= 0) return;
 
     const int binCount = static_cast<int>(m_magnitudeDb.size());
@@ -120,7 +105,6 @@ void SpectrumWidget::drawBars(QPainter &painter, const QRect &plot) const
     const float logMin = std::log10(MIN_FREQ);
     const float logMax = std::log10(MAX_FREQ);
 
-    // Using a continuous path with linear interpolation for a smooth "analog" look
     painter.setPen(QPen(m_barColor, 1.8f));
     
     QPainterPath path;
@@ -130,7 +114,6 @@ void SpectrumWidget::drawBars(QPainter &painter, const QRect &plot) const
         float t = static_cast<float>(x) / plot.width();
         float freq = std::pow(10.0f, logMin + t * (logMax - logMin));
         
-        // Linear interpolation between two nearest FFT bins
         float binIdx = freq / binHz;
         int i0 = static_cast<int>(binIdx);
         int i1 = std::min(i0 + 1, binCount - 1);
@@ -157,14 +140,12 @@ void SpectrumWidget::drawBars(QPainter &painter, const QRect &plot) const
     painter.drawPath(path);
 }
 
-void SpectrumWidget::drawAxesLabels(QPainter &painter, const QRect &plot) const
-{
+void SpectrumView::drawAxesLabels(QPainter &painter, const QRect &plot) const {
     painter.setPen(m_textColor);
     QFont font = painter.font();
     font.setPointSize(8);
     painter.setFont(font);
 
-    // dB Labels
     for (float db = m_minDb; db <= m_maxDb; db += 20.0f) {
         const float t = (db - m_minDb) / (m_maxDb - m_minDb);
         const int y = plot.bottom() - static_cast<int>(t * plot.height());
@@ -173,7 +154,6 @@ void SpectrumWidget::drawAxesLabels(QPainter &painter, const QRect &plot) const
                          QString::number(static_cast<int>(db)));
     }
 
-    // Frequency Labels (Log Scale)
     const struct { float f; const char* lbl; } labels[] = {
         {20.0f, "20"}, {100.0f, "100"}, {1000.0f, "1k"}, {10000.0f, "10k"}, {20000.0f, "20k"}
     };
@@ -189,3 +169,5 @@ void SpectrumWidget::drawAxesLabels(QPainter &painter, const QRect &plot) const
                          l.lbl);
     }
 }
+
+} // namespace UI

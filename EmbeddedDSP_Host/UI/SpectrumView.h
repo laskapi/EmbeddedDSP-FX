@@ -1,19 +1,17 @@
-#ifndef EMBEDDEDDSP_HOST_SPECTRUMWIDGET_H
-#define EMBEDDEDDSP_HOST_SPECTRUMWIDGET_H
+#ifndef EMBEDDEDDSP_HOST_SPECTRUMVIEW_H
+#define EMBEDDEDDSP_HOST_SPECTRUMVIEW_H
 
 #include <QWidget>
 #include <QColor>
 #include <vector>
 
-/**
- * @brief Real-time magnitude spectrum view (dB bins from FftProcessor).
- */
-class SpectrumWidget : public QWidget
-{
+namespace UI {
+
+class SpectrumView : public QWidget {
     Q_OBJECT
 
 public:
-    explicit SpectrumWidget(QWidget *parent = nullptr);
+    explicit SpectrumView(QWidget *parent = nullptr);
 
     void setDbRange(float minDb, float maxDb);
     void setSampleRate(float sampleRateHz);
@@ -45,4 +43,6 @@ private:
     QColor m_textColor{180, 185, 195};
 };
 
-#endif // EMBEDDEDDSP_HOST_SPECTRUMWIDGET_H
+} // namespace UI
+
+#endif // EMBEDDEDDSP_HOST_SPECTRUMVIEW_H

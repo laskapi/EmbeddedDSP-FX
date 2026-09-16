@@ -13,7 +13,7 @@
 #include <cstdio>
 #include <string_view>
 
-class DynamicAudioPipeline;
+inline constexpr std::size_t GLOBAL_MAX_SLOTS = 4;
 
 /**
  * @brief DSP state for persistence.
@@ -28,7 +28,7 @@ struct PipelineSettings {
         uint8_t effectId;    
         bool bypassed;
         float params[8];     
-    } slots[DynamicAudioPipeline::MAX_AUDIO_SLOTS];
+    } slots[GLOBAL_MAX_SLOTS];
 };
 
 using EffectVariant = std::variant<EmptyEffect, DelayEffect, OverdriveEffect>;
@@ -38,7 +38,7 @@ using EffectVariant = std::variant<EmptyEffect, DelayEffect, OverdriveEffect>;
  */
 class DynamicAudioPipeline {
 public:
-    static constexpr std::size_t MAX_AUDIO_SLOTS = 4;
+    static constexpr std::size_t MAX_AUDIO_SLOTS = GLOBAL_MAX_SLOTS;
 
 private:
     std::array<EffectVariant, MAX_AUDIO_SLOTS> m_slots{};

@@ -1,5 +1,8 @@
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
+#include "UI/ConnectionToolbar.h"
+#include "UI/EffectsRack.h"
+#include "UI/SpectrumView.h"
 #include <QVBoxLayout>
 #include <QDebug>
 #include <QStatusBar>
@@ -38,20 +41,20 @@ MainWindow::~MainWindow() {
 }
 
 void MainWindow::setupUiLayout() {
-    m_connectionToolbar = new ConnectionToolbar(EMBEDDED_DSP_HOST_ENABLE_SIMULATOR != 0, this);
-    m_spectrumWidget = new SpectrumWidget(this);
-    m_effectsRack = new EffectsRack(this);
+    m_connectionToolbar = new UI::ConnectionToolbar(EMBEDDED_DSP_HOST_ENABLE_SIMULATOR != 0, this);
+    m_spectrumView = new UI::SpectrumView(this);
+    m_effectsRack = new UI::EffectsRack(this);
 
     auto *layout = new QVBoxLayout();
     layout->addWidget(m_connectionToolbar);
-    layout->addWidget(m_spectrumWidget, 1);
+    layout->addWidget(m_spectrumView, 1);
     layout->addWidget(m_effectsRack, 1);
 
     ui->centralwidget->setLayout(layout);
 }
 
 void MainWindow::wireControlPipeline() {
-    connect(m_effectsRack, &EffectsRack::controlPacketReady, this, [this](const Protocol::ControlPacket &pkt) {
+    connect(m_effectsRack, &UI::EffectsRack::sendPacketRequested, this, [this](const Protocol::ControlPacket &pkt) {
         m_serialManager.sendControlPacket(pkt);
     });
 
@@ -60,11 +63,11 @@ void MainWindow::wireControlPipeline() {
     });
 
     connect(&m_serialManager, &SerialManager::manifestReceived, 
-            m_effectsRack, &EffectsRack::onManifestReceived);
+            m_effectsRack, &UI::EffectsRack::onManifestReceived);
 }
 
 void MainWindow::wireConnectionToolbar() {
-    connect(m_connectionToolbar, &ConnectionToolbar::connectRequested, this, [this](const QString &portName) {
+    connect(m_connectionToolbar, &UI::ConnectionToolbar::connectRequested, this, [this](const QString &portName) {
         if (m_simulator.isRunning()) m_simulator.stop();
 
         if (m_serialManager.openPort(portName, 115200)) {
@@ -75,17 +78,17 @@ void MainWindow::wireConnectionToolbar() {
         }
     });
 
-    connect(m_connectionToolbar, &ConnectionToolbar::disconnectRequested, this, [this]() {
+    connect(m_connectionToolbar, &UI::ConnectionToolbar::disconnectRequested, this, [this]() {
         m_serialManager.closePort();
     });
 
 #if EMBEDDED_DSP_HOST_ENABLE_SIMULATOR
-    connect(m_connectionToolbar, &ConnectionToolbar::demoStartRequested, this, [this]() {
+    connect(m_connectionToolbar, &UI::ConnectionToolbar::demoStartRequested, this, [this]() {
         if (m_serialManager.isOpen()) m_serialManager.closePort();
         m_simulator.start();
     });
 
-    connect(m_connectionToolbar, &ConnectionToolbar::demoStopRequested, this, [this]() {
+    connect(m_connectionToolbar, &UI::ConnectionToolbar::demoStopRequested, this, [this]() {
         m_simulator.stop();
     });
 
@@ -110,7 +113,7 @@ void MainWindow::wireAudioPipeline() {
 void MainWindow::onAudioFrameReceived(const Protocol::AudioFramePacket &frame) {
     const std::span<const int16_t> pcm{frame.samples};
     auto spectrum = m_fftProcessor.processFrame(pcm);
-    if (m_spectrumWidget) m_spectrumWidget->updateSpectrum(spectrum);
+    if (m_spectrumView) m_spectrumView->updateSpectrum(spectrum);
 }
 
 void MainWindow::onPortStatusChanged(bool isOpen, const QString &portName) {

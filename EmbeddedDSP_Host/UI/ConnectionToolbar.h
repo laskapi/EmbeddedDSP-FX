@@ -7,8 +7,9 @@ class QComboBox;
 class QPushButton;
 class QHBoxLayout;
 
-class ConnectionToolbar : public QWidget
-{
+namespace UI {
+
+class ConnectionToolbar : public QWidget {
     Q_OBJECT
 
 public:
@@ -40,5 +41,7 @@ private:
     bool m_isConnected{false};
     bool m_isDemoRunning{false};
 };
+
+} // namespace UI
 
 #endif // EMBEDDEDDSP_HOST_CONNECTIONTOOLBAR_H

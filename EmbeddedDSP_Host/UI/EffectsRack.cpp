@@ -1,7 +1,10 @@
 #include "EffectsRack.h"
+#include "EffectSlot.h"
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QDebug>
+
+namespace UI {
 
 EffectsRack::EffectsRack(QWidget *parent) : QWidget(parent) {
     m_mainLayout = new QHBoxLayout(this);
@@ -17,7 +20,7 @@ void EffectsRack::onManifestReceived(const QString &manifest) {
     if (!m_slots.empty()) return;
     m_welcomeLabel->hide();
 
-    QMap<int, EffectMetadata> effectCatalog;
+    QMap<int, Host::EffectSpec> availableSpecs;
     int slotCount = 0;
     const QStringList lines = manifest.split('\n', Qt::SkipEmptyParts);
 
@@ -35,33 +38,33 @@ void EffectsRack::onManifestReceived(const QString &manifest) {
         QStringList header = parts[0].split(':');
         if (header.size() < 3) continue;
 
-        EffectMetadata meta;
-        meta.id = static_cast<uint8_t>(header[1].toInt());
-        meta.name = header[2];
+        Host::EffectSpec spec;
+        spec.id = static_cast<uint8_t>(header[1].toInt());
+        spec.name = header[2];
 
         for (int i = 1; i < parts.size(); ++i) {
             QStringList p = parts[i].split(':');
             if (p.size() < 5) continue;
-            meta.params.append({p[1], p[2].toFloat(), p[3].toFloat(), p[4].toFloat()});
+            spec.params.append({p[1], p[2].toFloat(), p[3].toFloat(), p[4].toFloat()});
         }
-        effectCatalog[meta.id] = meta;
+        availableSpecs[spec.id] = spec;
     }
 
     if (slotCount <= 0) slotCount = 4;
 
     for (uint8_t i = 0; i < slotCount; ++i) {
-        auto *slot = new EffectWidget(i, this);
-        slot->setAvailableEffects(effectCatalog);
+        auto *slot = new EffectSlot(i, this);
+        slot->setAvailableEffects(availableSpecs);
         slot->setMinimumHeight(350);
         m_slots.push_back(slot);
         m_mainLayout->addWidget(slot, 1);
         
-        connect(slot, &EffectWidget::controlPacketReady, this, &EffectsRack::controlPacketReady);
+        connect(slot, &EffectSlot::sendPacketRequested, this, &EffectsRack::sendPacketRequested);
     }
 }
 
-void EffectsRack::clear(){
-    for (auto* slot: m_slots){
+void EffectsRack::clear() {
+    for (auto* slot: m_slots) {
         m_mainLayout->removeWidget(slot);
         delete slot;
     }
@@ -74,3 +77,5 @@ void EffectsRack::syncFromDevice(const Protocol::ControlPacket &pkt) {
         m_slots[pkt.slotId]->updateFromPacket(pkt);
     }
 }
+
+} // namespace UI

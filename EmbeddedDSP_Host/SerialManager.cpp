@@ -65,10 +65,10 @@ bool SerialManager::isOpen() const
     return m_serialPort.isOpen();
 }
 
-bool SerialManager::sendControlPacket(const Protocol::ControlPacket &packet)
+bool SerialManager::sendControlPacket(const Protocol::ControlPacket &pkt)
 {
     if (!m_serialPort.isOpen()) return false;
-    return m_serialPort.write(reinterpret_cast<const char*>(&packet), sizeof(packet)) == sizeof(packet);
+    return m_serialPort.write(reinterpret_cast<const char*>(&pkt), sizeof(pkt)) == sizeof(pkt);
 }
 
 void SerialManager::handleReadyRead()
@@ -109,16 +109,16 @@ void SerialManager::processRxBuffer()
         else if (sof == Protocol::SOF::Control) {
             if (m_rxBuffer.size() < (int)sizeof(Protocol::ControlPacket)) return;
 
-            Protocol::ControlPacket packet;
-            std::memcpy(&packet, m_rxBuffer.constData(), sizeof(packet));
+            Protocol::ControlPacket pkt;
+            std::memcpy(&pkt, m_rxBuffer.constData(), sizeof(pkt));
 
-            if (packet.isValid()) {
-                if (packet.command == Protocol::Command::ReportState && 
-                    packet.paramId == Protocol::ReservedParam::ManifestSignal) {
+            if (pkt.isValid()) {
+                if (pkt.command == Protocol::Command::ReportState && 
+                    pkt.signalId == Protocol::ReservedParam::ManifestSignal) {
                     m_manifestMode = true;
                     m_manifestBuffer.clear();
                 } else {
-                    emit controlPacketReceived(packet);
+                    emit controlPacketReceived(pkt);
                 }
             }
             m_rxBuffer.remove(0, sizeof(Protocol::ControlPacket));

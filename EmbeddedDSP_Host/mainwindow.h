@@ -1,16 +1,20 @@
 #ifndef EMBEDDEDDSP_HOST_MAINWINDOW_H
 #define EMBEDDEDDSP_HOST_MAINWINDOW_H
 
-#include <EffectsRack.h>
 #include <QMainWindow>
 #include <vector>
 
 #include "SerialManager.h"
 #include "FftProcessor.h"
-#include "SpectrumWidget.h"
-#include "ConnectionToolbar.h"
 #include "AudioFrameSimulator.h"
 #include <Protocol/AudioFramePacket.h>
+
+// Forward declarations in UI namespace
+namespace UI {
+    class ConnectionToolbar;
+    class EffectsRack;
+    class SpectrumView;
+}
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -40,9 +44,9 @@ private:
     FftProcessor m_fftProcessor{Protocol::AUDIO_SAMPLES};
     AudioFrameSimulator m_simulator;
 
-    ConnectionToolbar *m_connectionToolbar{nullptr};
-    SpectrumWidget *m_spectrumWidget{nullptr};
-    EffectsRack *m_effectsRack{nullptr};
+    UI::ConnectionToolbar *m_connectionToolbar{nullptr};
+    UI::SpectrumView *m_spectrumView{nullptr};
+    UI::EffectsRack *m_effectsRack{nullptr};
 
     std::vector<float> m_lastSpectrumDb;
 };

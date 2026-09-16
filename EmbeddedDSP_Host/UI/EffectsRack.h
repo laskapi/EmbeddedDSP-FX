@@ -5,10 +5,14 @@
 #include <vector>
 #include <QMap>
 #include <Protocol/ControlPacket.h>
-#include "EffectWidget.h"
+#include "../EffectSpec.h"
 
 class QHBoxLayout;
 class QLabel;
+
+namespace UI {
+
+class EffectSlot;
 
 class EffectsRack : public QWidget {
     Q_OBJECT
@@ -19,13 +23,16 @@ public:
 public slots:
     void onManifestReceived(const QString &manifest);
     void clear();
+
 signals:
-    void controlPacketReady(const Protocol::ControlPacket &packet);
+    void sendPacketRequested(const Protocol::ControlPacket &pkt);
 
 private:
-    std::vector<EffectWidget*> m_slots;
+    std::vector<EffectSlot*> m_slots;
     QHBoxLayout *m_mainLayout = nullptr;
     QLabel *m_welcomeLabel = nullptr;
 };
+
+} // namespace UI
 
 #endif // EMBEDDEDDSP_HOST_EFFECTSRACK_H

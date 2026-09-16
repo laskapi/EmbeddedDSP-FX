@@ -1,15 +1,15 @@
 #include "ConnectionToolbar.h"
-
 #include <QComboBox>
 #include <QHBoxLayout>
 #include <QPushButton>
 #include <QSerialPortInfo>
 #include <QTimer>
 
+namespace UI {
+
 ConnectionToolbar::ConnectionToolbar(bool demoEnabled, QWidget *parent)
     : QWidget(parent)
-    , m_demoEnabled(demoEnabled)
-{
+    , m_demoEnabled(demoEnabled) {
     m_portCombo = new QComboBox(this);
     m_connectButton = new QPushButton(QStringLiteral("Connect"), this);
 
@@ -36,8 +36,7 @@ ConnectionToolbar::ConnectionToolbar(bool demoEnabled, QWidget *parent)
     QTimer::singleShot(0, this, &ConnectionToolbar::refreshPortList);
 }
 
-void ConnectionToolbar::refreshPortList()
-{
+void ConnectionToolbar::refreshPortList() {
     QString currentPort = selectedPortName();
     
     m_portCombo->clear();
@@ -52,45 +51,39 @@ void ConnectionToolbar::refreshPortList()
     m_connectButton->setEnabled(m_portCombo->count() > 0);
 }
 
-QString ConnectionToolbar::selectedPortName() const
-{
+QString ConnectionToolbar::selectedPortName() const {
     return m_portCombo->currentData().toString();
 }
 
-void ConnectionToolbar::setConnected(bool connected)
-{
-    m_isConnected=connected;
-
+void ConnectionToolbar::setConnected(bool connected) {
+    m_isConnected = connected;
     m_connectButton->setText(m_isConnected ? QStringLiteral("Disconnect")
-                                       : QStringLiteral("Connect"));
+                                           : QStringLiteral("Connect"));
     m_portCombo->setEnabled(!m_isConnected);
 }
 
-void ConnectionToolbar::setDemoRunning(bool running)
-{
-    m_isDemoRunning=running;
+void ConnectionToolbar::setDemoRunning(bool running) {
+    m_isDemoRunning = running;
     if (m_demoButton) {
         m_demoButton->setText(m_isDemoRunning ? QStringLiteral("Stop Demo")
-                                      : QStringLiteral("Demo"));
+                                              : QStringLiteral("Demo"));
     }
 }
 
-void ConnectionToolbar::onConnectionButtonClicked()
-{
-    if (m_isConnected){
+void ConnectionToolbar::onConnectionButtonClicked() {
+    if (m_isConnected) {
         emit disconnectRequested();
         return;
     }
-
     emit connectRequested(selectedPortName());
 }
 
-void ConnectionToolbar::onDemoButtonClicked()
-{
+void ConnectionToolbar::onDemoButtonClicked() {
     if (m_demoButton && m_isDemoRunning) {
         emit demoStopRequested();
         return;
     }
-
     emit demoStartRequested();
 }
+
+} // namespace UI

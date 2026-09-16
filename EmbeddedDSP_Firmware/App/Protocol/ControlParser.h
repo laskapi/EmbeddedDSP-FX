@@ -21,33 +21,38 @@ private:
     DynamicAudioPipeline& m_pipeline;
     float m_sampleRate{48000.0f};
 
-    void applyPacket(const Protocol::ControlPacket& packet) noexcept {
-        const uint8_t slotId = packet.slotId;
-        switch (packet.command) {
+    void applyPacket(const Protocol::ControlPacket& pkt) noexcept {
+        const uint8_t slotId = pkt.slotId;
+        switch (pkt.command) {
             case Protocol::Command::SetParam:
                 if (slotId < DynamicAudioPipeline::MAX_AUDIO_SLOTS) {
-                    std::visit([id = packet.paramId, val = packet.getValue()](auto& fx) { 
+                    std::visit([id = pkt.paramId, val = pkt.getValue()](auto& fx) { 
                         fx.setParamValue(id, val); 
                     }, m_pipeline.getSlot(slotId));
                 }
                 break;
 
             case Protocol::Command::SetEffectType:
-                m_pipeline.setEffectByIndex(slotId, packet.paramId, m_sampleRate);
+                m_pipeline.setEffectByIndex(slotId, pkt.effectTypeId, m_sampleRate);
+                reportSlotState(slotId);
                 break;
 
             case Protocol::Command::BypassToggle:
                 if (slotId < DynamicAudioPipeline::MAX_AUDIO_SLOTS) {
                     std::visit([](auto& fx) { fx.toggleBypass(); }, m_pipeline.getSlot(slotId));
+                    reportSlotState(slotId);
                 }
                 break;
 
             case Protocol::Command::ClearSlot:
                 m_pipeline.clearSlot(slotId);
+                reportSlotState(slotId);
                 break;
 
             case Protocol::Command::SwapSlots:
-                m_pipeline.swapSlots(slotId, packet.paramId);
+                m_pipeline.swapSlots(slotId, pkt.targetSlotId);
+                reportSlotState(slotId);
+                reportSlotState(pkt.targetSlotId);
                 break;
 
             case Protocol::Command::SetActiveSlots:
@@ -66,7 +71,7 @@ private:
     void handleGetStateRequest() noexcept {
         Protocol::ControlPacket pkt;
         pkt.command = Protocol::Command::ReportState; 
-        pkt.paramId = Protocol::ReservedParam::ManifestSignal; 
+        pkt.signalId = Protocol::ReservedParam::ManifestSignal; 
         pkt.applyCRC();
         
         while (CDC_Transmit_FS(reinterpret_cast<uint8_t*>(&pkt), sizeof(pkt)) != 0) {}
@@ -78,11 +83,11 @@ private:
         reportFullState();
     }
 
-    void sendReport(Protocol::Command cmd, uint8_t slot, uint8_t param, float val) noexcept {
+    void sendReport(Protocol::Command cmd, uint8_t slot, uint8_t paramOrType, float val) noexcept {
         Protocol::ControlPacket pkt;
         pkt.command = cmd; 
         pkt.slotId = slot; 
-        pkt.paramId = param; 
+        pkt.paramId = paramOrType; 
         pkt.setValue(val);
         pkt.applyCRC();
         while (!m_txQueue.push(pkt)) {}
@@ -90,15 +95,20 @@ private:
 
     void reportFullState() noexcept {
         for (uint8_t slotId = 0; slotId < DynamicAudioPipeline::MAX_AUDIO_SLOTS; ++slotId) {
-            std::visit([this, slotId](auto& fx) {
-                using T = std::decay_t<decltype(fx)>;
-                sendReport(Protocol::Command::SetEffectType, slotId, static_cast<uint8_t>(T::Id), 0.0f);
-                sendReport(Protocol::Command::BypassToggle, slotId, 0, fx.isBypassed() ? 1.0f : 0.0f);
-                for (uint8_t p = 0; p < T::ParamCount; ++p) {
-                    sendReport(Protocol::Command::SetParam, slotId, p, fx.getParamValue(p));
-                }
-            }, m_pipeline.getSlot(slotId));
+            reportSlotState(slotId);
         }
+    }
+
+    void reportSlotState(uint8_t slotId) noexcept {
+        if (slotId >= DynamicAudioPipeline::MAX_AUDIO_SLOTS) return;
+        std::visit([this, slotId](auto& fx) {
+            using T = std::decay_t<decltype(fx)>;
+            sendReport(Protocol::Command::SetEffectType, slotId, static_cast<uint8_t>(T::Id), 0.0f);
+            sendReport(Protocol::Command::BypassToggle, slotId, 0, fx.isBypassed() ? 1.0f : 0.0f);
+            for (uint8_t p = 0; p < T::ParamCount; ++p) {
+                sendReport(Protocol::Command::SetParam, slotId, p, fx.getParamValue(p));
+            }
+        }, m_pipeline.getSlot(slotId));
     }
 
 public:
