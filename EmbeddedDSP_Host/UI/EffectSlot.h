@@ -7,7 +7,7 @@
 #include <QPushButton>
 #include <QMap>
 #include <Protocol/ControlPacket.h>
-#include "../EffectSpec.h"
+#include "EffectSpec.h"
 
 namespace UI {
 

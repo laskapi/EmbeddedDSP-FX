@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
-#include "../EmbeddedDSP_Shared/Protocol/ControlPacket.h"
-#include "../EmbeddedDSP_Firmware/App/Protocol/ControlParser.h"
-#include "../EmbeddedDSP_Firmware/App/DSP/DynamicAudioPipeline.h"
+#include <Protocol/ControlPacket.h>
+#include <Protocol/ControlParser.h>
+#include <DSP/DynamicAudioPipeline.h>
 
 using namespace Protocol;
 

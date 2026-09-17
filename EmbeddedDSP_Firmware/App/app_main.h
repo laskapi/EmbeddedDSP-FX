@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-#include "../Core/Inc/main.h"
+#include "main.h"
 
 /**
  * @brief Main entry point for the C++ application domain.

@@ -51,7 +51,7 @@ void EffectsRack::onManifestReceived(const QString &manifest) {
             spec.name = header[2];
 
             auto params = segments.sliced(1);
-            for (const QString &param : params) {
+            for (const QString &param : std::as_const(params)) {
                 QStringList p = param.split(':');
                 if (p.size() < 5 || p[0] != QLatin1String("P")) continue;
                 

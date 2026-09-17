@@ -2,7 +2,7 @@
 #define EMBEDDEDDSP_HOST_PARAMCONTROL_H
 
 #include <QWidget>
-#include "../EffectSpec.h"
+#include "EffectSpec.h"
 
 class QLabel;
 class QSlider;

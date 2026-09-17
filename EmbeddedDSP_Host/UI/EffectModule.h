@@ -3,7 +3,7 @@
 
 #include <QWidget>
 #include "WidgetRack.h"
-#include "../EffectSpec.h"
+#include "EffectSpec.h"
 
 namespace UI {
 

@@ -5,7 +5,7 @@
 #include <QHBoxLayout>
 #include <Protocol/ControlPacket.h>
 #include "WidgetRack.h"
-#include "../EffectSpec.h"
+#include "EffectSpec.h"
 
 class QLabel;
 

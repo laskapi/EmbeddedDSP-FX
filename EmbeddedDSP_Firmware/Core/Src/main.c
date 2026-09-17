@@ -15,7 +15,7 @@
 
 /* USER CODE BEGIN Includes */
 #include "audio_dac.h"
-#include "../../App/app_main.h"
+#include "app_main.h"
 
 void SystemClock_Config(void);
 /* USER CODE END Includes */

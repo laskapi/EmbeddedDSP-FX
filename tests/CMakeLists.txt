@@ -30,6 +30,7 @@ set_target_properties(dsp_unit_tests PROPERTIES
 
 target_include_directories(dsp_unit_tests PRIVATE
         ../EmbeddedDSP_Firmware/App
+        ../EmbeddedDSP_Shared
 )
 
 target_link_libraries(dsp_unit_tests
