@@ -32,6 +32,7 @@ qt_add_executable(EmbeddedDSP_Host
     UI/EffectSlot.h UI/EffectSlot.cpp
     UI/EffectModule.h UI/EffectModule.cpp
     UI/EffectsRack.h UI/EffectsRack.cpp
+    UI/WidgetRack.h
 )
 
 # Include directories: local source and firmware protocols

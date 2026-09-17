@@ -6,21 +6,24 @@ namespace UI {
 
 EffectModule::EffectModule(const Host::EffectSpec &spec, QWidget *parent)
     : QWidget(parent) {
-    auto *layout = new QVBoxLayout(this);
-    layout->setContentsMargins(0, 0, 0, 0);
+    auto *mainLayout = new QVBoxLayout(this);
+    mainLayout->setContentsMargins(0, 0, 0, 0);
+
+    m_rack = new ControlRack(this);
+    mainLayout->addWidget(m_rack);
 
     for (uint8_t i = 0; i < spec.params.size(); ++i) {
-        auto *control = new ParamControl(i, spec.params[i], this);
-        m_controls[i] = control;
+        auto *control = new ParamControl(i, spec.params[i], m_rack);
+        m_rack->add(i, control);
         connect(control, &ParamControl::valueChanged, this, &EffectModule::paramChanged);
-        layout->addWidget(control);
     }
-    layout->addStretch(1);
+    
+    m_rack->layout()->addStretch(1);
 }
 
 void EffectModule::updateParam(uint8_t paramId, float value) {
-    if (m_controls.contains(paramId)) {
-        m_controls[paramId]->setValue(value);
+    if (auto *control = m_rack->get(paramId)) {
+        control->setValue(value);
     }
 }
 

@@ -127,7 +127,7 @@ public:
         size_t offset = 0;
         const size_t maxSize = SharedBuffer::Capacity;
 
-        int written = snprintf(buf + offset, maxSize - offset, "CONF:SLOTS=%d\n", (int)MAX_AUDIO_SLOTS);
+        int written = snprintf(buf + offset, maxSize - offset, "C:SLOTS:%d\n", (int)MAX_AUDIO_SLOTS);
         if (written > 0 && (size_t)written < (maxSize - offset)) {
             offset += written;
         }

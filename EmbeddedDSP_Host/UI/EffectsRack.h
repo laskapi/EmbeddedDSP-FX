@@ -2,12 +2,11 @@
 #define EMBEDDEDDSP_HOST_EFFECTSRACK_H
 
 #include <QWidget>
-#include <vector>
-#include <QMap>
+#include <QHBoxLayout>
 #include <Protocol/ControlPacket.h>
+#include "WidgetRack.h"
 #include "../EffectSpec.h"
 
-class QHBoxLayout;
 class QLabel;
 
 namespace UI {
@@ -16,6 +15,7 @@ class EffectSlot;
 
 class EffectsRack : public QWidget {
     Q_OBJECT
+    using SlotRack = WidgetRack<uint8_t, EffectSlot, QHBoxLayout>;
 public:
     explicit EffectsRack(QWidget *parent = nullptr);
     void syncFromDevice(const Protocol::ControlPacket &pkt);
@@ -28,8 +28,7 @@ signals:
     void sendPacketRequested(const Protocol::ControlPacket &pkt);
 
 private:
-    std::vector<EffectSlot*> m_slots;
-    QHBoxLayout *m_mainLayout = nullptr;
+    SlotRack* m_rack;
     QLabel *m_welcomeLabel = nullptr;
 };
 
