@@ -1,42 +1,53 @@
-#ifndef EMBEDDEDDSP_PROTOCOL_CHECKSUMS_H
-#define EMBEDDEDDSP_PROTOCOL_CHECKSUMS_H
+#ifndef EMBEDDEDDSP_CHECKSUMS_H
+#define EMBEDDEDDSP_CHECKSUMS_H
 
-#include <cstdint>
-#include <cstddef>
-#include <array>
+#include <stdint.h>
+#include <stddef.h>
 
 namespace Protocol {
 
-    class Checksums {
-    public:
-        static uint8_t crc8(const uint8_t* data, std::size_t len) noexcept {
-            uint8_t crc = 0xFF;
-            for (std::size_t i = 0; i < len; ++i) crc ^= data[i];
-            return crc;
-        }
+/**
+ * @brief Utilities for CRC calculation used by the binary protocol.
+ */
+namespace Checksums {
 
-        static uint16_t crc16(const uint8_t* data, std::size_t len) noexcept {
-            uint16_t crc = 0xFFFF;
-            for (std::size_t i = 0; i < len; ++i) {
-                const uint8_t lutIndex = static_cast<uint8_t>((crc >> 8) ^ data[i]);
-                crc = static_cast<uint16_t>((crc << 8) ^ m_crc16Table[lutIndex]);
+    /**
+     * @brief Standard CRC-8 calculation.
+     * @param data Pointer to the buffer.
+     * @param len Number of bytes.
+     * @return 8-bit checksum.
+     */
+    inline uint8_t crc8(const uint8_t* data, size_t len) {
+        uint8_t crc = 0;
+        for (size_t i = 0; i < len; ++i) {
+            crc ^= data[i];
+            for (int j = 0; j < 8; ++j) {
+                if (crc & 0x80) crc = (crc << 1) ^ 0x07;
+                else crc <<= 1;
             }
-            return crc;
         }
+        return crc;
+    }
 
-    private:
-        static constexpr std::array<uint16_t, 256> m_crc16Table = []() {
-            std::array<uint16_t, 256> table{};
-            for (int i = 0; i < 256; ++i) {
-                uint16_t curr = static_cast<uint16_t>(i << 8);
-                for (int j = 0; j < 8; ++j) {
-                    curr = (curr & 0x8000) ? (curr << 1) ^ 0x1021 : (curr << 1);
-                }
-                table[i] = curr;
+    /**
+     * @brief Standard CRC-16 (CCITT) calculation.
+     * @param data Pointer to the buffer.
+     * @param len Number of bytes.
+     * @return 16-bit checksum.
+     */
+    inline uint16_t crc16(const uint8_t* data, size_t len) {
+        uint16_t crc = 0xFFFF;
+        for (size_t i = 0; i < len; ++i) {
+            crc ^= (uint16_t)data[i] << 8;
+            for (int j = 0; j < 8; ++j) {
+                if (crc & 0x8000) crc = (crc << 1) ^ 0x1021;
+                else crc <<= 1;
             }
-            return table;
-        }();
-    };
-}
+        }
+        return crc;
+    }
 
-#endif // EMBEDDEDDSP_PROTOCOL_CHECKSUMS_H
+} // namespace Checksums
+} // namespace Protocol
+
+#endif // EMBEDDEDDSP_CHECKSUMS_H

@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Find required Qt6 packages (using core Widgets & SerialPort)
+# Find required Qt6 packages
 find_package(Qt6 REQUIRED COMPONENTS
     Core
     Widgets
@@ -30,14 +30,16 @@ qt_add_executable(EmbeddedDSP_Host
     UI/ConnectionToolbar.h UI/ConnectionToolbar.cpp
     UI/ParamControl.h UI/ParamControl.cpp
     UI/EffectSlot.h UI/EffectSlot.cpp
-    UI/EffectModule.h UI/EffectModule.cpp
+    UI/ParameterPanel.h UI/ParameterPanel.cpp
     UI/EffectsRack.h UI/EffectsRack.cpp
     UI/WidgetRack.h
+    UI/StateManager.h UI/StateManager.cpp
 )
 
-# Include directories: local source and firmware protocols
+# Include directories: local source, UI components, and firmware protocols
 target_include_directories(EmbeddedDSP_Host PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/UI
     ${CMAKE_CURRENT_SOURCE_DIR}/../EmbeddedDSP_Shared
 )
 

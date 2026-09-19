@@ -3,6 +3,7 @@
 #include "UI/ConnectionToolbar.h"
 #include "UI/EffectsRack.h"
 #include "UI/SpectrumView.h"
+#include "UI/StateManager.h"
 #include <QVBoxLayout>
 #include <QDebug>
 #include <QStatusBar>
@@ -18,6 +19,8 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
     setWindowTitle(QStringLiteral("EmbeddedDSP Host - Universal Control"));
 
+    m_stateManager = new UI::StateManager(this);
+
     setupUiLayout();
     wireConnectionToolbar();
     wireAudioPipeline();
@@ -27,11 +30,8 @@ MainWindow::MainWindow(QWidget *parent)
     if (!autoPort.isEmpty()) {
         statusBar()->showMessage(tr("Device detected on %1. Connecting...").arg(autoPort), 3000);
         
-        if (m_serialManager.openPort(autoPort, 115200)) {
-            Protocol::ControlPacket syncPkt;
-            syncPkt.command = Protocol::Command::GetState;
-            syncPkt.applyCRC();
-            m_serialManager.sendControlPacket(syncPkt);
+        if (m_stateManager->serial().openPort(autoPort, 115200)) {
+            m_stateManager->requestSync();
         }
     }
 }
@@ -43,7 +43,7 @@ MainWindow::~MainWindow() {
 void MainWindow::setupUiLayout() {
     m_connectionToolbar = new UI::ConnectionToolbar(EMBEDDED_DSP_HOST_ENABLE_SIMULATOR != 0, this);
     m_spectrumView = new UI::SpectrumView(this);
-    m_effectsRack = new UI::EffectsRack(this);
+    m_effectsRack = new UI::EffectsRack(m_stateManager, this);
 
     auto *layout = new QVBoxLayout();
     layout->addWidget(m_connectionToolbar);
@@ -54,37 +54,32 @@ void MainWindow::setupUiLayout() {
 }
 
 void MainWindow::wireControlPipeline() {
-    connect(m_effectsRack, &UI::EffectsRack::sendPacketRequested, this, [this](const Protocol::ControlPacket &pkt) {
-        m_serialManager.sendControlPacket(pkt);
-    });
+    connect(m_stateManager, &UI::StateManager::deviceStateUpdated, 
+            m_effectsRack, &UI::EffectsRack::syncFromDevice);
 
-    connect(&m_serialManager, &SerialManager::controlPacketReceived, this, [this](const Protocol::ControlPacket &pkt) {
-        m_effectsRack->syncFromDevice(pkt);
-    });
+    connect(m_stateManager, &UI::StateManager::manifestProcessed, 
+            m_effectsRack, &UI::EffectsRack::onManifestProcessed);
 
-    connect(&m_serialManager, &SerialManager::manifestReceived, 
-            m_effectsRack, &UI::EffectsRack::onManifestReceived);
+    connect(m_stateManager, &UI::StateManager::connectionChanged, 
+            this, &MainWindow::onConnectionChanged);
 }
 
 void MainWindow::wireConnectionToolbar() {
     connect(m_connectionToolbar, &UI::ConnectionToolbar::connectRequested, this, [this](const QString &portName) {
         if (m_simulator.isRunning()) m_simulator.stop();
 
-        if (m_serialManager.openPort(portName, 115200)) {
-            Protocol::ControlPacket syncPkt;
-            syncPkt.command = Protocol::Command::GetState;
-            syncPkt.applyCRC();
-            m_serialManager.sendControlPacket(syncPkt);
+        if (m_stateManager->serial().openPort(portName, 115200)) {
+            m_stateManager->requestSync();
         }
     });
 
     connect(m_connectionToolbar, &UI::ConnectionToolbar::disconnectRequested, this, [this]() {
-        m_serialManager.closePort();
+        m_stateManager->serial().closePort();
     });
 
 #if EMBEDDED_DSP_HOST_ENABLE_SIMULATOR
     connect(m_connectionToolbar, &UI::ConnectionToolbar::demoStartRequested, this, [this]() {
-        if (m_serialManager.isOpen()) m_serialManager.closePort();
+        if (m_stateManager->serial().isOpen()) m_stateManager->serial().closePort();
         m_simulator.start();
     });
 
@@ -100,14 +95,13 @@ void MainWindow::wireConnectionToolbar() {
 }
 
 void MainWindow::wireAudioPipeline() {
-    connect(&m_serialManager, &SerialManager::audioFrameReceived, this, &MainWindow::onAudioFrameReceived);
+    connect(&m_stateManager->serial(), &SerialManager::audioFrameReceived, this, &MainWindow::onAudioFrameReceived);
 
 #if EMBEDDED_DSP_HOST_ENABLE_SIMULATOR
     connect(&m_simulator, &AudioFrameSimulator::audioFrameReceived, this, &MainWindow::onAudioFrameReceived);
 #endif
 
-    connect(&m_serialManager, &SerialManager::portStatusChanged, this, &MainWindow::onPortStatusChanged);
-    connect(&m_serialManager, &SerialManager::errorOccurred, this, &MainWindow::onSerialError);
+    connect(&m_stateManager->serial(), &SerialManager::errorOccurred, this, &MainWindow::onSerialError);
 }
 
 void MainWindow::onAudioFrameReceived(const Protocol::AudioFramePacket &frame) {
@@ -116,7 +110,7 @@ void MainWindow::onAudioFrameReceived(const Protocol::AudioFramePacket &frame) {
     if (m_spectrumView) m_spectrumView->updateSpectrum(spectrum);
 }
 
-void MainWindow::onPortStatusChanged(bool isOpen, const QString &portName) {
+void MainWindow::onConnectionChanged(bool isOpen, const QString &portName) {
     m_connectionToolbar->setConnected(isOpen);
     statusBar()->showMessage(isOpen ? tr("Connected to %1").arg(portName) : tr("Disconnected"));
     if(!isOpen){

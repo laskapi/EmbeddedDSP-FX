@@ -7,6 +7,9 @@
 #include <cstdint>
 #include <span>
 
+/**
+ * @brief Utility for real-time FFT processing of audio frames.
+ */
 class FftProcessor {
 private:
     size_t m_fftSize;
@@ -18,9 +21,17 @@ private:
     void computeCooleyTukey(std::span<std::complex<float>> buffer) noexcept;
 
 public:
+    /**
+     * @brief Constructor for FftProcessor.
+     * @param fftSize Number of samples per frame (must be power of 2).
+     */
     explicit FftProcessor(size_t fftSize = 128) noexcept;
 
-    // Process raw int16_t PCM buffer into dB magnitude spectrum
+    /**
+     * @brief Processes a frame of PCM samples into a dB magnitude spectrum.
+     * @param pcmSamples Span of input PCM data.
+     * @return Reference to the vector containing magnitude values in dB.
+     */
     const std::vector<float>& processFrame(std::span<const int16_t> pcmSamples) noexcept;
 };
 

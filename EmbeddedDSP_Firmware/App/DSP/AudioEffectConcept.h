@@ -1,29 +1,32 @@
-#ifndef EMBEDDEDDSP_FIRMWARE_AUDIOEFFECTCONCEPT_H
-#define EMBEDDEDDSP_FIRMWARE_AUDIOEFFECTCONCEPT_H
+#ifndef EMBEDDEDDSP_DYNAMIC_AUDIO_EFFECT_CONCEPT_H
+#define EMBEDDEDDSP_DYNAMIC_AUDIO_EFFECT_CONCEPT_H
 
-#include <concepts>
+#include <stdint.h>
 
 /**
- * @brief Concept defining the compile-time static interface for audio processing units.
- * 
- * Enforces zero-overhead polymorphism (no VTable / virtual function calls)
- * and real-time safety for embedded DSP pipeline integration.
- *
- * @tparam T Effect class type to validate.
+ * @brief Static metadata for an effect parameter.
  */
-template <typename T>
-concept AudioEffect = requires(T effect, const T constEffect, float& left, float& right, float sampleRate) {
-    // Real-time audio frame processing (in-place stereo)
-    { effect.process(left, right) } noexcept -> std::same_as<void>;
-
-    // Hardware/DSP initialization and sample rate configuration
-    { effect.prepare(sampleRate) } noexcept -> std::same_as<void>;
-
-    // State control interface
-    { effect.toggleBypass() } noexcept -> std::same_as<void>;
-
-    // Const correctness check for isBypassed()
-    { constEffect.isBypassed() } noexcept -> std::same_as<bool>;
+struct EffectParam {
+    const char* name;
+    float min;
+    float max;
+    float defaultValue;
 };
 
-#endif // EMBEDDEDDSP_FIRMWARE_AUDIOEFFECTCONCEPT_H
+/**
+ * @brief Interface documentation for static polymorphism effects.
+ * 
+ * Each effect must implement:
+ * - static constexpr uint8_t Id
+ * - static constexpr const char* Name
+ * - static constexpr uint8_t ParamCount
+ * - static constexpr EffectParam Params[]
+ * - void prepare(float sampleRate)
+ * - void process(float& left, float& right)
+ * - void setParamValue(uint8_t id, float val)
+ * - float getParamValue(uint8_t id)
+ * - void toggleBypass()
+ * - bool isBypassed()
+ */
+
+#endif // EMBEDDEDDSP_DYNAMIC_AUDIO_EFFECT_CONCEPT_H

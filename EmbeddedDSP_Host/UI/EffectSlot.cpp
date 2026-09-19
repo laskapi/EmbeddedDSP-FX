@@ -1,12 +1,13 @@
 #include "EffectSlot.h"
-#include "EffectModule.h"
+#include "ParameterPanel.h"
+#include "StateManager.h"
 #include <QDebug>
 #include <utility>
 
 namespace UI {
 
-EffectSlot::EffectSlot(uint8_t slotId, QWidget *parent)
-    : QGroupBox(parent), m_slotId(slotId) {
+EffectSlot::EffectSlot(uint8_t slotId, StateManager* manager, QWidget *parent)
+    : QGroupBox(parent), m_slotId(slotId), m_manager(manager) {
     setTitle(tr("Slot %1").arg(slotId + 1));
     setupUi();
 }
@@ -22,7 +23,6 @@ void EffectSlot::setupUi() {
     connect(m_bypassBtn, &QPushButton::toggled, this, &EffectSlot::onBypassToggled);
 
     m_mainLayout->addWidget(m_typeCombo);
-    // Stretch to keep combo at top and bypass at bottom when no module
     m_mainLayout->addStretch(1); 
     m_mainLayout->addWidget(m_bypassBtn);
 }
@@ -40,30 +40,24 @@ void EffectSlot::setAvailableEffects(const QMap<int, Host::EffectSpec> &availabl
 
 void EffectSlot::onTypeChanged(int index) {
     uint8_t effectId = static_cast<uint8_t>(m_typeCombo->itemData(index).toInt());
-    
-    Protocol::ControlPacket pkt;
-    pkt.command = Protocol::Command::SetEffectType;
-    pkt.slotId = m_slotId;
-    pkt.effectTypeId = effectId;
-    pkt.applyCRC();
-    
-    emit sendPacketRequested(pkt);
+    if (m_manager) {
+        m_manager->setEffectType(m_slotId, effectId);
+    }
 }
 
-void EffectSlot::buildParamsUi(uint8_t effectId) {
-    if (m_activeModule) {
-        m_activeModule->deleteLater();
-        m_activeModule = nullptr;
+void EffectSlot::setupEffect(uint8_t effectId) {
+    if (m_activePanel) {
+        m_activePanel->deleteLater();
+        m_activePanel = nullptr;
     }
 
     if (!m_availableSpecs.contains(effectId)) return;
     const auto &spec = m_availableSpecs[effectId];
 
-    m_activeModule = new EffectModule(spec, this);
-    connect(m_activeModule, &EffectModule::paramChanged, this, &EffectSlot::onParamChanged);
+    m_activePanel = new ParameterPanel(spec, m_slotId, m_manager, this);
     
     // Insert after combo box (index 0)
-    m_mainLayout->insertWidget(1, m_activeModule);
+    m_mainLayout->insertWidget(1, m_activePanel);
 }
 
 void EffectSlot::updateFromPacket(const Protocol::ControlPacket &pkt) {
@@ -73,37 +67,23 @@ void EffectSlot::updateFromPacket(const Protocol::ControlPacket &pkt) {
             m_typeCombo->blockSignals(true);
             m_typeCombo->setCurrentIndex(index);
             m_typeCombo->blockSignals(false);
-            buildParamsUi(pkt.effectTypeId);
+            setupEffect(pkt.effectTypeId);
         }
     } else if (pkt.command == Protocol::Command::BypassToggle) {
         m_bypassBtn->blockSignals(true);
         m_bypassBtn->setChecked(pkt.getValue() > 0.5f);
         m_bypassBtn->blockSignals(false);
     } else if (pkt.command == Protocol::Command::SetParam) {
-        if (m_activeModule) {
-            m_activeModule->updateParam(pkt.paramId, pkt.getValue());
+        if (m_activePanel) {
+            m_activePanel->updateParam(pkt.paramId, pkt.getValue());
         }
     }
 }
 
-void EffectSlot::onParamChanged(uint8_t paramId, float value) {
-    Protocol::ControlPacket pkt;
-    pkt.command = Protocol::Command::SetParam;
-    pkt.slotId = m_slotId; 
-    pkt.paramId = paramId; 
-    pkt.setValue(value);
-    pkt.applyCRC();
-    
-    emit sendPacketRequested(pkt);
-}
-
 void EffectSlot::onBypassToggled() {
-    Protocol::ControlPacket pkt;
-    pkt.command = Protocol::Command::BypassToggle;
-    pkt.slotId = m_slotId;
-    pkt.setValue(m_bypassBtn->isChecked() ? 1.0f : 0.0f);
-    pkt.applyCRC();
-    emit sendPacketRequested(pkt);
+    if (m_manager) {
+        m_manager->setBypass(m_slotId, m_bypassBtn->isChecked());
+    }
 }
 
 } // namespace UI

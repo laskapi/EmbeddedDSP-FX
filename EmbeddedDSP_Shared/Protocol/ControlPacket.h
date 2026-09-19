@@ -2,13 +2,14 @@
 #define EMBEDDEDDSP_CONTROL_PACKET_H
 
 #include <cstddef>
-#include <cstdint>
-#include <cstring>
+#include <stdint.h>
+#include <string.h>
 #include "Checksums.h"
 #include "ProtocolCommon.h"
 
 namespace Protocol {
 
+    /** @brief Command identifiers for binary protocol. */
     enum class Command : uint8_t {
         SetParam       = 0x01,
         SetEffectType  = 0x02,
@@ -21,6 +22,11 @@ namespace Protocol {
     };
 
 #pragma pack(push, 1)
+    /**
+     * @brief 9-byte binary control packet.
+     * 
+     * Uses anonymous union for context-dependent fields.
+     */
     struct ControlPacket {
         uint8_t  sof{SOF::Control};
         Command  command{Command::SetParam};
@@ -38,23 +44,27 @@ namespace Protocol {
     public:
         uint8_t  crc{0};
 
+        /** @return True if SOF is correct and CRC matches data. */
         [[nodiscard]] bool isValid() const noexcept {
             if (sof != SOF::Control) return false;
             return Checksums::crc8(reinterpret_cast<const uint8_t*>(this), sizeof(ControlPacket) - 1) == crc;
         }
 
+        /** @brief Calculates and applies CRC to the packet. */
         void applyCRC() noexcept {
             crc = Checksums::crc8(reinterpret_cast<const uint8_t*>(this), sizeof(ControlPacket) - 1);
         }
 
+        /** @return Float value handled safely for ARM alignment. */
         [[nodiscard]] float getValue() const noexcept {
             float temp;
-            std::memcpy(&temp, &m_rawValue, sizeof(float));
+            memcpy(&temp, &m_rawValue, sizeof(float));
             return temp;
         }
 
+        /** @brief Sets float value using safe memcpy. */
         void setValue(float val) noexcept {
-            std::memcpy(&m_rawValue, &val, sizeof(float));
+            memcpy(&m_rawValue, &val, sizeof(float));
         }
     };
 #pragma pack(pop)

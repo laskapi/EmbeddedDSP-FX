@@ -7,17 +7,26 @@
 
 namespace UI {
 
+/**
+ * @brief Real-time magnitude spectrum visualization.
+ */
 class SpectrumView : public QWidget {
     Q_OBJECT
 
 public:
     explicit SpectrumView(QWidget *parent = nullptr);
 
+    /** @brief Sets the vertical dB display range. */
     void setDbRange(float minDb, float maxDb);
+    
+    /** @brief Configures frequency axis labels. */
     void setSampleRate(float sampleRateHz);
+    
+    /** @brief Sets FFT size for smoothing logic. */
     void setFftSize(int fftSize);
 
 public slots:
+    /** @brief Updates the internal data and triggers a repaint. */
     void updateSpectrum(const std::vector<float> &magnitudeDb);
 
 protected:
