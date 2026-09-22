@@ -6,6 +6,13 @@ extern "C" {
 #endif
 
 #include "main.h"
+#include <stdio.h>
+
+#ifdef APP_LOG_ENABLED
+#define APP_LOG(fmt, ...) printf("[APP] " fmt "\n", ##__VA_ARGS__)
+#else
+#define APP_LOG(fmt, ...)
+#endif
 
 /**
  * @brief Main entry point for the C++ application domain.

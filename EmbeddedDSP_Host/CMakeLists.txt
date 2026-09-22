@@ -22,10 +22,14 @@ qt_add_executable(EmbeddedDSP_Host
     mainwindow.h
     mainwindow.ui
     EffectSpec.h
-    SerialManager.h
-    SerialManager.cpp
+    Logging.h Logging.cpp
+    DeviceInterface.h
+    DeviceInterface.cpp
+    AudioAnalyzer.h
+    AudioAnalyzer.cpp
     FftProcessor.h FftProcessor.cpp
     AudioFrameSimulator.h AudioFrameSimulator.cpp
+    StateManager.h StateManager.cpp
     UI/SpectrumView.h UI/SpectrumView.cpp
     UI/ConnectionToolbar.h UI/ConnectionToolbar.cpp
     UI/ParamControl.h UI/ParamControl.cpp
@@ -33,7 +37,6 @@ qt_add_executable(EmbeddedDSP_Host
     UI/ParameterPanel.h UI/ParameterPanel.cpp
     UI/EffectsRack.h UI/EffectsRack.cpp
     UI/WidgetRack.h
-    UI/StateManager.h UI/StateManager.cpp
 )
 
 # Include directories: local source, UI components, and firmware protocols
@@ -49,6 +52,11 @@ target_link_libraries(EmbeddedDSP_Host
         Qt::Core
         Qt::Widgets
         Qt::SerialPort
+)
+
+# Disable debug output in Release builds to improve performance and security
+target_compile_definitions(EmbeddedDSP_Host PRIVATE
+    $<$<CONFIG:Release>:QT_NO_DEBUG_OUTPUT>
 )
 
 install(TARGETS EmbeddedDSP_Host

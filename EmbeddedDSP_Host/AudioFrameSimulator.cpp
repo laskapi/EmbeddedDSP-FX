@@ -4,6 +4,8 @@
 #include <cmath>
 #include <numbers>
 
+namespace Host {
+
 AudioFrameSimulator::AudioFrameSimulator(QObject *parent)
     : QObject(parent)
 {
@@ -61,7 +63,7 @@ float AudioFrameSimulator::amplitude() const
 void AudioFrameSimulator::onTick()
 {
     Protocol::AudioFramePacket frame{};
-    frame.sequenceNumber = m_sequence++;
+    frame.sequence = m_sequence++;
     frame.applyCRC();
 
     constexpr float twoPi = 2.0f * std::numbers::pi_v<float>;
@@ -92,5 +94,7 @@ void AudioFrameSimulator::onTick()
         if (phase2 >= twoPi) phase2 -= twoPi;
     }
 
-    emit audioFrameReceived(frame);
+    emit audioFrameReady(frame);
 }
+
+} // namespace Host

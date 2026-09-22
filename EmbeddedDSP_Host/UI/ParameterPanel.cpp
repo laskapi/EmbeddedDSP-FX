@@ -3,9 +3,9 @@
 #include "StateManager.h"
 #include <QVBoxLayout>
 
-namespace UI {
+namespace Host::UI {
 
-ParameterPanel::ParameterPanel(const Host::EffectSpec &spec, uint8_t slotId, StateManager* manager, QWidget *parent)
+ParameterPanel::ParameterPanel(const EffectSpec &spec, uint8_t slotId, StateManager* manager, QWidget *parent)
     : QWidget(parent), m_manager(manager), m_slotId(slotId) {
     auto *mainLayout = new QVBoxLayout(this);
     mainLayout->setContentsMargins(0, 0, 0, 0);
@@ -34,4 +34,4 @@ void ParameterPanel::onParamChanged(uint8_t paramId, float newValue) {
     }
 }
 
-} // namespace UI
+} // namespace Host::UI

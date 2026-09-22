@@ -161,6 +161,7 @@ void app_audio_transfer_complete_cb(void)
 
 void app_main(I2S_HandleTypeDef* audio_i2s)
 {
+    APP_LOG("Firmware starting...");
     audioPipeline.prepare(SYSTEM_SAMPLE_RATE);
 
 #if APP_USE_VIRTUAL_AUDIO_SOURCE

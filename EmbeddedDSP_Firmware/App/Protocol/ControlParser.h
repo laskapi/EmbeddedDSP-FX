@@ -8,9 +8,7 @@
 #include <cstring>
 #include <string_view>
 
-/**
- * @brief Logic for parsing incoming USB control packets and reporting state.
- */
+/// @brief Logic for dispatching USB control commands to the DSP pipeline.
 class ControlParser {
 public:
     static constexpr std::size_t RxBufferSize = 256;
@@ -24,34 +22,22 @@ private:
     DynamicAudioPipeline& m_pipeline;
     float m_sampleRate{48000.0f};
 
-    /** @brief Dispatches a valid packet to the pipeline. */
     void applyPacket(const Protocol::ControlPacket& pkt) noexcept;
-    
-    /** @brief Sends the discovery manifest and initial state reports. */
     void handleGetStateRequest() noexcept;
-
-    /** @brief Helper to push a report packet to the Tx queue. */
     void sendReport(Protocol::Command cmd, uint8_t slot, uint8_t paramOrType, float val) noexcept;
-
-    /** @brief Reports the state of all slots. */
     void reportFullState() noexcept;
-
-    /** @brief Reports the state of a single slot. */
     void reportSlotState(uint8_t slotId) noexcept;
 
 public:
     explicit ControlParser(DynamicAudioPipeline& p);
     
-    /** @brief Processes all pending bytes in the Rx queue. */
+    /// @brief Processes pending bytes from the internal RX queue.
     void processRxQueue();
     
-    /** @brief Thread-safe ingestion of raw bytes from USB CDC. */
+    /// @brief Ingests raw bytes from the USB CDC driver.
     void onBytesReceived(const uint8_t* d, std::size_t l);
     
-    /** @return Reference to the transmission queue. */
     TxQueue& getTxQueue() { return m_txQueue; }
-    
-    /** @brief Updates the internal sample rate for effect initialization. */
     void setSampleRate(float sr) { m_sampleRate = sr; }
 
 private:

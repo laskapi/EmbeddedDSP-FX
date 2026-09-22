@@ -1,14 +1,16 @@
 #include "ConnectionToolbar.h"
+#include "StateManager.h"
 #include <QComboBox>
 #include <QHBoxLayout>
 #include <QPushButton>
 #include <QSerialPortInfo>
 #include <QTimer>
 
-namespace UI {
+namespace Host::UI {
 
-ConnectionToolbar::ConnectionToolbar(bool demoEnabled, QWidget *parent)
+ConnectionToolbar::ConnectionToolbar(StateManager* manager, bool demoEnabled, QWidget *parent)
     : QWidget(parent)
+    , m_manager(manager)
     , m_demoEnabled(demoEnabled) {
     m_portCombo = new QComboBox(this);
     m_connectButton = new QPushButton(QStringLiteral("Connect"), this);
@@ -33,7 +35,10 @@ ConnectionToolbar::ConnectionToolbar(bool demoEnabled, QWidget *parent)
     QTimer *scanTimer = new QTimer(this);
     connect(scanTimer, &QTimer::timeout, this, &ConnectionToolbar::refreshPortList);
     scanTimer->start(2000);
-    QTimer::singleShot(0, this, &ConnectionToolbar::refreshPortList);
+    if (m_manager) {
+        connect(m_manager, &StateManager::connectionChanged, this, &ConnectionToolbar::setConnected);
+        connect(m_manager, &StateManager::demoRunningChanged, this, &ConnectionToolbar::setDemoRunning);
+    }
 }
 
 void ConnectionToolbar::refreshPortList() {
@@ -71,19 +76,21 @@ void ConnectionToolbar::setDemoRunning(bool running) {
 }
 
 void ConnectionToolbar::onConnectionButtonClicked() {
+    if (!m_manager) return;
     if (m_isConnected) {
-        emit disconnectRequested();
-        return;
+        m_manager->disconnect();
+    } else {
+        m_manager->connect(selectedPortName());
     }
-    emit connectRequested(selectedPortName());
 }
 
 void ConnectionToolbar::onDemoButtonClicked() {
-    if (m_demoButton && m_isDemoRunning) {
-        emit demoStopRequested();
-        return;
+    if (!m_manager) return;
+    if (m_isDemoRunning) {
+        m_manager->stopDemo();
+    } else {
+        m_manager->startDemo();
     }
-    emit demoStartRequested();
 }
 
-} // namespace UI
+} // namespace Host::UI

@@ -9,52 +9,35 @@
 #include <Protocol/ControlPacket.h>
 #include "EffectSpec.h"
 
-namespace UI {
+namespace Host {
+    class StateManager;
+    namespace UI {
 
 class ParameterPanel;
-class StateManager;
 
 /**
  * @brief UI component representing a single effect slot in the rack.
- * 
- * Manages the effect type selection, bypass control, and hosts the
- * dynamic ParameterPanel for the selected effect.
+ * Manages type selection, bypass control, and hosts the ParameterPanel.
  */
 class EffectSlot : public QGroupBox {
     Q_OBJECT
 public:
-    /**
-     * @brief Constructor for EffectSlot.
-     * @param slotId Unique index of the slot.
-     * @param manager Pointer to the central StateManager.
-     * @param parent Pointer to the parent QObject.
-     */
     explicit EffectSlot(uint8_t slotId, StateManager* manager, QWidget *parent = nullptr);
 
-    /**
-     * @brief Updates the slot state from a control packet.
-     * @param pkt Packet received from the device.
-     */
+    /// @brief Syncs slot state from an incoming control packet.
     void updateFromPacket(const Protocol::ControlPacket &pkt);
 
-    /** @brief Populates the effect selection combo box with available specs. */
-    void setAvailableEffects(const QMap<int, Host::EffectSpec> &availableSpecs);
+    /// @brief Populates the effect selection combo box.
+    void setAvailableEffects(const QMap<int, Host::EffectSpec> &availableEffects);
 
 private slots:
-    /** @brief Handles effect type changes from the user. */
     void onTypeChanged(int index);
-
-    /** @brief Handles bypass toggle from the user. */
     void onBypassToggled();
 
 private:
-    /** @brief Initializes the static UI elements of the slot. */
     void setupUi();
-
-    /**
-     * @brief Configures the slot for a specific effect ID.
-     * @param effectId ID of the effect from the catalog.
-     */
+    
+    /// @brief Loads a specific effect and builds its parameter panel.
     void setupEffect(uint8_t effectId);
 
     uint8_t m_slotId;
@@ -64,9 +47,10 @@ private:
     ParameterPanel *m_activePanel{nullptr};
     QPushButton *m_bypassBtn{nullptr};
 
-    QMap<int, Host::EffectSpec> m_availableSpecs;
+    QMap<int, Host::EffectSpec> m_availableEffects;
 };
 
 } // namespace UI
+} // namespace Host
 
 #endif // EMBEDDEDDSP_HOST_EFFECTSLOT_H

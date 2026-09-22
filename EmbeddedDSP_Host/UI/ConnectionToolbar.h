@@ -7,13 +7,15 @@ class QComboBox;
 class QPushButton;
 class QHBoxLayout;
 
-namespace UI {
+namespace Host {
+    class StateManager;
+    namespace UI {
 
 class ConnectionToolbar : public QWidget {
     Q_OBJECT
 
 public:
-    explicit ConnectionToolbar(bool demoEnabled = true, QWidget *parent = nullptr);
+    explicit ConnectionToolbar(StateManager* manager, bool demoEnabled = true, QWidget *parent = nullptr);
 
     void refreshPortList();
     [[nodiscard]] QString selectedPortName() const;
@@ -22,17 +24,12 @@ public slots:
     void setConnected(bool connected);
     void setDemoRunning(bool running);
 
-signals:
-    void connectRequested(const QString &portName);
-    void disconnectRequested();
-    void demoStartRequested();
-    void demoStopRequested();
-
 private slots:
     void onConnectionButtonClicked();
     void onDemoButtonClicked();
 
 private:
+    StateManager* m_manager{nullptr};
     QHBoxLayout *m_layout{nullptr};
     QComboBox *m_portCombo{nullptr};
     QPushButton *m_connectButton{nullptr};
@@ -43,5 +40,6 @@ private:
 };
 
 } // namespace UI
+} // namespace Host
 
 #endif // EMBEDDEDDSP_HOST_CONNECTIONTOOLBAR_H

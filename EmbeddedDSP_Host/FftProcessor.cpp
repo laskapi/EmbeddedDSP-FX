@@ -2,6 +2,8 @@
 #include <numbers>
 #include <algorithm>
 
+namespace Host {
+
 FftProcessor::FftProcessor(size_t fftSize) noexcept
     : m_fftSize(fftSize),
     m_hanningWindow(fftSize),
@@ -80,3 +82,5 @@ const std::vector<float>& FftProcessor::processFrame(std::span<const int16_t> pc
 
     return m_magnitudeDb;
 }
+
+} // namespace Host

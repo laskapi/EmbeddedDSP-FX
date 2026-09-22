@@ -7,10 +7,16 @@
 #include <cstdint>
 #include <span>
 
-/**
- * @brief Utility for real-time FFT processing of audio frames.
- */
+namespace Host {
+
+/// @brief Utility class for real-time audio spectrum analysis.
 class FftProcessor {
+public:
+    explicit FftProcessor(size_t fftSize = 128) noexcept;
+
+    /// @brief Converts raw PCM samples to magnitude spectrum (dB).
+    const std::vector<float>& processFrame(std::span<const int16_t> pcmSamples) noexcept;
+
 private:
     size_t m_fftSize;
     std::vector<float> m_hanningWindow;
@@ -19,20 +25,8 @@ private:
 
     void prepareWindow() noexcept;
     void computeCooleyTukey(std::span<std::complex<float>> buffer) noexcept;
-
-public:
-    /**
-     * @brief Constructor for FftProcessor.
-     * @param fftSize Number of samples per frame (must be power of 2).
-     */
-    explicit FftProcessor(size_t fftSize = 128) noexcept;
-
-    /**
-     * @brief Processes a frame of PCM samples into a dB magnitude spectrum.
-     * @param pcmSamples Span of input PCM data.
-     * @return Reference to the vector containing magnitude values in dB.
-     */
-    const std::vector<float>& processFrame(std::span<const int16_t> pcmSamples) noexcept;
 };
+
+} // namespace Host
 
 #endif // EMBEDDEDDSP_HOST_FFT_PROCESSOR_H

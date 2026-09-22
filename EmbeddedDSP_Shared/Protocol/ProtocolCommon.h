@@ -20,6 +20,13 @@ namespace Protocol {
         inline constexpr uint8_t ManifestSignal = 0xFE;
     }
 
+    /** @brief Hardware identifiers for device discovery (STM32 USB CDC). */
+    namespace Hardware {
+        inline constexpr uint16_t USB_VID = 0x0483;
+        inline constexpr uint16_t USB_PID = 0x5740;
+        inline constexpr uint32_t DEFAULT_BAUD = 115200;
+    }
+
 } // namespace Protocol
 
 #endif // EMBEDDEDDSP_PROTOCOL_COMMON_H

@@ -122,5 +122,10 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
         stm32cubemx
 )
 
+# Enable application logging only in Debug builds
+target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
+        $<$<CONFIG:Debug>:APP_LOG_ENABLED>
+)
+
 # Workaround for unwanted libob.a dependency in C++ builds
 list(REMOVE_ITEM CMAKE_C_IMPLICIT_LINK_LIBRARIES ob)

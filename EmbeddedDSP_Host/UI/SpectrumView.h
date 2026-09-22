@@ -5,28 +5,28 @@
 #include <QColor>
 #include <vector>
 
-namespace UI {
+namespace Host {
+    class StateManager;
+    namespace UI {
 
-/**
- * @brief Real-time magnitude spectrum visualization.
- */
+/// @brief Visualization component for real-time FFT magnitude spectrum.
 class SpectrumView : public QWidget {
     Q_OBJECT
 
 public:
-    explicit SpectrumView(QWidget *parent = nullptr);
+    explicit SpectrumView(StateManager* manager, QWidget *parent = nullptr);
 
-    /** @brief Sets the vertical dB display range. */
+    /// @brief Sets vertical display range.
     void setDbRange(float minDb, float maxDb);
     
-    /** @brief Configures frequency axis labels. */
+    /// @brief Sets sample rate for frequency axis labels.
     void setSampleRate(float sampleRateHz);
     
-    /** @brief Sets FFT size for smoothing logic. */
+    /// @brief Sets FFT size for smoothing calculations.
     void setFftSize(int fftSize);
 
 public slots:
-    /** @brief Updates the internal data and triggers a repaint. */
+    /// @brief Updates internal data and redraws the spectrum.
     void updateSpectrum(const std::vector<float> &magnitudeDb);
 
 protected:
@@ -53,5 +53,6 @@ private:
 };
 
 } // namespace UI
+} // namespace Host
 
 #endif // EMBEDDEDDSP_HOST_SPECTRUMVIEW_H

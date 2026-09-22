@@ -5,7 +5,7 @@
 #include <QLabel>
 #include <QDebug>
 
-namespace UI {
+namespace Host::UI {
 
 EffectsRack::EffectsRack(StateManager* manager, QWidget *parent) 
     : QWidget(parent), m_manager(manager) {
@@ -20,9 +20,17 @@ EffectsRack::EffectsRack(StateManager* manager, QWidget *parent)
     m_rack = new SlotRack(this);
     mainLayout->addWidget(m_rack);
     m_rack->hide();
+
+    if (m_manager) {
+        connect(m_manager, &StateManager::manifestReady, this, &EffectsRack::onManifestReady);
+        connect(m_manager, &StateManager::deviceStateUpdated, this, &EffectsRack::syncFromDevice);
+        connect(m_manager, &StateManager::connectionChanged, this, [this](bool connected, const QString&) {
+            if (!connected) clear();
+        });
+    }
 }
 
-void EffectsRack::onManifestProcessed() {
+void EffectsRack::onManifestReady() {
     if (!m_rack->isEmpty()) return;
     if (!m_manager) return;
 
@@ -30,11 +38,11 @@ void EffectsRack::onManifestProcessed() {
     m_rack->show();
 
     int slotCount = m_manager->slotCount();
-    const auto& catalog = m_manager->catalog();
+    const auto& availableEffects = m_manager->availableEffects();
 
     for (uint8_t i = 0; i < slotCount; ++i) {
         auto *slot = new EffectSlot(i, m_manager, m_rack);
-        slot->setAvailableEffects(catalog);
+        slot->setAvailableEffects(availableEffects);
         slot->setMinimumHeight(350);
         m_rack->add(i, slot, 1);
     }
@@ -52,4 +60,4 @@ void EffectsRack::syncFromDevice(const Protocol::ControlPacket &pkt) {
     }
 }
 
-} // namespace UI
+} // namespace Host::UI

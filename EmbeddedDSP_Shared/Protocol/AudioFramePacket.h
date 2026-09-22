@@ -9,22 +9,20 @@
 namespace Protocol {
 
 #pragma pack(push, 1)
-    /**
-     * @brief Binary packet containing a frame of PCM audio samples.
-     */
+    /// @brief Binary packet for PCM audio streaming.
     struct AudioFramePacket {
         uint8_t  sof{SOF::Audio};
         uint8_t  sequence{0};
         int16_t  samples[AUDIO_SAMPLES];
         uint16_t crc{0};
 
-        /** @return True if SOF is correct and CRC matches samples. */
+        /// @brief Validates packet integrity via SOF and CRC16.
         [[nodiscard]] bool isValid() const noexcept {
             if (sof != SOF::Audio) return false;
             return Checksums::crc16(reinterpret_cast<const uint8_t*>(samples), sizeof(samples)) == crc;
         }
 
-        /** @brief Calculates and applies CRC to the packet. */
+        /// @brief Computes and updates the CRC16 field.
         void applyCRC() noexcept {
             crc = Checksums::crc16(reinterpret_cast<const uint8_t*>(samples), sizeof(samples));
         }

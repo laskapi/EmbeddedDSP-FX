@@ -1,4 +1,5 @@
 #include "SpectrumView.h"
+#include "StateManager.h"
 #include <QPainter>
 #include <QPainterPath>
 #include <QPaintEvent>
@@ -10,13 +11,17 @@ namespace {
     constexpr float MAX_FREQ = 20000.0f;
 }
 
-namespace UI {
+namespace Host::UI {
 
-SpectrumView::SpectrumView(QWidget *parent)
+SpectrumView::SpectrumView(StateManager* manager, QWidget *parent)
     : QWidget(parent) {
     setMinimumHeight(220);
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     setAutoFillBackground(false);
+
+    if (manager) {
+        connect(manager, &StateManager::spectrumReady, this, &SpectrumView::updateSpectrum);
+    }
 }
 
 void SpectrumView::setDbRange(float minDb, float maxDb) {
@@ -170,4 +175,4 @@ void SpectrumView::drawAxesLabels(QPainter &painter, const QRect &plot) const {
     }
 }
 
-} // namespace UI
+} // namespace Host::UI

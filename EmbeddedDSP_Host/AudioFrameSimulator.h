@@ -6,10 +6,10 @@
 #include <cstdint>
 #include <Protocol/AudioFramePacket.h>
 
+namespace Host {
+
 /**
- * @brief Generates synthetic AudioFramePacket streams for host-side UI/FFT testing.
- * 
- * Used when no physical MCU is connected.
+ * @brief Generates synthetic audio data for testing without hardware.
  */
 class AudioFrameSimulator : public QObject
 {
@@ -18,32 +18,21 @@ class AudioFrameSimulator : public QObject
 public:
     explicit AudioFrameSimulator(QObject *parent = nullptr);
 
-    /** @brief Starts the simulation timer. */
-    void start();
-    
-    /** @brief Stops the simulation timer. */
-    void stop();
-    
-    /** @return True if simulation is running. */
     [[nodiscard]] bool isRunning() const;
 
-    /** @brief Configures the test sine wave frequency. */
     void setFrequencyHz(float frequencyHz);
-    
-    /** @brief Configures the test sine wave amplitude (0.0 to 1.0). */
     void setAmplitude(float amplitudeNormalized);
-    
-    /** @brief Configures the transmission interval in milliseconds. */
     void setIntervalMs(int intervalMs);
 
     [[nodiscard]] float frequencyHz() const;
     [[nodiscard]] float amplitude() const;
 
+public slots:
+    void start();
+    void stop();
+
 signals:
-    /** @brief Emitted when a new simulated frame is ready. */
-    void audioFrameReceived(const Protocol::AudioFramePacket &frame);
-    
-    /** @brief Emitted when simulator state changes. */
+    void audioFrameReady(const Protocol::AudioFramePacket &frame);
     void runningChanged(bool running);
 
 private slots:
@@ -57,5 +46,7 @@ private:
     float m_amplitude{0.5f};
     float m_sampleRate{48000.0f};
 };
+
+} // namespace Host
 
 #endif // EMBEDDEDDSP_HOST_AUDIOFRAMESIMULATOR_H

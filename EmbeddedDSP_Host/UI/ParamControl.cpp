@@ -3,9 +3,9 @@
 #include <QLabel>
 #include <QSlider>
 
-namespace UI {
+namespace Host::UI {
 
-ParamControl::ParamControl(uint8_t paramId, const Host::ParamSpec &spec, QWidget *parent)
+ParamControl::ParamControl(uint8_t paramId, const ParamSpec &spec, QWidget *parent)
     : QWidget(parent), m_paramId(paramId), m_spec(spec) {
     auto *layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 2, 0, 2);
@@ -41,4 +41,4 @@ void ParamControl::updateLabel(float value) {
     m_label->setText(QString("%1: %2").arg(m_spec.name).arg(value, 0, 'f', 2));
 }
 
-} // namespace UI
+} // namespace Host::UI

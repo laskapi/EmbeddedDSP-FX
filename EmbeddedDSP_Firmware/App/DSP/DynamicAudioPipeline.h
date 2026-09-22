@@ -15,7 +15,7 @@
 
 inline constexpr std::size_t GLOBAL_MAX_SLOTS = 4;
 
-/** @brief Binary state for MCU persistence. */
+/// @brief Binary structure for storing MCU state in flash.
 struct PipelineSettings {
     static constexpr uint32_t MAGIC = 0x44535046; // "DSPF"
     uint32_t magic;          
@@ -30,7 +30,8 @@ struct PipelineSettings {
 using EffectVariant = std::variant<EmptyEffect, DelayEffect, OverdriveEffect>;
 
 /**
- * @brief Core DSP pipeline managing effect slots and audio processing.
+ * @brief Dynamic audio processing engine.
+ * Manages the chain of effects and handles parameter synchronization.
  */
 class DynamicAudioPipeline {
 public:
@@ -43,31 +44,28 @@ private:
 public:
     DynamicAudioPipeline();
 
-    /** @brief Prepares all effects in the pipeline. */
+    /// @brief Prepares internal buffers for given sample rate.
     void prepare(float sampleRate) noexcept;
 
-    /** @brief Main audio processing loop for a single stereo sample. */
+    /// @brief Main DSP loop processing stereo samples.
     void process(float& left, float& right) noexcept;
 
-    /** @brief Changes the effect type in a specific slot. */
+    /// @brief Changes the effect type in a given slot.
     void setEffectByIndex(std::size_t slotId, std::size_t targetId, float sampleRate);
 
-    /** @brief Captures the current pipeline state into a binary struct. */
+    /// @brief Captures current settings for persistence.
     [[nodiscard]] PipelineSettings captureSettings() const;
 
-    /** @brief Restores the pipeline state from a binary struct. */
+    /// @brief Restores pipeline from stored settings.
     void applySettings(const PipelineSettings& s, float sampleRate);
 
-    /** @brief Generates the text-based discovery manifest. */
+    /// @brief Generates string describing device capabilities.
     std::string_view generateGlobalManifest();
 
-    /** @brief Resets a slot to EmptyEffect. */
     void clearSlot(std::size_t slotIndex) noexcept;
-
-    /** @brief Swaps contents of two slots. */
     void swapSlots(std::size_t a, std::size_t b) noexcept;
-
     void setActiveSlotsCount(std::size_t count) noexcept;
+    
     [[nodiscard]] std::size_t getActiveSlotsCount() const noexcept { return m_activeSlotsCount; }
     [[nodiscard]] EffectVariant& getSlot(std::size_t i) { return m_slots[i]; }
 };

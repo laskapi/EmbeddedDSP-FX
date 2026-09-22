@@ -3,6 +3,7 @@
 
 #include <QString>
 #include <QList>
+#include <QMap>
 #include <cstdint>
 
 namespace Host {
@@ -24,6 +25,14 @@ struct EffectSpec {
     uint8_t id;
     QString name;
     QList<ParamSpec> params;
+};
+
+/**
+ * @brief Full description of device capabilities received during handshake.
+ */
+struct DeviceManifest {
+    QMap<int, EffectSpec> availableEffects;
+    int slotCount{0};
 };
 
 } // namespace Host

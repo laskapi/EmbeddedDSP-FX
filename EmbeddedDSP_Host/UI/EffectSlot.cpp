@@ -4,7 +4,7 @@
 #include <QDebug>
 #include <utility>
 
-namespace UI {
+namespace Host::UI {
 
 EffectSlot::EffectSlot(uint8_t slotId, StateManager* manager, QWidget *parent)
     : QGroupBox(parent), m_slotId(slotId), m_manager(manager) {
@@ -27,12 +27,12 @@ void EffectSlot::setupUi() {
     m_mainLayout->addWidget(m_bypassBtn);
 }
 
-void EffectSlot::setAvailableEffects(const QMap<int, Host::EffectSpec> &availableSpecs) {
-    m_availableSpecs = availableSpecs;
+void EffectSlot::setAvailableEffects(const QMap<int, EffectSpec> &availableEffects) {
+    m_availableEffects = availableEffects;
     
     m_typeCombo->blockSignals(true);
     m_typeCombo->clear();
-    for (const auto &spec : std::as_const(m_availableSpecs)) {
+    for (const auto &spec : std::as_const(m_availableEffects)) {
         m_typeCombo->addItem(spec.name, spec.id);
     }
     m_typeCombo->blockSignals(false);
@@ -51,8 +51,8 @@ void EffectSlot::setupEffect(uint8_t effectId) {
         m_activePanel = nullptr;
     }
 
-    if (!m_availableSpecs.contains(effectId)) return;
-    const auto &spec = m_availableSpecs[effectId];
+    if (!m_availableEffects.contains(effectId)) return;
+    const auto &spec = m_availableEffects[effectId];
 
     m_activePanel = new ParameterPanel(spec, m_slotId, m_manager, this);
     
@@ -86,4 +86,4 @@ void EffectSlot::onBypassToggled() {
     }
 }
 
-} // namespace UI
+} // namespace Host::UI

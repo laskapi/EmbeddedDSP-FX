@@ -9,39 +9,30 @@
 
 class QLabel;
 
-namespace UI {
+namespace Host {
+    class StateManager;
+    namespace UI {
 
 class EffectSlot;
-class StateManager;
 
 /**
- * @brief UI component representing the entire effects rack.
- * 
- * Dynamically creates and manages multiple EffectSlot widgets based on
- * configuration received from the device via StateManager.
+ * @brief Main container for the dynamic effect slots.
+ * Synchronizes with StateManager to build the GUI from discovery data.
  */
 class EffectsRack : public QWidget {
     Q_OBJECT
     using SlotRack = WidgetRack<uint8_t, EffectSlot, QHBoxLayout>;
 public:
-    /**
-     * @brief Constructor for EffectsRack.
-     * @param manager Pointer to the central StateManager.
-     * @param parent Pointer to the parent QObject.
-     */
     explicit EffectsRack(StateManager* manager, QWidget *parent = nullptr);
 
-    /**
-     * @brief Synchronizes the rack UI with the device state.
-     * @param pkt Control packet received from the device.
-     */
+    /// @brief Syncs the appropriate slot with device state.
     void syncFromDevice(const Protocol::ControlPacket &pkt);
 
 public slots:
-    /** @brief Handles manifest processing notification from StateManager. */
-    void onManifestProcessed();
+    /// @brief Triggered when the manifest is ready to rebuild the rack.
+    void onManifestReady();
 
-    /** @brief Clears all slots and restores the welcome message. */
+    /// @brief Clears all slots and restores initial state.
     void clear();
 
 private:
@@ -51,5 +42,6 @@ private:
 };
 
 } // namespace UI
+} // namespace Host
 
 #endif // EMBEDDEDDSP_HOST_EFFECTSRACK_H
