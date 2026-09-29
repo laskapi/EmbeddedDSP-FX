@@ -1,12 +1,14 @@
 #ifndef EMBEDDEDDSP_HOST_DEVICEINTERFACE_H
 #define EMBEDDEDDSP_HOST_DEVICEINTERFACE_H
 
-#include <QObject>
 #include <QSerialPort>
 #include <QByteArray>
-#include <Protocol/AudioFramePacket.h>
-#include <Protocol/ControlPacket.h>
 #include "EffectSpec.h"
+
+namespace Protocol {
+    struct AudioFramePacket;
+    struct ControlPacket;
+}
 
 namespace Host {
 

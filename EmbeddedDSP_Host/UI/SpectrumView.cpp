@@ -1,5 +1,5 @@
 #include "SpectrumView.h"
-#include "StateManager.h"
+#include "AppController.h"
 #include <QPainter>
 #include <QPainterPath>
 #include <QPaintEvent>
@@ -9,19 +9,29 @@
 namespace {
     constexpr float MIN_FREQ = 20.0f;
     constexpr float MAX_FREQ = 20000.0f;
+    const float LOG_MIN = std::log10(MIN_FREQ);
+    const float LOG_MAX = std::log10(MAX_FREQ);
+    
+    // Aesthetic constants
+    constexpr float SMOOTHING_ALPHA = 0.2f;
+    constexpr float CURVE_WIDTH = 1.8f;
+    constexpr int AXIS_LABEL_FONT_SIZE = 8;
 }
 
 namespace Host::UI {
 
-SpectrumView::SpectrumView(StateManager* manager, QWidget *parent)
-    : QWidget(parent) {
-    setMinimumHeight(220);
+SpectrumView::SpectrumView(std::shared_ptr<AppController> controller, QWidget *parent)
+    : QWidget(parent)
+    , m_appController(controller) {
+    Q_ASSERT(m_appController);
+    setObjectName("SpectrumView");
+    setMinimumHeight(180);
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    
+    setAttribute(Qt::WA_StyledBackground);
     setAutoFillBackground(false);
 
-    if (manager) {
-        connect(manager, &StateManager::spectrumReady, this, &SpectrumView::updateSpectrum);
-    }
+    connect(m_appController.get(), &AppController::spectrumReady, this, &SpectrumView::updateSpectrum);
 }
 
 void SpectrumView::setDbRange(float minDb, float maxDb) {
@@ -31,34 +41,22 @@ void SpectrumView::setDbRange(float minDb, float maxDb) {
     update();
 }
 
-void SpectrumView::setSampleRate(float sampleRateHz) {
-    m_sampleRate = sampleRateHz;
-    update();
-}
-
-void SpectrumView::setFftSize(int fftSize) {
-    m_fftSize = std::max(2, fftSize);
-    update();
-}
-
 void SpectrumView::updateSpectrum(const std::vector<float> &magnitudeDb) {
     if (m_magnitudeDb.size() != magnitudeDb.size()) {
         m_magnitudeDb = magnitudeDb;
     } else {
-        const float alpha = 0.2f;
         for (size_t i = 0; i < magnitudeDb.size(); ++i) {
-            m_magnitudeDb[i] = (alpha * magnitudeDb[i]) + ((1.0f - alpha) * m_magnitudeDb[i]);
+            m_magnitudeDb[i] = (SMOOTHING_ALPHA * magnitudeDb[i]) + ((1.0f - SMOOTHING_ALPHA) * m_magnitudeDb[i]);
         }
     }
     update();
 }
 
 QRect SpectrumView::plotRect() const {
-    constexpr int left = 48;
-    constexpr int right = 12;
-    constexpr int top = 12;
-    constexpr int bottom = 28;
-    return rect().adjusted(left, top, -right, -bottom);
+    constexpr int left = 44; 
+    constexpr int right = 44; 
+    constexpr int top = 8;
+    return rect().adjusted(left, top, -right, -AXIS_BOTTOM_MARGIN);
 }
 
 void SpectrumView::paintEvent(QPaintEvent * /*event*/) {
@@ -68,32 +66,44 @@ void SpectrumView::paintEvent(QPaintEvent * /*event*/) {
     const QRect plot = plotRect();
     drawBackground(painter, plot);
     drawGrid(painter, plot);
-    drawBars(painter, plot);
+    drawCurve(painter, plot);
     drawAxesLabels(painter, plot);
 }
 
 void SpectrumView::drawBackground(QPainter &painter, const QRect &plot) const {
-    painter.fillRect(rect(), m_bgColor);
-    painter.fillRect(plot, QColor(18, 20, 24));
-    painter.setPen(QPen(m_gridColor, 1));
+    const auto& pal = palette();
+    
+    /// @brief Inner plot area.
+    painter.fillRect(plot, pal.alternateBase());
+    
+    /// @brief Border around the plot area.
+    painter.setPen(QPen(pal.color(QPalette::Active, QPalette::ToolTipBase), 1));
     painter.drawRect(plot);
 }
 
 void SpectrumView::drawGrid(QPainter &painter, const QRect &plot) const {
-    painter.setPen(QPen(m_gridColor, 1, Qt::DotLine));
+    /// @brief Grid lines color from QSS.
+    painter.setPen(QPen(palette().color(QPalette::Active, QPalette::ToolTipBase), 1, Qt::DotLine));
 
-    for (float db = m_minDb; db <= m_maxDb; db += 20.0f) {
+    const int dbStep = 20;
+    const int numSteps = static_cast<int>(std::abs(m_minDb) / dbStep);
+    
+    for (int i = 0; i <= numSteps; ++i) {
+        const float db = -static_cast<float>(i * dbStep);
+        if (db < m_minDb) break;
+        
         const float t = (db - m_minDb) / (m_maxDb - m_minDb);
         const int y = plot.bottom() - static_cast<int>(t * plot.height());
         painter.drawLine(plot.left(), y, plot.right(), y);
     }
+    
+    if (std::abs(std::fmod(m_minDb, static_cast<float>(dbStep))) > 0.5f) {
+        painter.drawLine(plot.left(), plot.bottom(), plot.right(), plot.bottom());
+    }
 
     const float freqs[] = {100.0f, 1000.0f, 10000.0f};
-    const float logMin = std::log10(MIN_FREQ);
-    const float logMax = std::log10(MAX_FREQ);
-
     for (float f : freqs) {
-        float t = (std::log10(f) - logMin) / (logMax - logMin);
+        float t = (std::log10(f) - LOG_MIN) / (LOG_MAX - LOG_MIN);
         int x = plot.left() + static_cast<int>(t * plot.width());
         if (x > plot.left() && x < plot.right()) {
             painter.drawLine(x, plot.top(), x, plot.bottom());
@@ -101,37 +111,27 @@ void SpectrumView::drawGrid(QPainter &painter, const QRect &plot) const {
     }
 }
 
-void SpectrumView::drawBars(QPainter &painter, const QRect &plot) const {
+void SpectrumView::drawCurve(QPainter &painter, const QRect &plot) const {
     if (m_magnitudeDb.empty() || plot.width() <= 0 || plot.height() <= 0) return;
 
     const int binCount = static_cast<int>(m_magnitudeDb.size());
     const float binHz = (m_sampleRate * 0.5f) / static_cast<float>(binCount);
     const float dbSpan = m_maxDb - m_minDb;
-    const float logMin = std::log10(MIN_FREQ);
-    const float logMax = std::log10(MAX_FREQ);
 
-    painter.setPen(QPen(m_barColor, 1.8f));
+    /// @brief Curve color from QSS.
+    painter.setPen(QPen(palette().highlight(), CURVE_WIDTH));
     
     QPainterPath path;
     bool first = true;
 
     for (int x = 0; x < plot.width(); ++x) {
         float t = static_cast<float>(x) / plot.width();
-        float freq = std::pow(10.0f, logMin + t * (logMax - logMin));
+        float freq = std::pow(10.0f, LOG_MIN + t * (LOG_MAX - LOG_MIN));
         
         float binIdx = freq / binHz;
-        int i0 = static_cast<int>(binIdx);
-        int i1 = std::min(i0 + 1, binCount - 1);
-        float frac = binIdx - static_cast<float>(i0);
-
-        i0 = std::clamp(i0, 0, binCount - 1);
+        int i0 = std::clamp(static_cast<int>(binIdx), 0, binCount - 1);
         
-        float val0 = m_magnitudeDb[static_cast<std::size_t>(i0)];
-        float val1 = m_magnitudeDb[static_cast<std::size_t>(i1)];
-        
-        float db = val0 + frac * (val1 - val0);
-        db = std::clamp(db, m_minDb, m_maxDb);
-
+        float db = std::clamp(m_magnitudeDb[static_cast<std::size_t>(i0)], m_minDb, m_maxDb);
         float ty = (db - m_minDb) / dbSpan;
         int y = plot.bottom() - static_cast<int>(ty * plot.height());
 
@@ -146,28 +146,39 @@ void SpectrumView::drawBars(QPainter &painter, const QRect &plot) const {
 }
 
 void SpectrumView::drawAxesLabels(QPainter &painter, const QRect &plot) const {
-    painter.setPen(m_textColor);
+    /// @brief Label color from QSS.
+    painter.setPen(palette().text().color());
     QFont font = painter.font();
-    font.setPointSize(8);
+    font.setPointSize(AXIS_LABEL_FONT_SIZE);
     painter.setFont(font);
 
-    for (float db = m_minDb; db <= m_maxDb; db += 20.0f) {
+    auto drawLabel = [&](float db) {
         const float t = (db - m_minDb) / (m_maxDb - m_minDb);
         const int y = plot.bottom() - static_cast<int>(t * plot.height());
-        painter.drawText(QRect(0, y - 8, plot.left() - 6, 16),
+        painter.drawText(QRect(0, y - 8, plot.left() - 4, 16),
                          Qt::AlignRight | Qt::AlignVCenter,
                          QString::number(static_cast<int>(db)));
+    };
+
+    const int dbStepLabel = 20;
+    const int numLabelSteps = static_cast<int>(std::abs(m_minDb) / dbStepLabel);
+
+    for (int i = 0; i <= numLabelSteps; ++i) {
+        const float db = -static_cast<float>(i * dbStepLabel);
+        if (db < m_minDb) break;
+        
+        if (std::abs(db - m_minDb) > 8.0f) {
+            drawLabel(db);
+        }
     }
+    drawLabel(m_minDb);
 
     const struct { float f; const char* lbl; } labels[] = {
         {20.0f, "20"}, {100.0f, "100"}, {1000.0f, "1k"}, {10000.0f, "10k"}, {20000.0f, "20k"}
     };
     
-    const float logMin = std::log10(MIN_FREQ);
-    const float logMax = std::log10(MAX_FREQ);
-
     for (auto const& l : labels) {
-        float t = (std::log10(l.f) - logMin) / (logMax - logMin);
+        float t = (std::log10(l.f) - LOG_MIN) / (LOG_MAX - LOG_MIN);
         int x = plot.left() + static_cast<int>(t * plot.width());
         painter.drawText(QRect(x - 20, plot.bottom() + 4, 40, 16),
                          Qt::AlignHCenter | Qt::AlignTop,

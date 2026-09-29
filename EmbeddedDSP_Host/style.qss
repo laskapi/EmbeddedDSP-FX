@@ -1,0 +1,44 @@
+/* EmbeddedDSP-FX Stylesheet - Source of Truth */
+
+Host--UI--SpectrumPanel {
+    background-color: transparent;
+    border: 1px solid #333333;
+    border-radius: 4px;
+}
+
+#SpectrumZoomIcon {
+    color: #50c88c;
+    font-size: 20px;
+    background: transparent;
+    max-width: 24px;
+}
+
+#SpectrumSensitivitySlider {
+    background: transparent;
+    min-width: 16px;
+    max-width: 24px;
+}
+
+#SpectrumSensitivitySlider::groove:vertical {
+    background: #1a1a1a;
+    width: 4px;
+    border-radius: 2px;
+}
+
+#SpectrumSensitivitySlider::handle:vertical {
+    background: #50c88c;
+    border: 1px solid #50c88c;
+    height: 16px;
+    width: 16px;
+    margin: 0 -6px;
+    border-radius: 8px;
+}
+
+SpectrumView, #SpectrumView {
+    background-color: transparent;
+    alternate-background-color: #000000;  /* Inner Plot Area */
+    border: none;
+    color: #888888;                       /* Axis Labels */
+    selection-background-color: #50c88c;  /* FFT Curve */
+    border-color: #333333;                /* Grid Lines */
+}

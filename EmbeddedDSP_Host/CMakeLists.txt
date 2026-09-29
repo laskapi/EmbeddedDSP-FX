@@ -25,18 +25,27 @@ qt_add_executable(EmbeddedDSP_Host
     Logging.h Logging.cpp
     DeviceInterface.h
     DeviceInterface.cpp
-    AudioAnalyzer.h
-    AudioAnalyzer.cpp
+    AudioFrameWorker.h
+    AudioFrameWorker.cpp
     FftProcessor.h FftProcessor.cpp
     AudioFrameSimulator.h AudioFrameSimulator.cpp
-    StateManager.h StateManager.cpp
+    AppController.h AppController.cpp
     UI/SpectrumView.h UI/SpectrumView.cpp
+    UI/SpectrumPanel.h UI/SpectrumPanel.cpp
     UI/ConnectionToolbar.h UI/ConnectionToolbar.cpp
-    UI/ParamControl.h UI/ParamControl.cpp
-    UI/EffectSlot.h UI/EffectSlot.cpp
-    UI/ParameterPanel.h UI/ParameterPanel.cpp
-    UI/EffectsRack.h UI/EffectsRack.cpp
-    UI/WidgetRack.h
+    UI/SynchronizedWidget.h
+    UI/ParameterWidget.h UI/ParameterWidget.cpp
+    UI/EffectWidget.h UI/EffectWidget.cpp
+    UI/ParameterRack.h UI/ParameterRack.cpp
+    UI/EffectRack.h UI/EffectRack.cpp
+    UI/SynchronizedRack.h
+)
+
+# Embed resources directly using Qt6 build system to avoid qrc caching issues
+qt_add_resources(EmbeddedDSP_Host "styles"
+    PREFIX "/"
+    FILES
+        style.qss
 )
 
 # Include directories: local source, UI components, and firmware protocols
@@ -52,6 +61,22 @@ target_link_libraries(EmbeddedDSP_Host
         Qt::Core
         Qt::Widgets
         Qt::SerialPort
+)
+
+# Optimize build speed using Precompiled Headers
+target_precompile_headers(EmbeddedDSP_Host PRIVATE
+    <QApplication>
+    <QWidget>
+    <QMainWindow>
+    <QObject>
+    <QString>
+    <QVector>
+    <QMap>
+    <QPainter>
+    <QDebug>
+    <memory>
+    <vector>
+    <algorithm>
 )
 
 # Disable debug output in Release builds to improve performance and security

@@ -7,7 +7,7 @@
 namespace Host {
 
 AudioFrameSimulator::AudioFrameSimulator(QObject *parent)
-    : QObject(parent)
+    : QObject(parent), m_timer(this)
 {
     m_timer.setTimerType(Qt::PreciseTimer);
     connect(&m_timer, &QTimer::timeout, this, &AudioFrameSimulator::onTick);

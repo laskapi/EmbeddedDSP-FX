@@ -1,5 +1,5 @@
 #include "ConnectionToolbar.h"
-#include "StateManager.h"
+#include "AppController.h"
 #include <QComboBox>
 #include <QHBoxLayout>
 #include <QPushButton>
@@ -8,10 +8,11 @@
 
 namespace Host::UI {
 
-ConnectionToolbar::ConnectionToolbar(StateManager* manager, bool demoEnabled, QWidget *parent)
-    : QWidget(parent)
-    , m_manager(manager)
+ConnectionToolbar::ConnectionToolbar(std::shared_ptr<AppController> controller, bool demoEnabled, QWidget *parent)
+    : QFrame(parent)
+    , m_appController(controller)
     , m_demoEnabled(demoEnabled) {
+    Q_ASSERT(m_appController);
     m_portCombo = new QComboBox(this);
     m_connectButton = new QPushButton(QStringLiteral("Connect"), this);
 
@@ -35,10 +36,9 @@ ConnectionToolbar::ConnectionToolbar(StateManager* manager, bool demoEnabled, QW
     QTimer *scanTimer = new QTimer(this);
     connect(scanTimer, &QTimer::timeout, this, &ConnectionToolbar::refreshPortList);
     scanTimer->start(2000);
-    if (m_manager) {
-        connect(m_manager, &StateManager::connectionChanged, this, &ConnectionToolbar::setConnected);
-        connect(m_manager, &StateManager::demoRunningChanged, this, &ConnectionToolbar::setDemoRunning);
-    }
+
+    connect(m_appController.get(), &AppController::connectionChanged, this, &ConnectionToolbar::setConnected);
+    connect(m_appController.get(), &AppController::demoRunningChanged, this, &ConnectionToolbar::setDemoRunning);
 }
 
 void ConnectionToolbar::refreshPortList() {
@@ -76,20 +76,18 @@ void ConnectionToolbar::setDemoRunning(bool running) {
 }
 
 void ConnectionToolbar::onConnectionButtonClicked() {
-    if (!m_manager) return;
     if (m_isConnected) {
-        m_manager->disconnect();
+        m_appController->disconnect();
     } else {
-        m_manager->connect(selectedPortName());
+        m_appController->connect(selectedPortName());
     }
 }
 
 void ConnectionToolbar::onDemoButtonClicked() {
-    if (!m_manager) return;
     if (m_isDemoRunning) {
-        m_manager->stopDemo();
+        m_appController->stopDemo();
     } else {
-        m_manager->startDemo();
+        m_appController->startDemo();
     }
 }
 

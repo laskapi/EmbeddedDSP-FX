@@ -1,5 +1,7 @@
 #include "DeviceInterface.h"
 #include "Logging.h"
+#include <Protocol/AudioFramePacket.h>
+#include <Protocol/ControlPacket.h>
 #include <QDebug>
 #include <QSerialPortInfo>
 #include <QStringList>
@@ -200,5 +202,3 @@ void DeviceInterface::handleError(QSerialPort::SerialPortError error)
 }
 
 } // namespace Host
-
-

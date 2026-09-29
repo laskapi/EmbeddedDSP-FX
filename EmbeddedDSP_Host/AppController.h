@@ -1,32 +1,33 @@
-#ifndef EMBEDDEDDSP_HOST_STATEMANAGER_H
-#define EMBEDDEDDSP_HOST_STATEMANAGER_H
+#ifndef EMBEDDEDDSP_HOST_APPCONTROLLER_H
+#define EMBEDDEDDSP_HOST_APPCONTROLLER_H
 
 #include <QObject>
 #include <QMap>
-#include <QString>
-#include <QThread>
-#include "DeviceInterface.h"
+#include <vector>
 #include "EffectSpec.h"
-#include "AudioFrameSimulator.h"
-#include "AudioAnalyzer.h"
+
+class QThread;
+
+namespace Protocol {
+    struct ControlPacket;
+    struct AudioFramePacket;
+}
 
 namespace Host {
 
+class DeviceInterface;
+class AudioFrameWorker;
+class AudioFrameSimulator;
+
 /**
- * @brief Central ViewModel for EmbeddedDSP Host.
- * Acts as the source of truth for device state and orchestrates communication.
+ * @brief Central AppController for EmbeddedDSP Host.
+ * Acts as a communication hub between the UI and the worker thread (Serial/DSP).
  */
-class StateManager : public QObject {
+class AppController : public QObject {
     Q_OBJECT
 public:
-    explicit StateManager(QObject* parent = nullptr);
-    ~StateManager() override;
-
-    /// @brief Returns the list of effects supported by the device.
-    const QMap<int, EffectSpec>& availableEffects() const { return m_availableEffects; }
-
-    /// @brief Returns the number of effect slots on the device.
-    int slotCount() const { return m_slotCount; }
+    explicit AppController();
+    ~AppController() override;
 
     /// @brief Requests a parameter change for a specific slot.
     void setParameter(uint8_t slotId, uint8_t paramId, float value);
@@ -53,8 +54,8 @@ public:
     void stopDemo();
 
 signals:
-    /// @brief Emitted when the manifest is ready to rebuild the rack.
-    void manifestReady();
+    /// @brief Emitted when the device manifest is received (describes slots and effects).
+    void manifestReady(const Host::DeviceManifest& manifest);
 
     /// @brief Emitted when a control packet is received from the device.
     void deviceStateUpdated(const Protocol::ControlPacket& pkt);
@@ -62,7 +63,7 @@ signals:
     /// @brief Emitted when the connection status changes.
     void connectionChanged(bool connected, const QString& portName);
 
-    /// @brief Forwarded audio frame from the device.
+    /// @brief Forwarded audio frame from the device/simulator.
     void audioFrameReady(const Protocol::AudioFramePacket &frame);
 
     /// @brief Forwarded error message from the device interface.
@@ -75,19 +76,15 @@ signals:
     void demoRunningChanged(bool running);
 
 private slots:
-    void onDeviceManifestReady(const DeviceManifest& manifest);
-    void onControlPacketReady(const Protocol::ControlPacket& pkt);
     void onConnectionChanged(bool connected, const QString& portName);
 
 private:
     QThread* m_workerThread{nullptr};
     DeviceInterface* m_deviceInterface{nullptr};
-    AudioAnalyzer* m_audioAnalyzer{nullptr};
+    AudioFrameWorker* m_audioWorker{nullptr};
     AudioFrameSimulator* m_simulator{nullptr};
-    QMap<int, EffectSpec> m_availableEffects;
-    int m_slotCount{0};
 };
 
 } // namespace Host
 
-#endif // EMBEDDEDDSP_HOST_STATEMANAGER_H
+#endif // EMBEDDEDDSP_HOST_APPCONTROLLER_H

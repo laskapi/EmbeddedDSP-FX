@@ -2,14 +2,13 @@
 #define EMBEDDEDDSP_HOST_MAINWINDOW_H
 
 #include <QMainWindow>
+#include <memory>
 
-namespace Host {
-    class StateManager;
-    namespace UI {
-        class ConnectionToolbar;
-        class EffectsRack;
-        class SpectrumView;
-    }
+namespace Host { class AppController; }
+namespace Host::UI {
+    class ConnectionToolbar;
+    class EffectRack;
+    class SpectrumPanel;
 }
 
 QT_BEGIN_NAMESPACE
@@ -32,12 +31,12 @@ private:
     Ui::MainWindow *ui{nullptr};
     
     // State and Logic
-    Host::StateManager *m_stateManager{nullptr};
+    std::shared_ptr<Host::AppController> m_appController;
 
     // UI Components
     Host::UI::ConnectionToolbar *m_connectionToolbar{nullptr};
-    Host::UI::SpectrumView *m_spectrumView{nullptr};
-    Host::UI::EffectsRack *m_effectsRack{nullptr};
+    Host::UI::SpectrumPanel *m_spectrumPanel{nullptr};
+    Host::UI::EffectRack *m_effectsRack{nullptr};
 };
 
 #endif // EMBEDDEDDSP_HOST_MAINWINDOW_H

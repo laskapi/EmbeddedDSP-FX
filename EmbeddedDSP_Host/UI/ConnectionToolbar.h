@@ -1,21 +1,22 @@
 #ifndef EMBEDDEDDSP_HOST_CONNECTIONTOOLBAR_H
 #define EMBEDDEDDSP_HOST_CONNECTIONTOOLBAR_H
 
-#include <QWidget>
+#include <memory>
+#include <QFrame>
 
 class QComboBox;
 class QPushButton;
 class QHBoxLayout;
 
-namespace Host {
-    class StateManager;
-    namespace UI {
+namespace Host { class AppController; }
 
-class ConnectionToolbar : public QWidget {
+namespace Host::UI {
+
+class ConnectionToolbar : public QFrame {
     Q_OBJECT
 
 public:
-    explicit ConnectionToolbar(StateManager* manager, bool demoEnabled = true, QWidget *parent = nullptr);
+    explicit ConnectionToolbar(std::shared_ptr<AppController> controller, bool demoEnabled = true, QWidget *parent = nullptr);
 
     void refreshPortList();
     [[nodiscard]] QString selectedPortName() const;
@@ -29,7 +30,7 @@ private slots:
     void onDemoButtonClicked();
 
 private:
-    StateManager* m_manager{nullptr};
+    std::shared_ptr<AppController> m_appController;
     QHBoxLayout *m_layout{nullptr};
     QComboBox *m_portCombo{nullptr};
     QPushButton *m_connectButton{nullptr};
@@ -39,7 +40,6 @@ private:
     bool m_isDemoRunning{false};
 };
 
-} // namespace UI
-} // namespace Host
+} // namespace Host::UI
 
 #endif // EMBEDDEDDSP_HOST_CONNECTIONTOOLBAR_H

@@ -1,7 +1,6 @@
 #ifndef EMBEDDEDDSP_HOST_AUDIOFRAMESIMULATOR_H
 #define EMBEDDEDDSP_HOST_AUDIOFRAMESIMULATOR_H
 
-#include <QObject>
 #include <QTimer>
 #include <cstdint>
 #include <Protocol/AudioFramePacket.h>
