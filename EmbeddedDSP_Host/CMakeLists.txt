@@ -30,8 +30,11 @@ qt_add_executable(EmbeddedDSP_Host
     FftProcessor.h FftProcessor.cpp
     AudioFrameSimulator.h AudioFrameSimulator.cpp
     AppController.h AppController.cpp
-    UI/SpectrumView.h UI/SpectrumView.cpp
-    UI/SpectrumPanel.h UI/SpectrumPanel.cpp
+    UI/Spectrum/SpectrumCommon.h
+    UI/Spectrum/SpectrumView.h UI/Spectrum/SpectrumView.cpp
+    UI/Spectrum/SpectrumAxisX.h UI/Spectrum/SpectrumAxisX.cpp
+    UI/Spectrum/SpectrumAxisY.h UI/Spectrum/SpectrumAxisY.cpp
+    UI/Spectrum/SpectrumPanel.h UI/Spectrum/SpectrumPanel.cpp
     UI/ConnectionToolbar.h UI/ConnectionToolbar.cpp
     UI/SynchronizedWidget.h
     UI/ParameterWidget.h UI/ParameterWidget.cpp
@@ -52,6 +55,7 @@ qt_add_resources(EmbeddedDSP_Host "styles"
 target_include_directories(EmbeddedDSP_Host PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/UI
+    ${CMAKE_CURRENT_SOURCE_DIR}/UI/Spectrum
     ${CMAKE_CURRENT_SOURCE_DIR}/../EmbeddedDSP_Shared
 )
 

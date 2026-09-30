@@ -11,7 +11,7 @@ class QPainter;
 
 namespace Host { class AppController; }
 
-namespace Host::UI {
+namespace Host::UI::Spectrum {
 
 /**
  * @brief Pure visualization component for real-time FFT magnitude spectrum.
@@ -20,8 +20,6 @@ class SpectrumView : public QWidget {
     Q_OBJECT
 
 public:
-    static constexpr int AXIS_BOTTOM_MARGIN = 24;
-
     explicit SpectrumView(std::shared_ptr<AppController> controller, QWidget *parent = nullptr);
     ~SpectrumView() override = default;
 
@@ -35,12 +33,9 @@ protected:
     void paintEvent(QPaintEvent *event) override;
 
 private:
-    void drawBackground(QPainter &painter, const QRect &plot) const;
+    [[nodiscard]] QRect drawRect() const;
     void drawGrid(QPainter &painter, const QRect &plot) const;
     void drawCurve(QPainter &painter, const QRect &plot) const;
-    void drawAxesLabels(QPainter &painter, const QRect &plot) const;
-
-    [[nodiscard]] QRect plotRect() const;
 
     std::shared_ptr<AppController> m_appController;
     std::vector<float> m_magnitudeDb;
@@ -50,6 +45,6 @@ private:
     float m_sampleRate{48000.0f};
 };
 
-} // namespace Host::UI
+} // namespace Host::UI::Spectrum
 
 #endif // EMBEDDEDDSP_HOST_SPECTRUMVIEW_H

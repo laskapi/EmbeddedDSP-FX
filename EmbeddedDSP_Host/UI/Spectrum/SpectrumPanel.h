@@ -6,16 +6,18 @@
 
 class QSlider;
 class QLabel;
-class QResizeEvent;
+class QGridLayout;
 
 namespace Host { class AppController; }
 
-namespace Host::UI {
+namespace Host::UI::Spectrum {
 
 class SpectrumView;
+class SpectrumAxisX;
+class SpectrumAxisY;
 
 /**
- * @brief Container that combines SpectrumView with control widgets (Zoom/Sensitivity).
+ * @brief Container that combines SpectrumView with modular axes and control widgets.
  */
 class SpectrumPanel : public QFrame {
     Q_OBJECT
@@ -24,19 +26,17 @@ public:
     explicit SpectrumPanel(std::shared_ptr<AppController> controller, QWidget *parent = nullptr);
     ~SpectrumPanel() override = default;
 
-protected:
-    /// @brief Ensures perfect symmetry between side columns.
-    void resizeEvent(QResizeEvent *event) override;
-
 private:
     std::shared_ptr<AppController> m_appController;
-    SpectrumView* m_spectrumView{nullptr};
-    QWidget* m_leftColumn{nullptr};
-    QWidget* m_rightColumn{nullptr};
+    SpectrumView*  m_spectrumView{nullptr};
+    SpectrumAxisX* m_axisX{nullptr};
+    SpectrumAxisY* m_axisY{nullptr};
+    
     QSlider* m_dbSlider{nullptr};
     QLabel* m_zoomIcon{nullptr};
+    QLabel* m_dbUnitLabel{nullptr};
 };
 
-} // namespace Host::UI
+} // namespace Host::UI::Spectrum
 
 #endif // EMBEDDEDDSP_HOST_SPECTRUMPANEL_H

@@ -2,7 +2,7 @@
 #include "ui_mainwindow.h"
 #include "UI/ConnectionToolbar.h"
 #include "UI/EffectRack.h"
-#include "UI/SpectrumPanel.h"
+#include "UI/Spectrum/SpectrumPanel.h"
 #include "AppController.h"
 #include <QVBoxLayout>
 #include <QDebug>
@@ -40,7 +40,7 @@ MainWindow::~MainWindow() {
 
 void MainWindow::setupUiLayout() {
     m_connectionToolbar = new Host::UI::ConnectionToolbar(m_appController, EMBEDDED_DSP_HOST_ENABLE_SIMULATOR != 0, this);
-    m_spectrumPanel = new Host::UI::SpectrumPanel(m_appController, this);
+    m_spectrumPanel = new Host::UI::Spectrum::SpectrumPanel(m_appController, this);
     m_effectsRack = new Host::UI::EffectRack(m_appController, this);
 
     auto *layout = new QVBoxLayout();

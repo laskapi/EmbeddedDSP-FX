@@ -8,7 +8,7 @@ namespace Host { class AppController; }
 namespace Host::UI {
     class ConnectionToolbar;
     class EffectRack;
-    class SpectrumPanel;
+    namespace Spectrum { class SpectrumPanel; }
 }
 
 QT_BEGIN_NAMESPACE
@@ -35,7 +35,7 @@ private:
 
     // UI Components
     Host::UI::ConnectionToolbar *m_connectionToolbar{nullptr};
-    Host::UI::SpectrumPanel *m_spectrumPanel{nullptr};
+    Host::UI::Spectrum::SpectrumPanel *m_spectrumPanel{nullptr};
     Host::UI::EffectRack *m_effectsRack{nullptr};
 };
 
