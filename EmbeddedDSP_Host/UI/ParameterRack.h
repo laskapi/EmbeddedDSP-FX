@@ -1,16 +1,16 @@
 #ifndef EMBEDDEDDSP_HOST_PARAMETERRACK_H
 #define EMBEDDEDDSP_HOST_PARAMETERRACK_H
 
-#include "SynchronizedRack.h"
-#include "ParameterWidget.h"
+#include "AbstractRack.h"
+#include "ParameterItem.h"
 #include "EffectSpec.h"
 
 namespace Host::UI {
 
 /**
- * @brief Container for ParameterWidgets.
+ * @brief Container for ParameterItems.
  */
-class ParameterRack : public SynchronizedRack<ParameterWidget> {
+class ParameterRack : public AbstractRack<ParameterItem> {
     Q_OBJECT
 public:
     explicit ParameterRack(const EffectSpec &spec, QWidget *parent = nullptr);

@@ -1,7 +1,7 @@
-#ifndef EMBEDDEDDSP_HOST_PARAMETERWIDGET_H
-#define EMBEDDEDDSP_HOST_PARAMETERWIDGET_H
+#ifndef EMBEDDEDDSP_HOST_PARAMETERITEM_H
+#define EMBEDDEDDSP_HOST_PARAMETERITEM_H
 
-#include "SynchronizedWidget.h"
+#include "AbstractRackItem.h"
 #include "EffectSpec.h"
 
 class QLabel;
@@ -11,18 +11,18 @@ namespace Host::UI {
 
 /**
  * @brief Individual parameter control widget (Slider + Label).
- * Inherits from SynchronizedWidget to maintain its own ID for signal bubbling.
+ * Inherits from AbstractRackItem to maintain its own ID for signal bubbling.
  */
-class ParameterWidget : public SynchronizedWidget {
+class ParameterItem : public AbstractRackItem {
     Q_OBJECT
 public:
-    explicit ParameterWidget(const ParamSpec &spec, QWidget *parent = nullptr);
+    explicit ParameterItem(const ParamSpec &spec, QWidget *parent = nullptr);
 
     /// @brief Updates UI state from external value (e.g., from STM32).
     void setValue(float value);
 
 signals:
-    /// @brief Bubbles up the value change with the cached logical index.
+    /// @brief Bubbles up the value change with the cached index.
     void valueChanged(int paramIdx, float newValue);
 
 private slots:
@@ -32,10 +32,11 @@ private:
     void updateLabel(float value);
 
     ParamSpec m_spec;
+    float m_range{0.0f};
     QLabel *m_label{nullptr};
     QSlider *m_slider{nullptr};
 };
 
 } // namespace Host::UI
 
-#endif // EMBEDDEDDSP_HOST_PARAMETERWIDGET_H
+#endif // EMBEDDEDDSP_HOST_PARAMETERITEM_H

@@ -1,7 +1,7 @@
-#ifndef EMBEDDEDDSP_HOST_EFFECTWIDGET_H
-#define EMBEDDEDDSP_HOST_EFFECTWIDGET_H
+#ifndef EMBEDDEDDSP_HOST_EFFECTITEM_H
+#define EMBEDDEDDSP_HOST_EFFECTITEM_H
 
-#include "SynchronizedWidget.h"
+#include "AbstractRackItem.h"
 #include "EffectSpec.h"
 #include <Protocol/ControlPacket.h>
 #include <QMap>
@@ -9,7 +9,7 @@
 class QComboBox;
 class QPushButton;
 class QVBoxLayout;
-class QGroupBox;
+class QLabel;
 
 namespace Host::UI {
 
@@ -19,13 +19,13 @@ class ParameterRack;
  * @brief UI component for a single effect in the chain.
  * Manages its own type selection and bypass. Bubbles signals to EffectRack.
  */
-class EffectWidget : public SynchronizedWidget {
+class EffectItem : public AbstractRackItem {
     Q_OBJECT
 public:
-    explicit EffectWidget(QWidget *parent = nullptr);
+    explicit EffectItem(QWidget *parent = nullptr);
 
-    /// @brief Override to update group box title when index changes.
-    void setLogicalIndex(int index);
+    /// @brief Override to update title label when index changes.
+    void setIndex(int index);
 
     /// @brief Syncs widget state from device data.
     void updateFromPacket(const Protocol::ControlPacket &pkt);
@@ -51,15 +51,15 @@ private:
     void setupUi();
     void setupEffect(uint8_t effectId);
 
-    QGroupBox *m_groupBox{nullptr};
+    QLabel *m_titleLabel{nullptr};
     QComboBox *m_typeCombo{nullptr};
-    ParameterRack *m_activeRack{nullptr};
+    ParameterRack *m_parameterRack{nullptr};
     QPushButton *m_bypassBtn{nullptr};
-    QVBoxLayout *m_innerLayout{nullptr};
+    QVBoxLayout *m_mainLayout{nullptr};
     
     QMap<int, Host::EffectSpec> m_availableEffects;
 };
 
 } // namespace Host::UI
 
-#endif // EMBEDDEDDSP_HOST_EFFECTWIDGET_H
+#endif // EMBEDDEDDSP_HOST_EFFECTITEM_H

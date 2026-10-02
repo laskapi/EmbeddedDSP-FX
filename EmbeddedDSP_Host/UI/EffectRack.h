@@ -5,8 +5,8 @@
 #include <QWidget>
 #include <QHBoxLayout>
 #include <Protocol/ControlPacket.h>
-#include "SynchronizedRack.h"
-#include "EffectWidget.h"
+#include "AbstractRack.h"
+#include "EffectItem.h"
 #include "EffectSpec.h"
 
 class QLabel;
@@ -18,7 +18,7 @@ namespace Host::UI {
 /**
  * @brief Main container for the dynamic effect widgets.
  */
-class EffectRack : public SynchronizedRack<EffectWidget, QHBoxLayout> {
+class EffectRack : public AbstractRack<EffectItem, QHBoxLayout> {
     Q_OBJECT
 public:
     explicit EffectRack(std::shared_ptr<AppController> controller, QWidget *parent = nullptr);

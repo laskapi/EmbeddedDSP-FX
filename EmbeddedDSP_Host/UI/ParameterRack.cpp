@@ -1,23 +1,24 @@
 #include "ParameterRack.h"
+#include "ParameterItem.h"
 
 namespace Host::UI {
 
 ParameterRack::ParameterRack(const EffectSpec &spec, QWidget *parent)
-    : SynchronizedRack(parent) {
+    : AbstractRack(parent) {
     
     for (const auto &p : spec.params) {
-        auto *control = new ParameterWidget(p, this);
-        addSynchronized(control);
+        auto *item = new ParameterItem(p, this);
+        addItem(item);
         
-        connect(control, &ParameterWidget::valueChanged, this, &ParameterRack::parameterChanged);
+        connect(item, &ParameterItem::valueChanged, this, &ParameterRack::parameterChanged);
     }
     
     layout()->addStretch(1);
 }
 
 void ParameterRack::updateParam(int paramIdx, float value) {
-    if (auto *control = getSynchronized(paramIdx)) {
-        control->setValue(value);
+    if (auto *item = getItem(paramIdx)) {
+        item->setValue(value);
     }
 }
 

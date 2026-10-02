@@ -36,12 +36,12 @@ qt_add_executable(EmbeddedDSP_Host
     UI/Spectrum/SpectrumAxisY.h UI/Spectrum/SpectrumAxisY.cpp
     UI/Spectrum/SpectrumPanel.h UI/Spectrum/SpectrumPanel.cpp
     UI/ConnectionToolbar.h UI/ConnectionToolbar.cpp
-    UI/SynchronizedWidget.h
-    UI/ParameterWidget.h UI/ParameterWidget.cpp
-    UI/EffectWidget.h UI/EffectWidget.cpp
+    UI/AbstractRackItem.h
+    UI/ParameterItem.h UI/ParameterItem.cpp
+    UI/EffectItem.h UI/EffectItem.cpp
     UI/ParameterRack.h UI/ParameterRack.cpp
     UI/EffectRack.h UI/EffectRack.cpp
-    UI/SynchronizedRack.h
+    UI/AbstractRack.h
 )
 
 # Embed resources directly using Qt6 build system to avoid qrc caching issues
