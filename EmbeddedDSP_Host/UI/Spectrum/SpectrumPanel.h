@@ -26,6 +26,8 @@ public:
     explicit SpectrumPanel(std::shared_ptr<AppController> controller, QWidget *parent = nullptr);
     ~SpectrumPanel() override = default;
 
+    void setWelcomeVisible(bool visible);
+
 private:
     std::shared_ptr<AppController> m_appController;
     SpectrumView*  m_spectrumView{nullptr};
@@ -35,6 +37,7 @@ private:
     QSlider* m_dbSlider{nullptr};
     QLabel* m_zoomIcon{nullptr};
     QLabel* m_dbUnitLabel{nullptr};
+    QLabel* m_welcomeLabel{nullptr};
 };
 
 } // namespace Host::UI::Spectrum

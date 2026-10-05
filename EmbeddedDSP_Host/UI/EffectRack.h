@@ -33,6 +33,9 @@ public slots:
     /// @brief Clears all widgets and restores initial state.
     void clear();
 
+signals:
+    // Removed rackPopulated signal
+
 private:
     std::shared_ptr<AppController> m_appController;
     QLabel *m_welcomeLabel{nullptr};

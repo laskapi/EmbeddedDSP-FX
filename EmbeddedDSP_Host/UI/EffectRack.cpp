@@ -11,27 +11,20 @@ EffectRack::EffectRack(std::shared_ptr<AppController> controller, QWidget *paren
     : AbstractRack(parent), m_appController(controller) {
     Q_ASSERT(m_appController);
 
-    m_welcomeLabel = new QLabel(tr("Please connect your EmbeddedDSP device..."), this);
-    m_welcomeLabel->setObjectName("welcomeLabel");
-    m_welcomeLabel->setAlignment(Qt::AlignCenter);
-    layout()->addWidget(m_welcomeLabel);
-
     connect(m_appController.get(), &AppController::manifestReady, this, &EffectRack::onManifestReady);
     connect(m_appController.get(), &AppController::deviceStateUpdated, this, &EffectRack::syncFromDevice);
+
     connect(m_appController.get(), &AppController::connectionChanged, this, [this](bool connected, const QString&) {
-        if (!connected) clear();
+        // clear() will be called by MainWindow after animation ends
     });
 }
 
 void EffectRack::onManifestReady(const Host::DeviceManifest& manifest) {
-    if (!isRackEmpty()) return;
-
-    m_welcomeLabel->hide();
+    clearRack();
 
     for (int i = 0; i < manifest.slotCount; ++i) {
         auto *item = new EffectItem(this);
         item->setAvailableEffects(manifest.availableEffects);
-        item->setMinimumHeight(350);
         
         connect(item, &EffectItem::parameterChanged, this, [this](int slotIdx, int paramIdx, float val){
             m_appController->setParameter(static_cast<uint8_t>(slotIdx), static_cast<uint8_t>(paramIdx), val);
@@ -47,11 +40,12 @@ void EffectRack::onManifestReady(const Host::DeviceManifest& manifest) {
 
         addItem(item, 1);
     }
+
+    m_appController->requestSync();
 }
 
 void EffectRack::clear() {
     clearRack();
-    m_welcomeLabel->show();
 }
 
 void EffectRack::syncFromDevice(const Protocol::ControlPacket &pkt) {

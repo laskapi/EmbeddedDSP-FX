@@ -13,6 +13,16 @@ find_package(Qt6 REQUIRED COMPONENTS
     SerialPort
 )
 
+# --- Simulator & Demo Mode Configuration ---
+option(ENABLE_SIMULATOR "Enable audio simulator and demo mode" ON)
+
+if(ENABLE_SIMULATOR)
+    add_definitions(-DHOST_SIMULATOR_ENABLED)
+    message(STATUS "Build: Simulator mode ENABLED")
+else()
+    message(STATUS "Build: Simulator mode DISABLED")
+endif()
+
 qt_standard_project_setup()
 
 qt_add_executable(EmbeddedDSP_Host
@@ -28,7 +38,6 @@ qt_add_executable(EmbeddedDSP_Host
     AudioFrameWorker.h
     AudioFrameWorker.cpp
     FftProcessor.h FftProcessor.cpp
-    AudioFrameSimulator.h AudioFrameSimulator.cpp
     AppController.h AppController.cpp
     UI/Spectrum/SpectrumCommon.h
     UI/Spectrum/SpectrumView.h UI/Spectrum/SpectrumView.cpp
@@ -43,6 +52,14 @@ qt_add_executable(EmbeddedDSP_Host
     UI/EffectRack.h UI/EffectRack.cpp
     UI/AbstractRack.h
 )
+
+# Conditionally add simulator files to build
+if(ENABLE_SIMULATOR)
+    target_sources(EmbeddedDSP_Host PRIVATE
+        AudioFrameSimulator.h AudioFrameSimulator.cpp
+        DemoManifestProvider.h DemoManifestProvider.cpp
+    )
+endif()
 
 # Embed resources directly using Qt6 build system to avoid qrc caching issues
 qt_add_resources(EmbeddedDSP_Host "styles"

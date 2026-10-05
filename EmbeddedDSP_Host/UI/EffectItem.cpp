@@ -10,6 +10,7 @@ namespace Host::UI {
 EffectItem::EffectItem(QWidget *parent)
     : AbstractRackItem(parent) {
     setObjectName("effectItemBox");
+    setAttribute(Qt::WA_StyledBackground, true);
     setupUi();
 }
 
@@ -30,7 +31,6 @@ void EffectItem::setupUi() {
 
     m_mainLayout->addWidget(m_titleLabel);
     m_mainLayout->addWidget(m_typeCombo);
-    m_mainLayout->addStretch(1); 
     m_mainLayout->addWidget(m_bypassBtn);
 }
 
@@ -53,6 +53,7 @@ void EffectItem::setAvailableEffects(const QMap<int, EffectSpec> &availableEffec
 }
 
 void EffectItem::onTypeChanged(int index) {
+    if (index < 0) return;
     uint8_t effectId = static_cast<uint8_t>(m_typeCombo->itemData(index).toInt());
     emit typeChanged(m_index, effectId);
 }

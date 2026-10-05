@@ -7,6 +7,7 @@
 #include <QGridLayout>
 #include <QSlider>
 #include <QLabel>
+#include <QVBoxLayout>
 
 namespace Host::UI::Spectrum {
 
@@ -38,6 +39,16 @@ SpectrumPanel::SpectrumPanel(std::shared_ptr<AppController> controller, QWidget 
     m_axisX = new SpectrumAxisX(this);
     m_axisX->setObjectName("SpectrumAxisX");
 
+    // Welcome label as a child of spectrum view for floating effect
+    m_welcomeLabel = new QLabel(tr("Please connect your EmbeddedDSP device..."), m_spectrumView);
+    m_welcomeLabel->setObjectName("welcomeLabel");
+    m_welcomeLabel->setAlignment(Qt::AlignCenter);
+    
+    // Simple layout to center the label inside the view
+    auto* viewLayout = new QVBoxLayout(m_spectrumView);
+    viewLayout->addWidget(m_welcomeLabel);
+    m_welcomeLabel->show();
+
     mainGrid->addWidget(m_zoomIcon,    0, 0);
     mainGrid->addWidget(m_dbUnitLabel, 0, 1);
 
@@ -55,6 +66,12 @@ SpectrumPanel::SpectrumPanel(std::shared_ptr<AppController> controller, QWidget 
         m_spectrumView->setDbRange(minDb, 0.0f);
         m_axisY->setDbRange(minDb, 0.0f);
     });
+}
+
+void SpectrumPanel::setWelcomeVisible(bool visible) {
+    if (m_welcomeLabel) {
+        m_welcomeLabel->setVisible(visible);
+    }
 }
 
 } // namespace Host::UI::Spectrum

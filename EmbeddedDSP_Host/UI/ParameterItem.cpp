@@ -15,6 +15,7 @@ ParameterItem::ParameterItem(const ParamSpec &spec, QWidget *parent)
     
     auto *layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 2, 0, 2);
+    layout->setSpacing(0);
 
     m_label = new QLabel(this);
     m_slider = new QSlider(Qt::Horizontal, this);

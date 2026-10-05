@@ -3,7 +3,7 @@
 Host--UI--Spectrum--SpectrumPanel {
     background-color: transparent;
     border: 1px solid #333333;
-    border-radius: 4px;
+    border-radius: 8px;
     padding: 12px;
 }
 
@@ -56,27 +56,59 @@ Host--UI--Spectrum--SpectrumAxisX, Host--UI--Spectrum--SpectrumAxisY {
 }
 
 #welcomeLabel {
-    font-size: 16px;
-    color: #777777;
+    font-size: 14pt;
+    color: #aaaaaa;
     font-weight: bold;
 }
 
 #effectItemBox {
-    background-color: #252525;
-    border: 1px solid #444444;
-    border-radius: 6px;
+    background-color: #2a2a2a;
+    border: 1px solid #3a3a3a;
+    border-bottom: 2px solid #1a1a1a;
+    border-radius: 8px;
+    padding: 8px;
 }
 
 #effectTitle {
+    background-color: #1a1a1a;
     color: #50c88c;
     font-weight: bold;
-    font-size: 10pt;
+    font-size: 8pt;
     text-transform: uppercase;
-    border-bottom: 1px solid #333333;
-    padding-bottom: 4px;
-    margin-bottom: 4px;
+    padding: 6px;
+    border-radius: 4px;
+    margin-bottom: 8px;
 }
 
 #effectItemBox:hover {
     border: 1px solid #50c88c;
+    background-color: #303030;
+}
+
+/* Styl dla etykiet parametrów wewnątrz slotów */
+Host--UI--ParameterItem QLabel {
+    color: #e0e0e0;
+    font-size: 8pt;
+    font-weight: bold;
+}
+
+/* Styl dla suwaków wewnątrz slotów */
+Host--UI--ParameterItem QSlider::groove:horizontal {
+    background: #1a1a1a;
+    height: 4px;
+    border-radius: 2px;
+}
+
+Host--UI--ParameterItem QSlider::handle:horizontal {
+    background: #50c88c;
+    border: 1px solid #50c88c;
+    width: 14px;
+    height: 14px;
+    margin: -5px 0;
+    border-radius: 7px;
+}
+
+Host--UI--ParameterItem QSlider::handle:horizontal:hover {
+    background: #70dbaf;
+    border: 1px solid #70dbaf;
 }

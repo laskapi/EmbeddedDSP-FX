@@ -9,24 +9,16 @@
 
 namespace Host::UI {
 
-/**
- * @brief C++20 Concept to ensure T is a proper AbstractRackItem.
- */
 template<typename T>
 concept IsRackItem = std::derived_from<T, AbstractRackItem>;
 
-/**
- * @brief Generic engine for managing a list of widgets in a "Rack" layout.
- * Ensures that the memory vector, the UI layout, and the widgets' internal IDs
- * are always in perfect sync.
- */
 template <IsRackItem T, typename LayoutT = QVBoxLayout>
 class AbstractRack : public QFrame {
 public:
     explicit AbstractRack(QWidget* parent = nullptr) : QFrame(parent) {
         m_layout = new LayoutT(this);
         m_layout->setContentsMargins(0, 0, 0, 0);
-        m_layout->setSpacing(0);
+        m_layout->setSpacing(10);
     }
 
     LayoutT* layout() const { return m_layout; }

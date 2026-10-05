@@ -47,11 +47,12 @@ public:
     /// @brief Requests disconnecting from the device.
     void disconnect();
 
-    /// @brief Starts the demo audio simulator.
+public slots:
+#ifdef HOST_SIMULATOR_ENABLED
     void startDemo();
-
-    /// @brief Stops the demo audio simulator.
     void stopDemo();
+    void injectDemoData();
+#endif
 
 signals:
     /// @brief Emitted when the device manifest is received (describes slots and effects).
@@ -79,10 +80,14 @@ private slots:
     void onConnectionChanged(bool connected, const QString& portName);
 
 private:
+    void dispatchControlPacket(Protocol::ControlPacket pkt);
+
     QThread* m_workerThread{nullptr};
     DeviceInterface* m_deviceInterface{nullptr};
     AudioFrameWorker* m_audioWorker{nullptr};
+#ifdef HOST_SIMULATOR_ENABLED
     AudioFrameSimulator* m_simulator{nullptr};
+#endif
 };
 
 } // namespace Host

@@ -16,8 +16,8 @@ class ConnectionToolbar : public QFrame {
     Q_OBJECT
 
 public:
-    explicit ConnectionToolbar(std::shared_ptr<AppController> controller, bool demoEnabled = true, QWidget *parent = nullptr);
-
+    explicit ConnectionToolbar(std::shared_ptr<AppController> controller, QWidget *parent = nullptr);
+    
     void refreshPortList();
     [[nodiscard]] QString selectedPortName() const;
 
@@ -27,7 +27,9 @@ public slots:
 
 private slots:
     void onConnectionButtonClicked();
+#ifdef HOST_SIMULATOR_ENABLED
     void onDemoButtonClicked();
+#endif
 
 private:
     std::shared_ptr<AppController> m_appController;
@@ -35,7 +37,6 @@ private:
     QComboBox *m_portCombo{nullptr};
     QPushButton *m_connectButton{nullptr};
     QPushButton *m_demoButton{nullptr};
-    bool m_demoEnabled{true};
     bool m_isConnected{false};
     bool m_isDemoRunning{false};
 };

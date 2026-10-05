@@ -12,8 +12,6 @@ ParameterRack::ParameterRack(const EffectSpec &spec, QWidget *parent)
         
         connect(item, &ParameterItem::valueChanged, this, &ParameterRack::parameterChanged);
     }
-    
-    layout()->addStretch(1);
 }
 
 void ParameterRack::updateParam(int paramIdx, float value) {

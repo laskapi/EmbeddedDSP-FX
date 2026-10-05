@@ -8,10 +8,9 @@
 
 namespace Host::UI {
 
-ConnectionToolbar::ConnectionToolbar(std::shared_ptr<AppController> controller, bool demoEnabled, QWidget *parent)
+ConnectionToolbar::ConnectionToolbar(std::shared_ptr<AppController> controller, QWidget *parent)
     : QFrame(parent)
-    , m_appController(controller)
-    , m_demoEnabled(demoEnabled) {
+    , m_appController(controller) {
     Q_ASSERT(m_appController);
     m_portCombo = new QComboBox(this);
     m_connectButton = new QPushButton(QStringLiteral("Connect"), this);
@@ -21,12 +20,14 @@ ConnectionToolbar::ConnectionToolbar(std::shared_ptr<AppController> controller, 
     m_layout->addWidget(m_portCombo);
     m_layout->addWidget(m_connectButton);
 
-    if (m_demoEnabled) {
-        m_demoButton = new QPushButton(QStringLiteral("Demo"), this);
-        m_layout->addWidget(m_demoButton);
-        connect(m_demoButton, &QPushButton::clicked,
-                this, &ConnectionToolbar::onDemoButtonClicked);
-    }
+#ifdef HOST_SIMULATOR_ENABLED
+    m_demoButton = new QPushButton(QStringLiteral("Demo"), this);
+    m_layout->addWidget(m_demoButton);
+    connect(m_demoButton, &QPushButton::clicked,
+            this, &ConnectionToolbar::onDemoButtonClicked);
+    connect(m_appController.get(), &AppController::demoRunningChanged, this, &ConnectionToolbar::setDemoRunning);
+
+#endif
 
     m_layout->addStretch();
 
@@ -36,10 +37,9 @@ ConnectionToolbar::ConnectionToolbar(std::shared_ptr<AppController> controller, 
     QTimer *scanTimer = new QTimer(this);
     connect(scanTimer, &QTimer::timeout, this, &ConnectionToolbar::refreshPortList);
     scanTimer->start(2000);
-
+    refreshPortList(); 
     connect(m_appController.get(), &AppController::connectionChanged, this, &ConnectionToolbar::setConnected);
-    connect(m_appController.get(), &AppController::demoRunningChanged, this, &ConnectionToolbar::setDemoRunning);
-}
+  }
 
 void ConnectionToolbar::refreshPortList() {
     QString currentPort = selectedPortName();
@@ -51,6 +51,9 @@ void ConnectionToolbar::refreshPortList() {
         const QString label = QStringLiteral("%1  (%2)").arg(info.portName(), info.description());
         m_portCombo->addItem(label, info.portName());
     }
+#ifdef HOST_SIMULATOR_ENABLED
+    m_portCombo->addItem(QStringLiteral("Simulator (Virtual Port)"), QStringLiteral("Simulator"));
+#endif
     int idx = m_portCombo->findData(currentPort);
     if (idx != -1) m_portCombo->setCurrentIndex(idx);
     m_connectButton->setEnabled(m_portCombo->count() > 0);
@@ -83,6 +86,7 @@ void ConnectionToolbar::onConnectionButtonClicked() {
     }
 }
 
+#ifdef HOST_SIMULATOR_ENABLED
 void ConnectionToolbar::onDemoButtonClicked() {
     if (m_isDemoRunning) {
         m_appController->stopDemo();
@@ -90,5 +94,6 @@ void ConnectionToolbar::onDemoButtonClicked() {
         m_appController->startDemo();
     }
 }
+#endif
 
 } // namespace Host::UI

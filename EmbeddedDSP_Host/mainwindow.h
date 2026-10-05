@@ -27,6 +27,7 @@ public:
 private:
     /** @brief Sets up the main layout and widgets. */
     void setupUiLayout();
+    void animateRack(bool show);
 
     Ui::MainWindow *ui{nullptr};
     
