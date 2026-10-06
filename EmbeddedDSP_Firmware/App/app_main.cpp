@@ -107,8 +107,8 @@ namespace
         if (txSampleCount >= Protocol::AUDIO_SAMPLES)
         {
             Protocol::AudioFramePacket pkt;
-            pkt.sequenceNumber = audioSequenceNumber++;
-            pkt.samples = txSampleAccumulator;
+            pkt.sequence = audioSequenceNumber++;
+            std::copy(txSampleAccumulator.begin(), txSampleAccumulator.end(), pkt.samples);
             pkt.applyCRC();
 
             audioTxQueue.push(pkt);

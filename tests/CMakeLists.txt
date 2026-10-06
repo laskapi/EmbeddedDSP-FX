@@ -28,6 +28,8 @@ set_target_properties(dsp_unit_tests PROPERTIES
         SUFFIX ".exe"
 )
 
+target_compile_definitions(dsp_unit_tests PRIVATE FIRMWARE_UNIT_TESTS)
+
 target_include_directories(dsp_unit_tests PRIVATE
         ../EmbeddedDSP_Firmware/App
         ../EmbeddedDSP_Shared
