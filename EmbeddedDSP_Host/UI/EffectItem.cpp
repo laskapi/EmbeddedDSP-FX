@@ -7,11 +7,15 @@
 
 namespace Host::UI {
 
-EffectItem::EffectItem(QWidget *parent)
-    : AbstractRackItem(parent) {
+EffectItem::EffectItem(int index, QWidget *parent)
+    : AbstractRackItem(index, parent) {
     setObjectName("effectItemBox");
     setAttribute(Qt::WA_StyledBackground, true);
     setupUi();
+    
+    if (m_titleLabel) {
+        m_titleLabel->setText(tr("SLOT %1").arg(m_index + 1));
+    }
 }
 
 void EffectItem::setupUi() {
@@ -34,14 +38,7 @@ void EffectItem::setupUi() {
     m_mainLayout->addWidget(m_bypassBtn);
 }
 
-void EffectItem::setIndex(int index) {
-    AbstractRackItem::setIndex(index);
-    if (m_titleLabel) {
-        m_titleLabel->setText(tr("SLOT %1").arg(index + 1));
-    }
-}
-
-void EffectItem::setAvailableEffects(const QMap<int, EffectSpec> &availableEffects) {
+void EffectItem::setAvailableEffects(const QMap<int, Host::EffectSpec> &availableEffects) {
     m_availableEffects = availableEffects;
     
     m_typeCombo->blockSignals(true);

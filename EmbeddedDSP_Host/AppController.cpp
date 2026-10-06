@@ -1,17 +1,16 @@
 #include "AppController.h"
-#include <QDebug>
-#include <QThread>
-
 #include "AudioFrameWorker.h"
-#include "DeviceInterface.h"
+#include "SerialBackend.h"
+#ifdef HOST_SIMULATOR_ENABLED
+#include "SimulatorBackend.h"
+#endif
+#include "IDeviceBackend.h"
 
 #include <Protocol/AudioFramePacket.h>
 #include <Protocol/ControlPacket.h>
-
-#ifdef HOST_SIMULATOR_ENABLED
-#include "AudioFrameSimulator.h"
-#include "DemoManifestProvider.h"
-#endif
+#include <QThread>
+#include <QDebug>
+#include <QSerialPortInfo>
 
 namespace Host {
 
@@ -20,28 +19,13 @@ AppController::AppController() : QObject(nullptr) {
     m_audioWorker = new AudioFrameWorker();
     m_audioWorker->moveToThread(m_workerThread);
     
-    QObject::connect(m_workerThread, &QThread::finished, m_audioWorker, &QObject::deleteLater);
-    QObject::connect(m_audioWorker, &AudioFrameWorker::spectrumReady, this, &AppController::spectrumReady);
+    connect(m_workerThread, &QThread::finished, m_audioWorker, &QObject::deleteLater);
+    connect(m_audioWorker, &AudioFrameWorker::spectrumReady, this, &AppController::spectrumReady);
 
 #ifdef HOST_SIMULATOR_ENABLED
-    m_simulator = new AudioFrameSimulator();
-    m_simulator->moveToThread(m_workerThread);
-    
-    QObject::connect(m_workerThread, &QThread::finished, m_simulator, &QObject::deleteLater);
-    QObject::connect(m_simulator, &AudioFrameSimulator::audioFrameReady, m_audioWorker, &AudioFrameWorker::processFrame);
-    QObject::connect(m_simulator, &AudioFrameSimulator::audioFrameReady, this, &AppController::audioFrameReady);
-    QObject::connect(m_simulator, &AudioFrameSimulator::runningChanged, this, &AppController::demoRunningChanged);
+    setupBackend(new SimulatorBackend());
 #else
-    m_deviceInterface = new DeviceInterface();
-    m_deviceInterface->moveToThread(m_workerThread);
-
-    QObject::connect(m_workerThread, &QThread::finished, m_deviceInterface, &QObject::deleteLater);
-    QObject::connect(m_deviceInterface, &DeviceInterface::audioFrameReady, m_audioWorker, &AudioFrameWorker::processFrame);
-    QObject::connect(m_deviceInterface, &DeviceInterface::audioFrameReady, this, &AppController::audioFrameReady);
-    QObject::connect(m_deviceInterface, &DeviceInterface::manifestReady, this, &AppController::manifestReady);
-    QObject::connect(m_deviceInterface, &DeviceInterface::controlPacketReady, this, &AppController::deviceStateUpdated);
-    QObject::connect(m_deviceInterface, &DeviceInterface::portStatusChanged, this, &AppController::onConnectionChanged);
-    QObject::connect(m_deviceInterface, &DeviceInterface::errorOccurred, this, &AppController::errorOccurred);
+    setupBackend(new SerialBackend());
 #endif
 
     m_workerThread->start();
@@ -50,40 +34,43 @@ AppController::AppController() : QObject(nullptr) {
 AppController::~AppController() {
     m_workerThread->quit();
     m_workerThread->wait();
+    if (m_backend) {
+        m_backend->deleteLater();
+    }
 }
 
-void AppController::connect(const QString& target) {
-#ifdef HOST_SIMULATOR_ENABLED
-    Q_UNUSED(target);
-    injectDemoData();
-    emit connectionChanged(true, QStringLiteral("Simulator"));
-#else
-    QMetaObject::invokeMethod(m_deviceInterface, [this, target]() {
-        m_deviceInterface->connect(target);
+std::vector<ConnectionInfo> AppController::availableConnections() const {
+    return m_backend->enumerateConnections();
+}
+
+void AppController::connectToDevice(const QString& target) {
+    // If already connected, disconnect first
+    if (m_backend->isOpen()) {
+        disconnect();
+    }
+
+    QMetaObject::invokeMethod(m_backend, [this, target]() {
+        m_backend->connect(target);
     }, Qt::QueuedConnection);
-#endif
 }
 
 void AppController::disconnect() {
-#ifdef HOST_SIMULATOR_ENABLED
-    if (m_simulator) m_simulator->stop();
-    emit connectionChanged(false, QString());
-#else
-    QMetaObject::invokeMethod(m_deviceInterface, &DeviceInterface::disconnect, Qt::QueuedConnection);
-#endif
+    if (m_backend) {
+        QMetaObject::invokeMethod(m_backend, &IDeviceBackend::disconnect, Qt::BlockingQueuedConnection);
+    }
 }
 
-#ifdef HOST_SIMULATOR_ENABLED
-void AppController::startDemo() {
-    if (m_simulator)
-        QMetaObject::invokeMethod(m_simulator, &AudioFrameSimulator::start, Qt::QueuedConnection);
-}
+void AppController::setupBackend(IDeviceBackend* backend) {
+    m_backend = backend;
+    m_backend->moveToThread(m_workerThread);
 
-void AppController::stopDemo() {
-    if (m_simulator)
-        QMetaObject::invokeMethod(m_simulator, &AudioFrameSimulator::stop, Qt::QueuedConnection);
+    connect(m_backend, &IDeviceBackend::manifestReady, this, &AppController::manifestReady);
+    connect(m_backend, &IDeviceBackend::audioFrameReady, this, &AppController::audioFrameReady);
+    connect(m_backend, &IDeviceBackend::audioFrameReady, m_audioWorker, &AudioFrameWorker::processFrame);
+    connect(m_backend, &IDeviceBackend::controlPacketReady, this, &AppController::deviceStateUpdated);
+    connect(m_backend, &IDeviceBackend::connectionStatusChanged, this, &AppController::onConnectionStatusChanged);
+    connect(m_backend, &IDeviceBackend::errorOccurred, this, &AppController::errorOccurred);
 }
-#endif
 
 void AppController::requestSync() {
     ::Protocol::ControlPacket pkt;
@@ -92,36 +79,12 @@ void AppController::requestSync() {
 }
 
 void AppController::dispatchControlPacket(::Protocol::ControlPacket pkt) {
-#ifdef HOST_SIMULATOR_ENABLED
-    if (pkt.command == ::Protocol::Command::GetState) {
-        for (uint8_t i = 0; i < 4; ++i) {
-            ::Protocol::ControlPacket statePkt;
-            statePkt.command = ::Protocol::Command::SetEffectType;
-            statePkt.slotId = i;
-            statePkt.effectTypeId = i + 1;
-            statePkt.setValue(0.0f);
-            emit deviceStateUpdated(statePkt);
-            
-            for (uint8_t p = 0; p < 3; ++p) {
-                ::Protocol::ControlPacket pPkt;
-                pPkt.command = ::Protocol::Command::SetParam;
-                pPkt.slotId = i;
-                pPkt.paramId = p;
-                pPkt.setValue(0.5f);
-                emit deviceStateUpdated(pPkt);
-            }
-        }
-    } else {
-        emit deviceStateUpdated(pkt);
-    }
-#else
+    if (!m_backend) return;
+
     pkt.applyCRC();
-    if (m_deviceInterface) {
-        QMetaObject::invokeMethod(m_deviceInterface, [this, pkt]() {
-            m_deviceInterface->sendControlPacket(pkt);
-        }, Qt::QueuedConnection);
-    }
-#endif
+    QMetaObject::invokeMethod(m_backend, [this, pkt]() {
+        m_backend->sendControlPacket(pkt);
+    }, Qt::QueuedConnection);
 }
 
 void AppController::setParameter(uint8_t slotId, uint8_t paramId, float value) {
@@ -150,13 +113,7 @@ void AppController::setBypass(uint8_t slotId, bool bypass) {
     dispatchControlPacket(pkt);
 }
 
-void AppController::injectDemoData() {
-#ifdef HOST_SIMULATOR_ENABLED
-    emit manifestReady(DemoManifestProvider::get());
-#endif
-}
-
-void AppController::onConnectionChanged(bool connected, const QString& portName) {
+void AppController::onConnectionStatusChanged(bool connected, const QString& portName) {
     emit connectionChanged(connected, portName);
 }
 

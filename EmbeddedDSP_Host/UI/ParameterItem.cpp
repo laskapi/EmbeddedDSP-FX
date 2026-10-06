@@ -9,8 +9,8 @@ namespace {
 
 namespace Host::UI {
 
-ParameterItem::ParameterItem(const ParamSpec &spec, QWidget *parent)
-    : AbstractRackItem(parent), m_spec(spec) {
+ParameterItem::ParameterItem(int index, const ParamSpec &spec, QWidget *parent)
+    : AbstractRackItem(index, parent), m_spec(spec) {
     m_range = m_spec.max - m_spec.min;
     
     auto *layout = new QVBoxLayout(this);

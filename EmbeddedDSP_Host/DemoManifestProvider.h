@@ -5,12 +5,9 @@
 
 namespace Host {
 
-/**
- * @brief Helper class to provide a rich DeviceManifest for testing without hardware.
- */
+/// @brief Helper providing a pre-filled DeviceManifest for offline testing.
 class DemoManifestProvider {
 public:
-    /// @return A pre-filled DeviceManifest with common guitar effects.
     static DeviceManifest get();
 };
 

@@ -15,17 +15,11 @@ namespace Host::UI {
 
 class ParameterRack;
 
-/**
- * @brief UI component for a single effect in the chain.
- * Manages its own type selection and bypass. Bubbles signals to EffectRack.
- */
+/// @brief UI component for a single effect in the chain.
 class EffectItem : public AbstractRackItem {
     Q_OBJECT
 public:
-    explicit EffectItem(QWidget *parent = nullptr);
-
-    /// @brief Override to update title label when index changes.
-    void setIndex(int index);
+    explicit EffectItem(int index, QWidget *parent = nullptr);
 
     /// @brief Syncs widget state from device data.
     void updateFromPacket(const Protocol::ControlPacket &pkt);
@@ -34,13 +28,8 @@ public:
     void setAvailableEffects(const QMap<int, Host::EffectSpec> &availableEffects);
 
 signals:
-    /// @brief Bubbled up when a parameter in this effect changes.
     void parameterChanged(int slotIdx, int paramIdx, float newValue);
-    
-    /// @brief Bubbled up when the user changes the effect type.
     void typeChanged(int slotIdx, uint8_t effectId);
-    
-    /// @brief Bubbled up when bypass is toggled.
     void bypassToggled(int slotIdx, bool bypassed);
 
 private slots:

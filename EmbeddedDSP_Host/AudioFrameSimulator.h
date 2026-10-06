@@ -7,9 +7,7 @@
 
 namespace Host {
 
-/**
- * @brief Generates synthetic audio data for testing without hardware.
- */
+/// @brief Generates synthetic audio data for testing without hardware.
 class AudioFrameSimulator : public QObject
 {
     Q_OBJECT
@@ -32,7 +30,6 @@ public slots:
 
 signals:
     void audioFrameReady(const Protocol::AudioFramePacket &frame);
-    void runningChanged(bool running);
 
 private slots:
     void onTick();

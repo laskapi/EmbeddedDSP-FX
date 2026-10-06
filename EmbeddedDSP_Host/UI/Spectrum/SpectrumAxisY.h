@@ -5,16 +5,13 @@
 
 namespace Host::UI::Spectrum {
 
-/**
- * @brief Dedicated widget for the vertical dB axis labels.
- */
+/// @brief Vertical dB axis labels for the spectrum view.
 class SpectrumAxisY : public QWidget {
     Q_OBJECT
 public:
     explicit SpectrumAxisY(QWidget* parent = nullptr);
     ~SpectrumAxisY() override = default;
 
-    /// @brief Updates the range for label calculation.
     void setDbRange(float minDb, float maxDb);
 
     QSize sizeHint() const override;

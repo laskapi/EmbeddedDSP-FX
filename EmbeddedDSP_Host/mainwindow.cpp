@@ -1,5 +1,4 @@
 #include "mainwindow.h"
-#include "ui_mainwindow.h"
 #include "UI/ConnectionToolbar.h"
 #include "UI/EffectRack.h"
 #include "UI/Spectrum/SpectrumPanel.h"
@@ -16,9 +15,7 @@ namespace {
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
-    , ui(new Ui::MainWindow)
 {
-    ui->setupUi(this);
     setWindowTitle(QStringLiteral("EmbeddedDSP Host - Universal Control"));
 
     m_appController = std::make_shared<Host::AppController>();
@@ -28,7 +25,13 @@ MainWindow::MainWindow(QWidget *parent)
     connect(m_appController.get(), &Host::AppController::connectionChanged, this, [this](bool connected, const QString &portName) {
         statusBar()->showMessage(connected ? tr("Connected to %1").arg(portName) : tr("Disconnected"));
         m_spectrumPanel->setWelcomeVisible(!connected);
-        animateRack(connected);
+        if (!connected) {
+            animateRack(false);
+        }
+    });
+
+    connect(m_effectsRack, &Host::UI::EffectRack::rackReady, this, [this]() {
+        animateRack(true);
     });
 
     connect(m_appController.get(), &Host::AppController::errorOccurred, this, [this](const QString &errorMessage) {
@@ -37,7 +40,6 @@ MainWindow::MainWindow(QWidget *parent)
 }
 
 MainWindow::~MainWindow() {
-    delete ui;
 }
 
 void MainWindow::setupUiLayout() {
@@ -48,7 +50,8 @@ void MainWindow::setupUiLayout() {
     m_effectsRack->setMaximumHeight(0);
     m_effectsRack->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
 
-    auto *layout = new QVBoxLayout();
+    auto *centralWidget = new QWidget(this);
+    auto *layout = new QVBoxLayout(centralWidget);
     layout->setContentsMargins(4, 4, 4, 4);
     layout->setSpacing(4);
     
@@ -56,7 +59,7 @@ void MainWindow::setupUiLayout() {
     layout->addWidget(m_spectrumPanel, 1); 
     layout->addWidget(m_effectsRack, 0);   
     
-    ui->centralwidget->setLayout(layout);
+    setCentralWidget(centralWidget);
     
     setMinimumSize(1000, 600);
 }

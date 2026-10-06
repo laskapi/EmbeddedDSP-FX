@@ -20,14 +20,12 @@ void AudioFrameSimulator::start()
     m_sequence = 0;
     m_phase = 0.0f;
     m_timer.start();
-    emit runningChanged(true);
 }
 
 void AudioFrameSimulator::stop()
 {
     if (!m_timer.isActive()) return;
     m_timer.stop();
-    emit runningChanged(false);
 }
 
 bool AudioFrameSimulator::isRunning() const

@@ -6,30 +6,22 @@
 
 namespace Host { class AppController; }
 namespace Host::UI {
-    class ConnectionToolbar;
     class EffectRack;
     namespace Spectrum { class SpectrumPanel; }
+    class ConnectionToolbar;
 }
 
-QT_BEGIN_NAMESPACE
-namespace Ui { class MainWindow; }
-QT_END_NAMESPACE
-
-/** @brief Main window of the EmbeddedDSP Host application. */
+/// @brief Main application window managing layout and core UI components.
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
-
 public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow() override;
 
 private:
-    /** @brief Sets up the main layout and widgets. */
     void setupUiLayout();
     void animateRack(bool show);
-
-    Ui::MainWindow *ui{nullptr};
     
     // State and Logic
     std::shared_ptr<Host::AppController> m_appController;

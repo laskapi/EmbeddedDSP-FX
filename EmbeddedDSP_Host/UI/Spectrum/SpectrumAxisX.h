@@ -5,9 +5,7 @@
 
 namespace Host::UI::Spectrum {
 
-/**
- * @brief Dedicated widget for the horizontal frequency axis labels.
- */
+/// @brief Horizontal frequency axis labels for the spectrum view.
 class SpectrumAxisX : public QWidget {
     Q_OBJECT
 public:

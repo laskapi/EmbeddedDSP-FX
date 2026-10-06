@@ -7,8 +7,7 @@ ParameterRack::ParameterRack(const EffectSpec &spec, QWidget *parent)
     : AbstractRack(parent) {
     
     for (const auto &p : spec.params) {
-        auto *item = new ParameterItem(p, this);
-        addItem(item);
+        auto *item = createItem(p, this);
         
         connect(item, &ParameterItem::valueChanged, this, &ParameterRack::parameterChanged);
     }

@@ -5,6 +5,7 @@
 #include <QMap>
 #include <vector>
 #include "EffectSpec.h"
+#include "IDeviceBackend.h"
 
 class QThread;
 
@@ -15,79 +16,44 @@ namespace Protocol {
 
 namespace Host {
 
-class DeviceInterface;
 class AudioFrameWorker;
-class AudioFrameSimulator;
 
-/**
- * @brief Central AppController for EmbeddedDSP Host.
- * Acts as a communication hub between the UI and the worker thread (Serial/DSP).
- */
+/// @brief Central controller managing UI-to-hardware communication hub.
 class AppController : public QObject {
     Q_OBJECT
 public:
     explicit AppController();
     ~AppController() override;
 
-    /// @brief Requests a parameter change for a specific slot.
     void setParameter(uint8_t slotId, uint8_t paramId, float value);
-
-    /// @brief Requests a change of effect type for a specific slot.
     void setEffectType(uint8_t slotId, uint8_t effectTypeId);
-
-    /// @brief Requests a bypass toggle for a specific slot.
     void setBypass(uint8_t slotId, bool bypassed);
-
-    /// @brief Requests full state synchronization from the device.
     void requestSync();
 
-    /// @brief Requests connecting to the device in the worker thread.
-    void connect(const QString& target = QString());
+    /// @return List of available connections based on current backend.
+    std::vector<ConnectionInfo> availableConnections() const;
 
-    /// @brief Requests disconnecting from the device.
+    void connectToDevice(const QString& target = QString());
     void disconnect();
 
-public slots:
-#ifdef HOST_SIMULATOR_ENABLED
-    void startDemo();
-    void stopDemo();
-    void injectDemoData();
-#endif
-
 signals:
-    /// @brief Emitted when the device manifest is received (describes slots and effects).
     void manifestReady(const Host::DeviceManifest& manifest);
-
-    /// @brief Emitted when a control packet is received from the device.
     void deviceStateUpdated(const Protocol::ControlPacket& pkt);
-
-    /// @brief Emitted when the connection status changes.
     void connectionChanged(bool connected, const QString& portName);
-
-    /// @brief Forwarded audio frame from the device/simulator.
     void audioFrameReady(const Protocol::AudioFramePacket &frame);
-
-    /// @brief Forwarded error message from the device interface.
     void errorOccurred(const QString &errorMessage);
-
-    /// @brief Emitted when a new frequency spectrum is ready for visualization.
     void spectrumReady(const std::vector<float>& magnitudeDb);
 
-    /// @brief Emitted when the demo status changes.
-    void demoRunningChanged(bool running);
-
 private slots:
-    void onConnectionChanged(bool connected, const QString& portName);
+    void onConnectionStatusChanged(bool connected, const QString& portName);
 
 private:
+    void setupBackend(IDeviceBackend* backend);
     void dispatchControlPacket(Protocol::ControlPacket pkt);
 
     QThread* m_workerThread{nullptr};
-    DeviceInterface* m_deviceInterface{nullptr};
     AudioFrameWorker* m_audioWorker{nullptr};
-#ifdef HOST_SIMULATOR_ENABLED
-    AudioFrameSimulator* m_simulator{nullptr};
-#endif
+    IDeviceBackend* m_backend{nullptr};
 };
 
 } // namespace Host

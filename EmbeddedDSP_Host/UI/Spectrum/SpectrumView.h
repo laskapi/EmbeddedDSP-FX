@@ -13,17 +13,13 @@ namespace Host { class AppController; }
 
 namespace Host::UI::Spectrum {
 
-/**
- * @brief Pure visualization component for real-time FFT magnitude spectrum.
- */
+/// @brief Pure visualization component for real-time FFT magnitude spectrum.
 class SpectrumView : public QWidget {
     Q_OBJECT
-
 public:
     explicit SpectrumView(std::shared_ptr<AppController> controller, QWidget *parent = nullptr);
     ~SpectrumView() override = default;
 
-    /// @brief Sets vertical display range.
     void setDbRange(float minDb, float maxDb);
 
 public slots:

@@ -23,14 +23,19 @@ public:
 
     LayoutT* layout() const { return m_layout; }
 
-protected:
-    void addItem(T* item, int stretch = 0) {
-        if (!item) return;
-        item->setIndex(m_items.size());
+    /// @brief Factory method to create and register a new rack item.
+    template <typename... Args>
+    T* createItem(Args&&... args) {
+        int nextIndex = m_items.size();
+        T* item = new T(nextIndex, std::forward<Args>(args)...);
+        
         m_items.append(item);
-        m_layout->addWidget(item, stretch);
+        m_layout->addWidget(item);
+        
+        return item;
     }
 
+protected:
     void moveItem(int from, int to) {
         if (from < 0 || from >= m_items.size() || to < 0 || to >= m_items.size()) return;
         

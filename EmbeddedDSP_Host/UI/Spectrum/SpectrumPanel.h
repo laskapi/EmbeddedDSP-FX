@@ -16,13 +16,10 @@ class SpectrumView;
 class SpectrumAxisX;
 class SpectrumAxisY;
 
-/**
- * @brief Container that combines SpectrumView with modular axes and control widgets.
- */
+/// @brief Container combining SpectrumView with axes and zoom controls.
 class SpectrumPanel : public QFrame {
     Q_OBJECT
 public:
-    /// @brief Main spectrum panel constructor.
     explicit SpectrumPanel(std::shared_ptr<AppController> controller, QWidget *parent = nullptr);
     ~SpectrumPanel() override = default;
 

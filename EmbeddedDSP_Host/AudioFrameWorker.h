@@ -11,10 +11,7 @@ namespace Host {
 
 class FftProcessor;
 
-/**
- * @brief High-level audio frame worker living in the dedicated worker thread.
- * Processes raw audio frames and coordinates various analysis tasks (e.g., FFT).
- */
+/// @brief Processes raw audio frames and coordinates analysis tasks in a worker thread.
 class AudioFrameWorker : public QObject {
     Q_OBJECT
 public:
@@ -22,11 +19,9 @@ public:
     ~AudioFrameWorker() override;
 
 public slots:
-    /// @brief Ingests a raw audio frame and triggers the processing pipeline.
     void processFrame(const Protocol::AudioFramePacket& frame);
 
 signals:
-    /// @brief Emitted when a new frequency spectrum (in dB) is calculated.
     void spectrumReady(const std::vector<float>& magnitudeDb);
 
 private:

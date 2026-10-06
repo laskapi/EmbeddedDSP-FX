@@ -9,20 +9,16 @@ class QSlider;
 
 namespace Host::UI {
 
-/**
- * @brief Individual parameter control widget (Slider + Label).
- * Inherits from AbstractRackItem to maintain its own ID for signal bubbling.
- */
+/// @brief Individual parameter control widget (Slider + Label).
 class ParameterItem : public AbstractRackItem {
     Q_OBJECT
 public:
-    explicit ParameterItem(const ParamSpec &spec, QWidget *parent = nullptr);
+    explicit ParameterItem(int index, const ParamSpec &spec, QWidget *parent = nullptr);
 
     /// @brief Updates UI state from external value (e.g., from STM32).
     void setValue(float value);
 
 signals:
-    /// @brief Bubbles up the value change with the cached index.
     void valueChanged(int paramIdx, float newValue);
 
 private slots:

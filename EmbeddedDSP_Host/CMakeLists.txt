@@ -30,11 +30,11 @@ qt_add_executable(EmbeddedDSP_Host
     main.cpp
     mainwindow.cpp
     mainwindow.h
-    mainwindow.ui
     EffectSpec.h
+    IDeviceBackend.h
     Logging.h Logging.cpp
-    DeviceInterface.h
-    DeviceInterface.cpp
+    SerialBackend.h
+    SerialBackend.cpp
     AudioFrameWorker.h
     AudioFrameWorker.cpp
     FftProcessor.h FftProcessor.cpp
@@ -58,6 +58,7 @@ if(ENABLE_SIMULATOR)
     target_sources(EmbeddedDSP_Host PRIVATE
         AudioFrameSimulator.h AudioFrameSimulator.cpp
         DemoManifestProvider.h DemoManifestProvider.cpp
+        SimulatorBackend.h SimulatorBackend.cpp
     )
 endif()
 

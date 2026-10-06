@@ -7,10 +7,8 @@
 
 namespace Host::UI {
 
-/**
- * @brief Container for ParameterItems.
- */
-class ParameterRack : public AbstractRack<ParameterItem> {
+/// @brief Container for ParameterItems.
+class ParameterRack : public AbstractRack<ParameterItem, QVBoxLayout> {
     Q_OBJECT
 public:
     explicit ParameterRack(const EffectSpec &spec, QWidget *parent = nullptr);

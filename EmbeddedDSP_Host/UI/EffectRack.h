@@ -15,9 +15,7 @@ namespace Host { class AppController; }
 
 namespace Host::UI {
 
-/**
- * @brief Main container for the dynamic effect widgets.
- */
+/// @brief Main container for the dynamic effect widgets.
 class EffectRack : public AbstractRack<EffectItem, QHBoxLayout> {
     Q_OBJECT
 public:
@@ -34,11 +32,15 @@ public slots:
     void clear();
 
 signals:
-    // Removed rackPopulated signal
+    /// @brief Emitted when all slots have received their initial state during sync.
+    void rackReady();
 
 private:
     std::shared_ptr<AppController> m_appController;
     QLabel *m_welcomeLabel{nullptr};
+    int m_syncedSlotsCount{0};
+    int m_expectedSlotsCount{0};
+    bool m_isSyncing{false};
 };
 
 } // namespace Host::UI

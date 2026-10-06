@@ -1,4 +1,4 @@
-#include "DeviceInterface.h"
+#include "SerialBackend.h"
 #include "Logging.h"
 #include <Protocol/AudioFramePacket.h>
 #include <Protocol/ControlPacket.h>
@@ -9,19 +9,19 @@
 
 namespace Host {
 
-DeviceInterface::DeviceInterface(QObject *parent)
-    : QObject(parent), m_serialPort(this)
+SerialBackend::SerialBackend(QObject *parent)
+    : IDeviceBackend(parent), m_serialPort(this)
 {
-    QObject::connect(&m_serialPort, &QSerialPort::readyRead, this, &DeviceInterface::handleReadyRead);
-    QObject::connect(&m_serialPort, &QSerialPort::errorOccurred, this, &DeviceInterface::handleError);
+    connect(&m_serialPort, &QSerialPort::readyRead, this, &SerialBackend::handleReadyRead);
+    connect(&m_serialPort, &QSerialPort::errorOccurred, this, &SerialBackend::handleError);
 }
 
-DeviceInterface::~DeviceInterface()
+SerialBackend::~SerialBackend()
 {
     disconnect();
 }
 
-QString DeviceInterface::findDevicePort() {
+QString SerialBackend::findDevicePort() {
     for (const QSerialPortInfo &info : QSerialPortInfo::availablePorts()) {
         if (info.hasVendorIdentifier() && info.vendorIdentifier() == Protocol::Hardware::USB_VID &&
             info.hasProductIdentifier() && info.productIdentifier() == Protocol::Hardware::USB_PID) {
@@ -31,7 +31,7 @@ QString DeviceInterface::findDevicePort() {
     return QString();
 }
 
-bool DeviceInterface::connect(const QString &target)
+bool SerialBackend::connect(const QString &target)
 {
     QString finalTarget = target;
     if (finalTarget.isEmpty()) {
@@ -40,7 +40,7 @@ bool DeviceInterface::connect(const QString &target)
 
     if (finalTarget.isEmpty()) {
         emit errorOccurred(tr("No compatible device found."));
-        emit portStatusChanged(false, QString());
+        emit connectionStatusChanged(false, QString());
         return false;
     }
 
@@ -58,43 +58,52 @@ bool DeviceInterface::connect(const QString &target)
     if (m_serialPort.open(QIODevice::ReadWrite)) {
         m_rxBuffer.clear();
         m_manifestMode = false;
-        emit portStatusChanged(true, finalTarget);
+        emit connectionStatusChanged(true, finalTarget);
         return true;
     }
 
     emit errorOccurred(m_serialPort.errorString());
-    emit portStatusChanged(false, finalTarget);
+    emit connectionStatusChanged(false, finalTarget);
     return false;
 }
 
-void DeviceInterface::disconnect()
+void SerialBackend::disconnect()
 {
     if (m_serialPort.isOpen()) {
+        QString portName = m_serialPort.portName();
         m_serialPort.close();
         m_rxBuffer.clear();
         m_manifestMode = false;
-        emit portStatusChanged(false, m_serialPort.portName());
+        emit connectionStatusChanged(false, portName);
     }
 }
 
-bool DeviceInterface::isOpen() const
+bool SerialBackend::isOpen() const
 {
     return m_serialPort.isOpen();
 }
 
-bool DeviceInterface::sendControlPacket(const Protocol::ControlPacket &pkt)
+std::vector<ConnectionInfo> SerialBackend::enumerateConnections() const {
+    std::vector<ConnectionInfo> connections;
+    for (const auto& info : QSerialPortInfo::availablePorts()) {
+        connections.push_back({info.portName(), info.description()});
+    }
+    return connections;
+}
+
+bool SerialBackend::sendControlPacket(const Protocol::ControlPacket &pkt)
 {
     if (!m_serialPort.isOpen()) return false;
     return m_serialPort.write(reinterpret_cast<const char*>(&pkt), sizeof(pkt)) == sizeof(pkt);
 }
 
-void DeviceInterface::handleReadyRead()
+void SerialBackend::handleReadyRead()
 {
     m_rxBuffer.append(m_serialPort.readAll());
     processRxBuffer();
 }
 
-void DeviceInterface::processRxBuffer()
+void SerialBackend::processRxBuffer()
 {
     while (!m_rxBuffer.isEmpty()) {
         if (m_manifestMode) {
@@ -104,7 +113,6 @@ void DeviceInterface::processRxBuffer()
             m_manifestBuffer.append(m_rxBuffer.left(nullPos));
             const QString manifest = QString::fromUtf8(m_manifestBuffer);
             
-            qCDebug(LOG_COMM) << "Manifest received, length:" << manifest.length();
             emit manifestReady(parseManifest(manifest));
             
             m_rxBuffer.remove(0, nullPos + 1); 
@@ -150,7 +158,7 @@ void DeviceInterface::processRxBuffer()
     }
 }
 
-Host::DeviceManifest DeviceInterface::parseManifest(const QString &manifest) {
+Host::DeviceManifest SerialBackend::parseManifest(const QString &manifest) {
     Host::DeviceManifest result;
     const QStringList effectLines = manifest.split('\n', Qt::SkipEmptyParts);
 
@@ -193,7 +201,7 @@ Host::DeviceManifest DeviceInterface::parseManifest(const QString &manifest) {
     return result;
 }
 
-void DeviceInterface::handleError(QSerialPort::SerialPortError error)
+void SerialBackend::handleError(QSerialPort::SerialPortError error)
 {
     if (error == QSerialPort::ResourceError) {
         emit errorOccurred(tr("Device disconnected."));
