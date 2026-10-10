@@ -2,39 +2,33 @@
 #define EMBEDDEDDSP_HOST_SPECTRUMPANEL_H
 
 #include <QFrame>
-#include <memory>
 
 class QSlider;
 class QLabel;
-class QGridLayout;
 
-namespace Host { class AppController; }
+namespace Host::Core { class AppController; }
 
 namespace Host::UI::Spectrum {
 
-class SpectrumView;
+class SpectrumPlotHost;
 class SpectrumAxisX;
 class SpectrumAxisY;
 
-/// @brief Container combining SpectrumView with axes and zoom controls.
+/// @brief Container combining spectrum plot, axes, and zoom controls.
 class SpectrumPanel : public QFrame {
     Q_OBJECT
 public:
-    explicit SpectrumPanel(std::shared_ptr<AppController> controller, QWidget *parent = nullptr);
+    explicit SpectrumPanel(Core::AppController& controller, QWidget *parent = nullptr);
     ~SpectrumPanel() override = default;
 
-    void setWelcomeVisible(bool visible);
-
 private:
-    std::shared_ptr<AppController> m_appController;
-    SpectrumView*  m_spectrumView{nullptr};
+    SpectrumPlotHost* m_spectrumPlotHost{nullptr};
     SpectrumAxisX* m_axisX{nullptr};
     SpectrumAxisY* m_axisY{nullptr};
-    
+
     QSlider* m_dbSlider{nullptr};
     QLabel* m_zoomIcon{nullptr};
     QLabel* m_dbUnitLabel{nullptr};
-    QLabel* m_welcomeLabel{nullptr};
 };
 
 } // namespace Host::UI::Spectrum

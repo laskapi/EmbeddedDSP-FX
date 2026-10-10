@@ -2,13 +2,14 @@
 #define EMBEDDEDDSP_HOST_CONNECTIONTOOLBAR_H
 
 #include <QFrame>
-#include <memory>
+#include <vector>
 
 class QComboBox;
 class QPushButton;
 class QHBoxLayout;
 
-namespace Host { class AppController; }
+namespace Host::Core { class AppController; }
+namespace Host::Models { struct ConnectionInfo; }
 
 namespace Host::UI {
 
@@ -16,18 +17,17 @@ namespace Host::UI {
 class ConnectionToolbar : public QFrame {
     Q_OBJECT
 public:
-    explicit ConnectionToolbar(std::shared_ptr<AppController> controller, QWidget *parent = nullptr);
+    explicit ConnectionToolbar(Core::AppController& controller, QWidget *parent = nullptr);
 
 private slots:
-    void refreshPortList();
     void onConnectionButtonClicked();
+    void setConnections(const std::vector<Host::Models::ConnectionInfo>& connections);
     void setConnected(bool connected);
 
 private:
     [[nodiscard]] QString selectedPortName() const;
 
-    std::shared_ptr<AppController> m_appController;
-    
+    Core::AppController& m_appController;
     QHBoxLayout *m_layout{nullptr};
     QComboBox *m_portCombo{nullptr};
     QPushButton *m_connectButton{nullptr};

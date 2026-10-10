@@ -1,17 +1,16 @@
 #include "ConnectionToolbar.h"
 #include "AppController.h"
+#include "ConnectionInfo.h"
 #include <QComboBox>
 #include <QHBoxLayout>
 #include <QPushButton>
-#include <QTimer>
 
 namespace Host::UI {
 
-ConnectionToolbar::ConnectionToolbar(std::shared_ptr<AppController> controller, QWidget *parent)
+ConnectionToolbar::ConnectionToolbar(Core::AppController& controller, QWidget *parent)
     : QFrame(parent)
-    , m_appController(controller) {
-    Q_ASSERT(m_appController);
-    
+    , m_appController(controller)
+{
     m_portCombo = new QComboBox(this);
     m_connectButton = new QPushButton(QStringLiteral("Connect"), this);
 
@@ -22,30 +21,34 @@ ConnectionToolbar::ConnectionToolbar(std::shared_ptr<AppController> controller, 
     m_layout->addStretch();
 
     connect(m_connectButton, &QPushButton::clicked, this, &ConnectionToolbar::onConnectionButtonClicked);
-    connect(m_appController.get(), &AppController::connectionChanged, this, &ConnectionToolbar::setConnected);
-
-    QTimer *scanTimer = new QTimer(this);
-    connect(scanTimer, &QTimer::timeout, this, &ConnectionToolbar::refreshPortList);
-    scanTimer->start(2000);
-    
-    refreshPortList(); 
+    connect(&m_appController, &Core::AppController::connectionsUpdated,
+            this, &ConnectionToolbar::setConnections);
+    connect(&m_appController, &Core::AppController::connectionChanged,
+            this, [this](bool connected, const QString&) {
+                setConnected(connected);
+            });
 }
 
-void ConnectionToolbar::refreshPortList() {
-    QString currentPort = selectedPortName();
-    
+void ConnectionToolbar::setConnections(const std::vector<Host::Models::ConnectionInfo>& connections) {
+    if (m_isConnected) {
+        return;
+    }
+
+    const QString currentPort = selectedPortName();
+
     m_portCombo->clear();
-    const auto connections = m_appController->availableConnections();
-    
-    for (const auto &info : connections) {
-        const QString label = info.description.isEmpty() ? info.id : 
-                              QStringLiteral("%1  (%2)").arg(info.id, info.description);
+    for (const auto& info : connections) {
+        const QString label = info.description.isEmpty()
+                                  ? info.id
+                                  : QStringLiteral("%1  (%2)").arg(info.id, info.description);
         m_portCombo->addItem(label, info.id);
     }
 
-    int idx = m_portCombo->findData(currentPort);
-    if (idx != -1) m_portCombo->setCurrentIndex(idx);
-    
+    const int idx = m_portCombo->findData(currentPort);
+    if (idx != -1) {
+        m_portCombo->setCurrentIndex(idx);
+    }
+
     m_connectButton->setEnabled(m_portCombo->count() > 0);
 }
 
@@ -62,9 +65,9 @@ void ConnectionToolbar::setConnected(bool connected) {
 
 void ConnectionToolbar::onConnectionButtonClicked() {
     if (m_isConnected) {
-        m_appController->disconnect();
+        m_appController.disconnectFromDevice();
     } else {
-        m_appController->connectToDevice(selectedPortName());
+        m_appController.connectToDevice(selectedPortName());
     }
 }
 

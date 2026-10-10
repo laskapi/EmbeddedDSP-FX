@@ -28,37 +28,40 @@ qt_standard_project_setup()
 qt_add_executable(EmbeddedDSP_Host
     WIN32 MACOSX_BUNDLE
     main.cpp
-    mainwindow.cpp
-    mainwindow.h
-    EffectSpec.h
-    IDeviceBackend.h
-    Logging.h Logging.cpp
-    SerialBackend.h
-    SerialBackend.cpp
-    AudioFrameWorker.h
-    AudioFrameWorker.cpp
-    FftProcessor.h FftProcessor.cpp
-    AppController.h AppController.cpp
+    UI/mainwindow.cpp
+    UI/mainwindow.h
+    Models/EffectSpec.h
+    Models/ConnectionInfo.h
+    Backend/IDeviceBackend.h
+    Core/Logging.h Core/Logging.cpp
+    Backend/SerialBackend.h
+    Backend/SerialBackend.cpp
+    Processing/AudioFrameWorker.h
+    Processing/AudioFrameWorker.cpp
+    Processing/FftProcessor.h Processing/FftProcessor.cpp
+    Core/AppController.h Core/AppController.cpp
     UI/Spectrum/SpectrumCommon.h
-    UI/Spectrum/SpectrumView.h UI/Spectrum/SpectrumView.cpp
+    UI/Spectrum/SpectrumPlotHost.h UI/Spectrum/SpectrumPlotHost.cpp
+    UI/Spectrum/SpectrumPlotView.h UI/Spectrum/SpectrumPlotView.cpp
     UI/Spectrum/SpectrumAxisX.h UI/Spectrum/SpectrumAxisX.cpp
     UI/Spectrum/SpectrumAxisY.h UI/Spectrum/SpectrumAxisY.cpp
     UI/Spectrum/SpectrumPanel.h UI/Spectrum/SpectrumPanel.cpp
+    UI/Spectrum/SpectrumPlotWelcomeOverlay.h UI/Spectrum/SpectrumPlotWelcomeOverlay.cpp
     UI/ConnectionToolbar.h UI/ConnectionToolbar.cpp
-    UI/AbstractRackItem.h
-    UI/ParameterItem.h UI/ParameterItem.cpp
-    UI/EffectItem.h UI/EffectItem.cpp
-    UI/ParameterRack.h UI/ParameterRack.cpp
-    UI/EffectRack.h UI/EffectRack.cpp
-    UI/AbstractRack.h
+    UI/Effects/AbstractRackItem.h
+    UI/Effects/AbstractRack.h
+    UI/Effects/ParameterItem.h UI/Effects/ParameterItem.cpp
+    UI/Effects/ParameterRack.h UI/Effects/ParameterRack.cpp
+    UI/Effects/EffectItem.h UI/Effects/EffectItem.cpp
+    UI/Effects/EffectRack.h UI/Effects/EffectRack.cpp
 )
 
 # Conditionally add simulator files to build
 if(ENABLE_SIMULATOR)
     target_sources(EmbeddedDSP_Host PRIVATE
-        AudioFrameSimulator.h AudioFrameSimulator.cpp
-        DemoManifestProvider.h DemoManifestProvider.cpp
-        SimulatorBackend.h SimulatorBackend.cpp
+        Backend/Demo/DemoAudioSimulator.h Backend/Demo/DemoAudioSimulator.cpp
+        Backend/Demo/DemoManifestProvider.h Backend/Demo/DemoManifestProvider.cpp
+        Backend/Demo/DemoBackend.h Backend/Demo/DemoBackend.cpp
     )
 endif()
 
@@ -66,14 +69,20 @@ endif()
 qt_add_resources(EmbeddedDSP_Host "styles"
     PREFIX "/"
     FILES
-        style.qss
+        UI/style.qss
 )
 
 # Include directories: local source, UI components, and firmware protocols
 target_include_directories(EmbeddedDSP_Host PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/Core
+    ${CMAKE_CURRENT_SOURCE_DIR}/Backend
+    ${CMAKE_CURRENT_SOURCE_DIR}/Backend/Demo
+    ${CMAKE_CURRENT_SOURCE_DIR}/Processing
+    ${CMAKE_CURRENT_SOURCE_DIR}/Models
     ${CMAKE_CURRENT_SOURCE_DIR}/UI
     ${CMAKE_CURRENT_SOURCE_DIR}/UI/Spectrum
+    ${CMAKE_CURRENT_SOURCE_DIR}/UI/Effects
     ${CMAKE_CURRENT_SOURCE_DIR}/../EmbeddedDSP_Shared
 )
 
