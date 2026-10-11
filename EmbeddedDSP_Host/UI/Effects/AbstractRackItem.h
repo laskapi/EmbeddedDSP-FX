@@ -11,9 +11,6 @@ class AbstractRackItem : public QWidget {
 public:
     virtual ~AbstractRackItem() override = default;
 
-    /// @brief Gets the current index.
-    [[nodiscard]] int index() const { return m_index; }
-
     /// @brief Sets the index of the widget within the rack.
     void setIndex(int index) { m_index = index; }
 

@@ -20,7 +20,7 @@ SerialBackend::SerialBackend(QObject *parent)
 
 SerialBackend::~SerialBackend()
 {
-    disconnectFromDevice();
+    SerialBackend::disconnectFromDevice();
 }
 
 QString SerialBackend::findDevicePort() {
@@ -85,12 +85,12 @@ bool SerialBackend::isOpen() const
     return m_serialPort.isOpen();
 }
 
-std::vector<ConnectionInfo> SerialBackend::availableConnections() const {
+void SerialBackend::requestAvailableConnections() {
     std::vector<ConnectionInfo> connections;
     for (const auto& info : QSerialPortInfo::availablePorts()) {
         connections.push_back({info.portName(), info.description()});
     }
-    return connections;
+    emit connectionsReady(connections);
 }
 
 bool SerialBackend::sendControlPacket(const Protocol::ControlPacket &pkt)

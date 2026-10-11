@@ -19,7 +19,7 @@ public:
     void disconnectFromDevice() override;
     bool sendControlPacket(const Protocol::ControlPacket &pkt) override;
     bool isOpen() const override;
-    std::vector<Host::Models::ConnectionInfo> availableConnections() const override;
+    void requestAvailableConnections() override;
 
 private:
     std::unique_ptr<Demo::DemoAudioSimulator> m_simulator;

@@ -3,12 +3,9 @@
 
 #include <QWidget>
 #include <QHBoxLayout>
-#include <Protocol/ControlPacket.h>
 #include "AbstractRack.h"
 #include "EffectItem.h"
 #include "EffectSpec.h"
-
-class QLabel;
 
 namespace Host::Core { class AppController; }
 
@@ -20,9 +17,6 @@ class EffectRack : public AbstractRack<EffectItem, QHBoxLayout> {
 public:
     explicit EffectRack(Host::Core::AppController& controller, QWidget *parent = nullptr);
 
-    /// @brief Syncs the appropriate widget with device state.
-    void syncFromDevice(const Protocol::ControlPacket &pkt);
-
 public slots:
     /// @brief Triggered when the manifest is ready to rebuild the rack.
     void onManifestReady(const Host::Models::DeviceManifest& manifest);
@@ -30,13 +24,16 @@ public slots:
     /// @brief Clears all widgets and restores initial state.
     void clear();
 
+    void onSlotParameterUpdated(int slotIndex, int paramIndex, float value);
+    void onSlotEffectTypeUpdated(int slotIndex, int effectTypeId);
+    void onSlotBypassUpdated(int slotIndex, bool bypassed);
+
 signals:
     /// @brief Emitted when all slots have received their initial state during sync.
     void rackReady();
 
 private:
     Host::Core::AppController& m_appController;
-    QLabel *m_welcomeLabel{nullptr};
     int m_syncedSlotsCount{0};
     int m_expectedSlotsCount{0};
     bool m_isSyncing{false};

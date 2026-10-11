@@ -33,11 +33,6 @@ void DemoAudioSimulator::stop()
     m_timer.stop();
 }
 
-bool DemoAudioSimulator::isRunning() const
-{
-    return m_timer.isActive();
-}
-
 void DemoAudioSimulator::onTick()
 {
     Protocol::AudioFramePacket frame{};

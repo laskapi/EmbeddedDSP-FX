@@ -4,6 +4,7 @@
 #include "SpectrumAxisX.h"
 #include "SpectrumAxisY.h"
 #include "SpectrumCommon.h"
+#include "UiObjectNames.h"
 #include <QGridLayout>
 #include <QSlider>
 #include <QLabel>
@@ -18,17 +19,17 @@ SpectrumPanel::SpectrumPanel(Core::AppController& controller, QWidget *parent)
     mainGrid->setSpacing(0);
 
     m_zoomIcon = new QLabel(QString(QChar(0x2315)), this);
-    m_zoomIcon->setObjectName("SpectrumZoomIcon");
+    m_zoomIcon->setObjectName(Host::UI::UiObjectNames::kSpectrumZoomIcon);
     m_zoomIcon->setAlignment(Qt::AlignCenter);
 
     m_dbSlider = new QSlider(Qt::Vertical, this);
-    m_dbSlider->setObjectName("SpectrumSensitivitySlider");
+    m_dbSlider->setObjectName(Host::UI::UiObjectNames::kSpectrumSensitivitySlider);
     m_dbSlider->setRange(-120, -40);
     m_dbSlider->setValue(-100);
     m_dbSlider->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Expanding);
 
     m_dbUnitLabel = new QLabel("dB", this);
-    m_dbUnitLabel->setObjectName("SpectrumUnitLabel");
+    m_dbUnitLabel->setObjectName(Host::UI::UiObjectNames::kSpectrumUnitLabel);
     m_dbUnitLabel->setAlignment(Qt::AlignRight | Qt::AlignBottom);
 
     m_spectrumPlotHost = new SpectrumPlotHost(controller, this);
@@ -36,7 +37,7 @@ SpectrumPanel::SpectrumPanel(Core::AppController& controller, QWidget *parent)
     m_axisY = new SpectrumAxisY(this);
 
     m_axisX = new SpectrumAxisX(this);
-    m_axisX->setObjectName("SpectrumAxisX");
+    m_axisX->setObjectName(Host::UI::UiObjectNames::kSpectrumAxisX);
 
     mainGrid->addWidget(m_zoomIcon,    0, 0);
     mainGrid->addWidget(m_dbUnitLabel, 0, 1);

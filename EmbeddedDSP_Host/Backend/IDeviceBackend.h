@@ -24,16 +24,16 @@ public:
     virtual void disconnectFromDevice() = 0;
     virtual bool sendControlPacket(const Protocol::ControlPacket &pkt) = 0;
     virtual bool isOpen() const = 0;
-
-    /// @return Selectable connection targets for this backend (ports, simulator, etc.).
-    virtual std::vector<Host::Models::ConnectionInfo> availableConnections() const = 0;
+    virtual void requestAvailableConnections() = 0;
 
 signals:
     void manifestReady(const Host::Models::DeviceManifest &manifest);
     void audioFrameReady(const Protocol::AudioFramePacket &frame);
     void controlPacketReady(const Protocol::ControlPacket &pkt);
     void connectionStatusChanged(bool connected, const QString &portName);
+    void connectionsReady(const std::vector<Host::Models::ConnectionInfo> &connections);
     void errorOccurred(const QString &errorMessage);
+
 };
 
 } // namespace Host::Backend

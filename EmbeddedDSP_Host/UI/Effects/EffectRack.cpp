@@ -2,23 +2,19 @@
 #include "EffectItem.h"
 #include "AppController.h"
 #include <QHBoxLayout>
-#include <QLabel>
-#include <QDebug>
 
 using namespace Host::Models;
+using namespace Host::Core;
 
 namespace Host::UI::Effects {
 
-EffectRack::EffectRack(Host::Core::AppController& controller, QWidget *parent)
+EffectRack::EffectRack(AppController& controller, QWidget *parent)
     : AbstractRack(parent), m_appController(controller) {
 
-    connect(&m_appController, &Host::Core::AppController::manifestReady, this, &EffectRack::onManifestReady);
-    connect(&m_appController, &Host::Core::AppController::deviceStateUpdated, this, &EffectRack::syncFromDevice);
-
-    connect(&m_appController, &Host::Core::AppController::connectionChanged, this, [this](bool connected, const QString&) {
-        // clear() will be called by MainWindow after animation ends
-        (void)connected;
-    });
+    connect(&m_appController, &AppController::manifestReady, this, &EffectRack::onManifestReady);
+    connect(&m_appController, &AppController::slotParameterUpdated, this, &EffectRack::onSlotParameterUpdated);
+    connect(&m_appController, &AppController::slotEffectTypeUpdated, this, &EffectRack::onSlotEffectTypeUpdated);
+    connect(&m_appController, &AppController::slotBypassUpdated, this, &EffectRack::onSlotBypassUpdated);
 }
 
 void EffectRack::onManifestReady(const DeviceManifest& manifest) {
@@ -31,17 +27,9 @@ void EffectRack::onManifestReady(const DeviceManifest& manifest) {
         auto *item = createItem(this);
         item->setAvailableEffects(manifest.availableEffects);
 
-        connect(item, &EffectItem::parameterChanged, this, [this](int slotIdx, int paramIdx, float val) {
-            m_appController.setParameter(static_cast<uint8_t>(slotIdx), static_cast<uint8_t>(paramIdx), val);
-        });
-
-        connect(item, &EffectItem::typeChanged, this, [this](int slotIdx, uint8_t effectId) {
-            m_appController.setEffectType(static_cast<uint8_t>(slotIdx), effectId);
-        });
-
-        connect(item, &EffectItem::bypassToggled, this, [this](int slotIdx, bool bypassed) {
-            m_appController.setBypass(static_cast<uint8_t>(slotIdx), bypassed);
-        });
+        connect(item, &EffectItem::parameterChanged, &m_appController, &AppController::setParameter);
+        connect(item, &EffectItem::typeChanged, &m_appController, &AppController::setEffectType);
+        connect(item, &EffectItem::bypassToggled, &m_appController, &AppController::setBypass);
     }
 
     m_appController.requestSync();
@@ -51,18 +39,29 @@ void EffectRack::clear() {
     clearRack();
 }
 
-void EffectRack::syncFromDevice(const Protocol::ControlPacket &pkt) {
-    if (auto *item = getItem(pkt.slotId)) {
-        bool wasTypePacket = (pkt.command == Protocol::Command::SetEffectType);
-        item->updateFromPacket(pkt);
+void EffectRack::onSlotParameterUpdated(int slotIndex, int paramIndex, float value) {
+    if (auto *item = getItem(slotIndex)) {
+        item->applyParameter(paramIndex, value);
+    }
+}
 
-        if (m_isSyncing && wasTypePacket) {
+void EffectRack::onSlotEffectTypeUpdated(int slotIndex, int effectTypeId) {
+    if (auto *item = getItem(slotIndex)) {
+        item->applyEffectType(effectTypeId);
+
+        if (m_isSyncing) {
             m_syncedSlotsCount++;
             if (m_syncedSlotsCount >= m_expectedSlotsCount) {
                 m_isSyncing = false;
                 emit rackReady();
             }
         }
+    }
+}
+
+void EffectRack::onSlotBypassUpdated(int slotIndex, bool bypassed) {
+    if (auto *item = getItem(slotIndex)) {
+        item->applyBypass(bypassed);
     }
 }
 

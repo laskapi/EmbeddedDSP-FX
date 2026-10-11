@@ -47,6 +47,7 @@ qt_add_executable(EmbeddedDSP_Host
     UI/Spectrum/SpectrumAxisY.h UI/Spectrum/SpectrumAxisY.cpp
     UI/Spectrum/SpectrumPanel.h UI/Spectrum/SpectrumPanel.cpp
     UI/Spectrum/SpectrumPlotWelcomeOverlay.h UI/Spectrum/SpectrumPlotWelcomeOverlay.cpp
+    UI/UiObjectNames.h
     UI/ConnectionToolbar.h UI/ConnectionToolbar.cpp
     UI/Effects/AbstractRackItem.h
     UI/Effects/AbstractRack.h

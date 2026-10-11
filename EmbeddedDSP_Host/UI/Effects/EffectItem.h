@@ -3,7 +3,6 @@
 
 #include "AbstractRackItem.h"
 #include "EffectSpec.h"
-#include <Protocol/ControlPacket.h>
 #include <QMap>
 
 class QComboBox;
@@ -21,15 +20,16 @@ class EffectItem : public AbstractRackItem {
 public:
     explicit EffectItem(int index, QWidget *parent = nullptr);
 
-    /// @brief Syncs widget state from device data.
-    void updateFromPacket(const Protocol::ControlPacket &pkt);
+    void applyEffectType(int effectTypeId);
+    void applyBypass(bool bypassed);
+    void applyParameter(int paramIndex, float value);
 
     /// @brief Sets the list of available effects for the combo box.
     void setAvailableEffects(const QMap<int, Host::Models::EffectSpec> &availableEffects);
 
 signals:
     void parameterChanged(int slotIdx, int paramIdx, float newValue);
-    void typeChanged(int slotIdx, uint8_t effectId);
+    void typeChanged(int slotIdx, int effectTypeId);
     void bypassToggled(int slotIdx, bool bypassed);
 
 private slots:
@@ -38,7 +38,7 @@ private slots:
 
 private:
     void setupUi();
-    void setupEffect(uint8_t effectId);
+    void setupEffect(int effectTypeId);
 
     QLabel *m_titleLabel{nullptr};
     QComboBox *m_typeCombo{nullptr};

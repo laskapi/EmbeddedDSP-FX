@@ -12,6 +12,7 @@ ConnectionToolbar::ConnectionToolbar(Core::AppController& controller, QWidget *p
     , m_appController(controller)
 {
     m_portCombo = new QComboBox(this);
+    m_portCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
     m_connectButton = new QPushButton(QStringLiteral("Connect"), this);
 
     m_layout = new QHBoxLayout(this);
@@ -24,9 +25,7 @@ ConnectionToolbar::ConnectionToolbar(Core::AppController& controller, QWidget *p
     connect(&m_appController, &Core::AppController::connectionsUpdated,
             this, &ConnectionToolbar::setConnections);
     connect(&m_appController, &Core::AppController::connectionChanged,
-            this, [this](bool connected, const QString&) {
-                setConnected(connected);
-            });
+            this,&ConnectionToolbar::setConnected);
 }
 
 void ConnectionToolbar::setConnections(const std::vector<Host::Models::ConnectionInfo>& connections) {
@@ -50,6 +49,7 @@ void ConnectionToolbar::setConnections(const std::vector<Host::Models::Connectio
     }
 
     m_connectButton->setEnabled(m_portCombo->count() > 0);
+    m_portCombo->updateGeometry();
 }
 
 QString ConnectionToolbar::selectedPortName() const {

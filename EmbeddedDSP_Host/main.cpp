@@ -2,6 +2,7 @@
 #include "mainwindow.h"
 #include "ConnectionInfo.h"
 #include "IDeviceBackend.h"
+#include "AudioFrameWorker.h"
 #ifdef HOST_SIMULATOR_ENABLED
 #include "DemoBackend.h"
 #else
@@ -38,9 +39,11 @@ int main(int argc, char *argv[])
     backend = std::make_unique<Host::Backend::SerialBackend>();
 #endif
 
-    auto appController = std::make_unique<Host::Core::AppController>(std::move(backend));
+    auto worker = std::make_unique<Host::Processing::AudioFrameWorker>();
+
+    auto appController = std::make_unique<Host::Core::AppController>(std::move(backend), std::move(worker));
 
     Host::UI::MainWindow w(*appController);
     w.show();
-    return QCoreApplication::exec();
+    return QApplication::exec();
 }

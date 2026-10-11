@@ -1,4 +1,5 @@
 /* EmbeddedDSP-FX Stylesheet - Source of Truth */
+/* #objectName selectors: see UI/UiObjectNames.h (Host::UI::UiObjectNames) */
 
 Host--UI--Spectrum--SpectrumPanel {
     background-color: transparent;

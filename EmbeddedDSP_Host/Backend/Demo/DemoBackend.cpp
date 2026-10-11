@@ -14,7 +14,6 @@ const QString kDemoConnectionDescription = QStringLiteral("Internal DSP Simulato
 
 namespace Host::Backend {
 
-using Host::Models::ConnectionInfo;
 
 DemoBackend::DemoBackend(QObject *parent)
     : IDeviceBackend(parent)
@@ -24,7 +23,7 @@ DemoBackend::DemoBackend(QObject *parent)
 }
 
 DemoBackend::~DemoBackend() {
-    disconnectFromDevice();
+   DemoBackend::disconnectFromDevice();
 }
 
 bool DemoBackend::connectToDevice(const QString &target) {
@@ -84,8 +83,8 @@ bool DemoBackend::isOpen() const {
     return m_isOpen;
 }
 
-std::vector<ConnectionInfo> DemoBackend::availableConnections() const {
-    return {{kDemoConnectionId, kDemoConnectionDescription}};
+void DemoBackend::requestAvailableConnections() {
+    emit connectionsReady({{.id=kDemoConnectionId, .description=kDemoConnectionDescription}});
 }
 
 } // namespace Host::Backend

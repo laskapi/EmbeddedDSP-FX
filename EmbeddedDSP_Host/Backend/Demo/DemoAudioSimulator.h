@@ -15,8 +15,6 @@ class DemoAudioSimulator : public QObject
 public:
     explicit DemoAudioSimulator(QObject *parent = nullptr);
 
-    [[nodiscard]] bool isRunning() const;
-
 public slots:
     void start();
     void stop();
