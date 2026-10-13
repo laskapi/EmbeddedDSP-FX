@@ -19,7 +19,6 @@ TEST(OverdriveTest, ClippingLogic) {
         overdrive.process(l, r);
     }
     
-    // Now process and check the result
     overdrive.process(left, right);
     
     // For gain 10 and input 1.0, it should be hard-clipped to exactly 2/3 (approx 0.666)

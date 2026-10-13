@@ -1,4 +1,5 @@
 #include "SerialBackend.h"
+#include "DeviceManifestParser.h"
 #include "Logging.h"
 #include <Protocol/AudioFramePacket.h>
 #include <Protocol/ControlPacket.h>
@@ -10,6 +11,7 @@
 namespace Host::Backend {
 
 using Host::Models::ConnectionInfo;
+using Host::Models::parseDeviceManifest;
 
 SerialBackend::SerialBackend(QObject *parent)
     : IDeviceBackend(parent), m_serialPort(this)
@@ -115,7 +117,10 @@ void SerialBackend::processRxBuffer()
             m_manifestBuffer.append(m_rxBuffer.left(nullPos));
             const QString manifest = QString::fromUtf8(m_manifestBuffer);
             
-            emit manifestReady(parseManifest(manifest));
+            const auto parsed = parseDeviceManifest(manifest);
+            qCDebug(Host::Core::LOG_COMM) << "Manifest parsed. Slots:" << parsed.slotCount
+                                          << "Effects:" << parsed.availableEffects.count();
+            emit manifestReady(parsed);
             
             m_rxBuffer.remove(0, nullPos + 1); 
             m_manifestBuffer.clear();
@@ -158,49 +163,6 @@ void SerialBackend::processRxBuffer()
             m_rxBuffer.remove(0, 1);
         }
     }
-}
-
-Models::DeviceManifest SerialBackend::parseManifest(const QString &manifest) {
-    Models::DeviceManifest result;
-    const QStringList effectLines = manifest.split('\n', Qt::SkipEmptyParts);
-
-    for (const QString &effectLine : effectLines) {
-        QStringList segments = effectLine.split(';', Qt::SkipEmptyParts);
-        if (segments.isEmpty()) continue;
-
-        QStringList header = segments[0].split(':');
-        if (header.isEmpty()) continue;
-
-        const QString tag = header[0];
-
-        if (tag == QLatin1String("C")) {
-            if (header.size() >= 3 && header[1] == QLatin1String("SLOTS")) {
-                result.slotCount = header[2].toInt();
-            }
-        } else if (tag == QLatin1String("E")) {
-            if (header.size() < 3) continue;
-
-            Models::EffectSpec spec;
-            spec.id = static_cast<uint8_t>(header[1].toInt());
-            spec.name = header[2];
-
-            auto params = segments.sliced(1);
-            for (const QString &param : std::as_const(params)) {
-                QStringList p = param.split(':');
-                if (p.size() < 5 || p[0] != QLatin1String("P")) continue;
-                
-                spec.params.append({p[1], p[2].toFloat(), p[3].toFloat(), p[4].toFloat()});
-            }
-            result.availableEffects[spec.id] = spec;
-        }
-    }
-
-    if (result.slotCount <= 0) result.slotCount = 4;
-    
-    qCDebug(Host::Core::LOG_COMM) << "Manifest parsed. Slots:" << result.slotCount 
-                     << "Effects:" << result.availableEffects.count();
-    
-    return result;
 }
 
 void SerialBackend::handleError(QSerialPort::SerialPortError error)

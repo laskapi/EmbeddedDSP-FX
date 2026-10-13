@@ -37,9 +37,21 @@ End-to-end guitar multi-FX system: low-latency processing on a memory-constraine
 
 ### Tests (PC)
 
-- **GoogleTest** targets protocol parsing and DSP logic with `FIRMWARE_UNIT_TESTS` (header-only effect code from firmware tree).
+- **DSP & Firmware Logic:** `dsp_unit_tests` verify audio algorithms (Overdrive, Delay clipping) and the `ControlParser` byte-stream logic in isolation from the hardware.
+- **Host Application:** `host_unit_tests` focus on system reliability:
+  - **Manifest Parsing:** Robust interpretation of hardware-provided capability strings.
+  - **Async Controller Logic:** Uses **Google Mock** and `std::promise` to verify multi-threaded communication between the GUI and hardware backends.
+  - **Spectral Analysis:** Validation of the `FftProcessor` using reference sine waves to ensure accurate frequency detection.
 
 ---
+
+## Testing Strategy
+
+Since embedded development makes debugging on hardware slow, this project emphasizes **PC-side verification**:
+
+1. **Algorithm Validation:** DSP effects are header-only and C++20 compliant, allowing them to be compiled into native unit tests. We test clipping math and buffer handling without flashing the MCU.
+2. **Hardware Mocking:** The `AppController` is tested against a `MockDeviceBackend`. This allows us to simulate hardware errors or sudden disconnections and verify that the UI responds correctly.
+3. **Protocol Integrity:** Shared headers ensure that the bit-layout of packets is identical on both sides, with CRC-16 checks verified in unit tests.
 
 ## Architecture
 
@@ -141,13 +153,15 @@ On Windows, opening `EmbeddedDSP_Host/CMakeLists.txt` in **Qt Creator** with a c
 
 ### Unit tests (PC)
 
-From the repository root (native toolchain, no ARM file):
+From the repository root (native toolchain, no ARM toolchain file). Host manifest tests need **Qt 6 Core** (same `CMAKE_PREFIX_PATH` as the Host app):
 
 ```bash
-cmake -B build-tests -DBUILD_TESTS=ON
+cmake -B build-tests -DBUILD_TESTS=ON -DCMAKE_PREFIX_PATH="<path-to-Qt6>"
 cmake --build build-tests
 ctest --test-dir build-tests --output-on-failure
 ```
+
+Targets: **`dsp_unit_tests`** (protocol + firmware DSP logic) and **`host_unit_tests`** (manifest parsing, mocked controller logic, and FFT verification).
 
 ---
 

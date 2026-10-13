@@ -5,6 +5,8 @@
 #include <QString>
 #include <memory>
 #include <vector>
+#include "DeviceModel.h"
+#include "ConnectionInfo.h"
 
 class QThread;
 class QTimer;
@@ -13,10 +15,6 @@ namespace Protocol {
     struct ControlPacket;
 }
 
-namespace Host::Models {
-    struct DeviceManifest;
-    struct ConnectionInfo;
-}
 namespace Host::Processing { class AudioFrameWorker; }
 namespace Host::Backend { class IDeviceBackend; }
 

@@ -4,7 +4,7 @@
 #include <QObject>
 #include <vector>
 #include "ConnectionInfo.h"
-#include "EffectSpec.h"
+#include "DeviceModel.h"
 
 namespace Protocol {
     struct ControlPacket;

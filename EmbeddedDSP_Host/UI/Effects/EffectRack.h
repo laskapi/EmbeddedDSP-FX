@@ -5,7 +5,7 @@
 #include <QHBoxLayout>
 #include "AbstractRack.h"
 #include "EffectItem.h"
-#include "EffectSpec.h"
+#include "DeviceModel.h"
 
 namespace Host::Core { class AppController; }
 

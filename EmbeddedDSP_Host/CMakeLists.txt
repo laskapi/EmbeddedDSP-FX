@@ -30,7 +30,9 @@ qt_add_executable(EmbeddedDSP_Host
     main.cpp
     UI/mainwindow.cpp
     UI/mainwindow.h
-    Models/EffectSpec.h
+    Models/DeviceModel.h
+    Models/DeviceManifestParser.h
+    Models/DeviceManifestParser.cpp
     Models/ConnectionInfo.h
     Backend/IDeviceBackend.h
     Core/Logging.h Core/Logging.cpp

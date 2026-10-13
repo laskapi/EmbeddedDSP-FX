@@ -41,3 +41,43 @@ target_link_libraries(dsp_unit_tests
 
 include(GoogleTest)
 gtest_discover_tests(dsp_unit_tests)
+
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTOUIC ON)
+
+find_package(Qt6 REQUIRED COMPONENTS Core Test)
+
+add_executable(host_unit_tests
+        host/test_manifestparser.cpp
+        host/test_appcontroller.cpp
+        host/test_fftprocessor.cpp
+        ../EmbeddedDSP_Host/Models/DeviceManifestParser.cpp
+        ../EmbeddedDSP_Host/Core/AppController.cpp
+        ../EmbeddedDSP_Host/Processing/AudioFrameWorker.cpp
+        ../EmbeddedDSP_Host/Processing/FftProcessor.cpp
+        ../EmbeddedDSP_Host/Backend/IDeviceBackend.h
+)
+
+set_target_properties(host_unit_tests PROPERTIES
+        CXX_STANDARD 20
+        CXX_STANDARD_REQUIRED ON
+        OUTPUT_NAME "host_unit_tests"
+        SUFFIX ".exe"
+)
+
+target_include_directories(host_unit_tests PRIVATE
+        ../EmbeddedDSP_Host/Models
+        ../EmbeddedDSP_Host/Core
+        ../EmbeddedDSP_Host/Backend
+        ../EmbeddedDSP_Host/Processing
+        ../EmbeddedDSP_Shared
+)
+
+target_link_libraries(host_unit_tests PRIVATE
+        GTest::gtest_main
+        GTest::gmock
+        Qt6::Core
+        Qt6::Test
+)
+
+gtest_discover_tests(host_unit_tests)

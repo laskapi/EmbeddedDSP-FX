@@ -3,7 +3,7 @@
 
 #include <QSerialPort>
 #include <QByteArray>
-#include "EffectSpec.h"
+#include "DeviceModel.h"
 #include "IDeviceBackend.h"
 
 namespace Protocol {
@@ -34,7 +34,6 @@ private slots:
 
 private:
     void processRxBuffer();
-    Models::DeviceManifest parseManifest(const QString &manifest);
     QString findDevicePort();
     
     QSerialPort m_serialPort;

@@ -1,7 +1,7 @@
 #ifndef EMBEDDEDDSP_HOST_DEMOMANIFESTPROVIDER_H
 #define EMBEDDEDDSP_HOST_DEMOMANIFESTPROVIDER_H
 
-#include "EffectSpec.h"
+#include "DeviceModel.h"
 
 namespace Host::Backend::Demo {
 

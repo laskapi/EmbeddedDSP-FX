@@ -2,7 +2,7 @@
 #define EMBEDDEDDSP_HOST_PARAMETERITEM_H
 
 #include "AbstractRackItem.h"
-#include "EffectSpec.h"
+#include "DeviceModel.h"
 
 class QLabel;
 class QSlider;

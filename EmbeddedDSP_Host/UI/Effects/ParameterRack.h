@@ -3,7 +3,7 @@
 
 #include "AbstractRack.h"
 #include "ParameterItem.h"
-#include "EffectSpec.h"
+#include "DeviceModel.h"
 
 namespace Host::UI::Effects {
 
