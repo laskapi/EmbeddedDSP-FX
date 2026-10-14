@@ -5,22 +5,20 @@
 #include <cstdint>
 #include <Protocol/AudioFramePacket.h>
 
-namespace Host::Backend::Demo {
+namespace Host::Device::Demo {
 
 /// @brief Generates synthetic audio data for testing without hardware.
-class DemoAudioSimulator : public QObject
-{
+class DemoAudioSimulator : public QObject {
     Q_OBJECT
-
 public:
-    explicit DemoAudioSimulator(QObject *parent = nullptr);
+    explicit DemoAudioSimulator(QObject* parent = nullptr);
 
 public slots:
     void start();
     void stop();
 
 signals:
-    void audioFrameReady(const Protocol::AudioFramePacket &frame);
+    void audioFrameReady(const Protocol::AudioFramePacket& frame);
 
 private slots:
     void onTick();
@@ -31,6 +29,6 @@ private:
     float m_phase{0.0f};
 };
 
-} // namespace Host::Backend::Demo
+} // namespace Host::Device::Demo
 
 #endif // EMBEDDEDDSP_HOST_DEMOAUDIOSIMULATOR_H

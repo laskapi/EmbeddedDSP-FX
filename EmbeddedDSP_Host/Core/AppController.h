@@ -12,19 +12,25 @@ class QThread;
 class QTimer;
 
 namespace Protocol {
-    struct ControlPacket;
+struct ControlPacket;
 }
 
 namespace Host::Processing { class AudioFrameWorker; }
-namespace Host::Backend { class IDeviceBackend; }
+namespace Host::Device {
+class IDevice;
+class IDeviceFactory;
+class IConnectionScanner;
+class DeviceSession;
+}
 
 namespace Host::Core {
 
-/// @brief Central controller managing UI-to-hardware communication hub.
+/// @brief Central controller managing UI-to-device communication hub.
 class AppController : public QObject {
     Q_OBJECT
 public:
-    explicit AppController(std::unique_ptr<Host::Backend::IDeviceBackend> backend,
+    explicit AppController(std::unique_ptr<Host::Device::IConnectionScanner> scanner,
+                           std::unique_ptr<Host::Device::IDeviceFactory> factory,
                            std::unique_ptr<Host::Processing::AudioFrameWorker> audioWorker,
                            QObject* parent = nullptr);
     ~AppController() override;
@@ -43,25 +49,29 @@ signals:
     void slotBypassUpdated(int slotIndex, bool bypassed);
     void connectionChanged(bool connected, const QString& portName);
     void connectionsUpdated(const std::vector<Host::Models::ConnectionInfo>& connections);
-    void errorOccurred(const QString &errorMessage);
+    void errorOccurred(const QString& errorMessage);
     void spectrumReady(const std::vector<float>& magnitudeDb);
 
 private slots:
     void onConnectionStatusChanged(bool connected, const QString& portName);
     void onControlPacketReady(const Protocol::ControlPacket& pkt);
+    void onDeviceReady(Host::Device::IDevice* device);
     void refreshAvailableConnections();
 
 private:
-    void setupBackend();
+    void setupDeviceSignals(Host::Device::IDevice* device);
     void dispatchControlPacket(Protocol::ControlPacket pkt);
 
     QThread* m_workerThread{nullptr};
     QTimer* m_scanTimer{nullptr};
-    
-    // Raw pointers for thread-safe access; ownership managed by QThread::finished -> deleteLater
+
+    std::unique_ptr<Host::Device::IConnectionScanner> m_scanner;
+    std::unique_ptr<Host::Device::IDeviceFactory> m_factory;
+    std::unique_ptr<Host::Device::DeviceSession> m_session;
+
     Host::Processing::AudioFrameWorker* m_audioWorker{nullptr};
-    Host::Backend::IDeviceBackend* m_backend{nullptr};
-    
+    Host::Device::IDevice* m_device{nullptr};
+
     bool m_isDeviceConnected{false};
 };
 

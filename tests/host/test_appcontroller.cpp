@@ -4,24 +4,38 @@
 #include <QCoreApplication>
 #include <future>
 #include "AppController.h"
-#include "IDeviceBackend.h"
+#include "IDevice.h"
+#include "IDeviceFactory.h"
+#include "IConnectionScanner.h"
 #include "AudioFrameWorker.h"
 #include <Protocol/ControlPacket.h>
 
 using namespace Host::Core;
-using namespace Host::Backend;
+using namespace Host::Device;
 using namespace Host::Processing;
 using namespace Host::Models;
 using ::testing::Return;
+using ::testing::ByMove;
+using ::testing::NiceMock;
+using ::testing::_;
 
-/// @brief Mock implementation of IDeviceBackend for testing AppController logic.
-class MockDeviceBackend : public IDeviceBackend {
+/// @brief Mock IDevice for AppController tests.
+class MockDevice : public IDevice {
 public:
-    MOCK_METHOD(bool, connectToDevice, (const QString &target), (override));
+    MOCK_METHOD(bool, connectToDevice, (const QString& target), (override));
     MOCK_METHOD(void, disconnectFromDevice, (), (override));
-    MOCK_METHOD(bool, sendControlPacket, (const Protocol::ControlPacket &pkt), (override));
+    MOCK_METHOD(bool, sendControlPacket, (const Protocol::ControlPacket& pkt), (override));
     MOCK_METHOD(bool, isOpen, (), (const, override));
-    MOCK_METHOD(void, requestAvailableConnections, (), (override));
+};
+
+class MockDeviceFactory : public IDeviceFactory {
+public:
+    MOCK_METHOD(std::unique_ptr<IDevice>, create, (const QString& connectionId), (override));
+};
+
+class MockConnectionScanner : public IConnectionScanner {
+public:
+    MOCK_METHOD(std::vector<ConnectionInfo>, scan, (), (override));
 };
 
 class AppControllerTest : public ::testing::Test {
@@ -35,15 +49,32 @@ protected:
     }
 
     void SetUp() override {
-        auto mock = std::make_unique<MockDeviceBackend>();
-        mockBackend = mock.get();
-        
-        // Ignore the automatic scan calls from constructor to keep logs clean
-        EXPECT_CALL(*mockBackend, requestAvailableConnections())
-            .Times(::testing::AnyNumber());
+        auto scanner = std::make_unique<NiceMock<MockConnectionScanner>>();
+        mockScanner = scanner.get();
+        ON_CALL(*mockScanner, scan()).WillByDefault(Return(std::vector<ConnectionInfo>{}));
+
+        auto factory = std::make_unique<NiceMock<MockDeviceFactory>>();
+        mockFactory = factory.get();
 
         auto worker = std::make_unique<AudioFrameWorker>();
-        controller = std::make_unique<AppController>(std::move(mock), std::move(worker));
+        controller = std::make_unique<AppController>(
+            std::move(scanner), std::move(factory), std::move(worker));
+    }
+
+    /// Creates a mock device, wires factory expectation, connects, returns raw mock pointer.
+    MockDevice* connectWithMock(const QString& target) {
+        auto mock = std::make_unique<NiceMock<MockDevice>>();
+        MockDevice* raw = mock.get();
+
+        EXPECT_CALL(*mockFactory, create(target))
+            .WillOnce(Return(ByMove(std::unique_ptr<IDevice>(std::move(mock)))));
+
+        ON_CALL(*raw, connectToDevice(_)).WillByDefault(Return(true));
+        ON_CALL(*raw, sendControlPacket(_)).WillByDefault(Return(true));
+
+        controller->connectToDevice(target);
+        QCoreApplication::processEvents();
+        return raw;
     }
 
     void TearDown() override {
@@ -51,26 +82,33 @@ protected:
         QCoreApplication::processEvents();
     }
 
-    MockDeviceBackend* mockBackend{nullptr};
+    MockConnectionScanner* mockScanner{nullptr};
+    MockDeviceFactory* mockFactory{nullptr};
     std::unique_ptr<AppController> controller;
 };
 
-TEST_F(AppControllerTest, ConnectToDeviceCallsBackendWithCorrectPort) {
+TEST_F(AppControllerTest, ConnectToDeviceCallsDeviceWithCorrectPort) {
     const QString testPort = "COM3";
-    
+
+    auto mock = std::make_unique<NiceMock<MockDevice>>();
+    MockDevice* raw = mock.get();
+
     std::promise<void> calledPromise;
     auto calledFuture = calledPromise.get_future();
 
-    EXPECT_CALL(*mockBackend, connectToDevice(testPort))
+    EXPECT_CALL(*mockFactory, create(testPort))
+        .WillOnce(Return(ByMove(std::unique_ptr<IDevice>(std::move(mock)))));
+
+    EXPECT_CALL(*raw, connectToDevice(testPort))
         .WillOnce([&calledPromise](const QString&) {
             calledPromise.set_value();
             return true;
         });
 
     controller->connectToDevice(testPort);
-    
+
     auto status = calledFuture.wait_for(std::chrono::seconds(1));
-    ASSERT_EQ(status, std::future_status::ready) << "Backend method was not called within timeout";
+    ASSERT_EQ(status, std::future_status::ready) << "Device method was not called within timeout";
 }
 
 TEST_F(AppControllerTest, SetParameterSendsCorrectPacket) {
@@ -78,11 +116,12 @@ TEST_F(AppControllerTest, SetParameterSendsCorrectPacket) {
     const int param = 1;
     const float value = 0.75f;
 
+    MockDevice* mockDevice = connectWithMock(QStringLiteral("COM3"));
+
     std::promise<void> sentPromise;
     auto sentFuture = sentPromise.get_future();
 
-    // Verify that the controller sends a packet with correct command, slot and value
-    EXPECT_CALL(*mockBackend, sendControlPacket(::testing::_))
+    EXPECT_CALL(*mockDevice, sendControlPacket(_))
         .WillOnce([&](const Protocol::ControlPacket& pkt) {
             EXPECT_EQ(pkt.command, Protocol::Command::SetParam);
             EXPECT_EQ(pkt.slotId, slot);
@@ -93,7 +132,7 @@ TEST_F(AppControllerTest, SetParameterSendsCorrectPacket) {
         });
 
     controller->setParameter(slot, param, value);
-    
+
     auto status = sentFuture.wait_for(std::chrono::seconds(1));
     ASSERT_EQ(status, std::future_status::ready) << "Control packet was not sent within timeout";
 }
@@ -102,10 +141,12 @@ TEST_F(AppControllerTest, SetEffectTypeSendsCorrectPacket) {
     const int slot = 0;
     const int typeId = 4;
 
+    MockDevice* mockDevice = connectWithMock(QStringLiteral("COM3"));
+
     std::promise<void> sentPromise;
     auto sentFuture = sentPromise.get_future();
 
-    EXPECT_CALL(*mockBackend, sendControlPacket(::testing::_))
+    EXPECT_CALL(*mockDevice, sendControlPacket(_))
         .WillOnce([&](const Protocol::ControlPacket& pkt) {
             EXPECT_EQ(pkt.command, Protocol::Command::SetEffectType);
             EXPECT_EQ(pkt.slotId, slot);
@@ -115,29 +156,32 @@ TEST_F(AppControllerTest, SetEffectTypeSendsCorrectPacket) {
         });
 
     controller->setEffectType(slot, typeId);
-    
+
     auto status = sentFuture.wait_for(std::chrono::seconds(1));
     ASSERT_EQ(status, std::future_status::ready) << "Control packet was not sent within timeout";
 }
 
-TEST_F(AppControllerTest, EmitsManifestReadyWhenBackendSignalsIt) {
+TEST_F(AppControllerTest, EmitsManifestReadyWhenDeviceSignalsIt) {
+    MockDevice* mockDevice = connectWithMock(QStringLiteral("DEMO_MODE"));
+
     QSignalSpy spy(controller.get(), &AppController::manifestReady);
-    
+
     DeviceManifest manifest;
     manifest.slotCount = 8;
-
-    emit mockBackend->manifestReady(manifest);
+    emit mockDevice->manifestReady(manifest);
 
     ASSERT_EQ(spy.count(), 1);
     auto receivedManifest = spy.at(0).at(0).value<DeviceManifest>();
     EXPECT_EQ(receivedManifest.slotCount, 8);
 }
 
-TEST_F(AppControllerTest, HandlesConnectionErrorFromBackend) {
+TEST_F(AppControllerTest, HandlesConnectionErrorFromDevice) {
+    MockDevice* mockDevice = connectWithMock(QStringLiteral("COM3"));
+
     QSignalSpy errorSpy(controller.get(), &AppController::errorOccurred);
     QString errorMsg = "Device disconnected unexpectedly";
 
-    emit mockBackend->errorOccurred(errorMsg);
+    emit mockDevice->errorOccurred(errorMsg);
 
     ASSERT_EQ(errorSpy.count(), 1);
     EXPECT_EQ(errorSpy.at(0).at(0).toString(), errorMsg);

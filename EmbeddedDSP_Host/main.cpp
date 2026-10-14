@@ -1,13 +1,9 @@
 #include "AppController.h"
 #include "mainwindow.h"
 #include "ConnectionInfo.h"
-#include "IDeviceBackend.h"
+#include "ConnectionScanner.h"
+#include "DeviceFactory.h"
 #include "AudioFrameWorker.h"
-#ifdef HOST_SIMULATOR_ENABLED
-#include "DemoBackend.h"
-#else
-#include "SerialBackend.h"
-#endif
 
 #include <QApplication>
 #include <QFile>
@@ -16,8 +12,7 @@
 #include <memory>
 #include <vector>
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char* argv[]) {
     qRegisterMetaType<Protocol::ControlPacket>("Protocol::ControlPacket");
     qRegisterMetaType<Protocol::AudioFramePacket>("Protocol::AudioFramePacket");
     qRegisterMetaType<std::vector<float>>("std::vector<float>");
@@ -26,22 +21,17 @@ int main(int argc, char *argv[])
 
     QApplication a(argc, argv);
 
-    // Load stylesheet from embedded resources (compiled via qt_add_resources in CMake)
     QFile styleFile(":/UI/style.qss");
     if (styleFile.open(QFile::ReadOnly)) {
         a.setStyleSheet(styleFile.readAll());
     }
 
-    std::unique_ptr<Host::Backend::IDeviceBackend> backend;
-#ifdef HOST_SIMULATOR_ENABLED
-    backend = std::make_unique<Host::Backend::DemoBackend>();
-#else
-    backend = std::make_unique<Host::Backend::SerialBackend>();
-#endif
-
+    auto scanner = std::make_unique<Host::Device::ConnectionScanner>();
+    auto factory = std::make_unique<Host::Device::DeviceFactory>();
     auto worker = std::make_unique<Host::Processing::AudioFrameWorker>();
 
-    auto appController = std::make_unique<Host::Core::AppController>(std::move(backend), std::move(worker));
+    auto appController = std::make_unique<Host::Core::AppController>(
+        std::move(scanner), std::move(factory), std::move(worker));
 
     Host::UI::MainWindow w(*appController);
     w.show();

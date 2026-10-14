@@ -1,32 +1,29 @@
-#include "SerialBackend.h"
+#include "SerialDevice.h"
 #include "DeviceManifestParser.h"
 #include "Logging.h"
 #include <Protocol/AudioFramePacket.h>
 #include <Protocol/ControlPacket.h>
-#include <QDebug>
 #include <QSerialPortInfo>
-#include <QStringList>
 #include <cstring>
 
-namespace Host::Backend {
+namespace Host::Device {
 
-using Host::Models::ConnectionInfo;
 using Host::Models::parseDeviceManifest;
 
-SerialBackend::SerialBackend(QObject *parent)
-    : IDeviceBackend(parent), m_serialPort(this)
+SerialDevice::SerialDevice(QObject* parent)
+    : IDevice(parent)
+    , m_serialPort(this)
 {
-    connect(&m_serialPort, &QSerialPort::readyRead, this, &SerialBackend::handleReadyRead);
-    connect(&m_serialPort, &QSerialPort::errorOccurred, this, &SerialBackend::handleError);
+    connect(&m_serialPort, &QSerialPort::readyRead, this, &SerialDevice::handleReadyRead);
+    connect(&m_serialPort, &QSerialPort::errorOccurred, this, &SerialDevice::handleError);
 }
 
-SerialBackend::~SerialBackend()
-{
-    SerialBackend::disconnectFromDevice();
+SerialDevice::~SerialDevice() {
+    SerialDevice::disconnectFromDevice();
 }
 
-QString SerialBackend::findDevicePort() {
-    for (const QSerialPortInfo &info : QSerialPortInfo::availablePorts()) {
+QString SerialDevice::findDevicePort() {
+    for (const QSerialPortInfo& info : QSerialPortInfo::availablePorts()) {
         if (info.hasVendorIdentifier() && info.vendorIdentifier() == Protocol::Hardware::USB_VID &&
             info.hasProductIdentifier() && info.productIdentifier() == Protocol::Hardware::USB_PID) {
             return info.portName();
@@ -35,8 +32,7 @@ QString SerialBackend::findDevicePort() {
     return QString();
 }
 
-bool SerialBackend::connectToDevice(const QString &target)
-{
+bool SerialDevice::connectToDevice(const QString& target) {
     QString finalTarget = target;
     if (finalTarget.isEmpty()) {
         finalTarget = findDevicePort();
@@ -71,8 +67,7 @@ bool SerialBackend::connectToDevice(const QString &target)
     return false;
 }
 
-void SerialBackend::disconnectFromDevice()
-{
+void SerialDevice::disconnectFromDevice() {
     if (m_serialPort.isOpen()) {
         QString portName = m_serialPort.portName();
         m_serialPort.close();
@@ -82,57 +77,51 @@ void SerialBackend::disconnectFromDevice()
     }
 }
 
-bool SerialBackend::isOpen() const
-{
+bool SerialDevice::isOpen() const {
     return m_serialPort.isOpen();
 }
 
-void SerialBackend::requestAvailableConnections() {
-    std::vector<ConnectionInfo> connections;
-    for (const auto& info : QSerialPortInfo::availablePorts()) {
-        connections.push_back({info.portName(), info.description()});
+bool SerialDevice::sendControlPacket(const Protocol::ControlPacket& pkt) {
+    if (!m_serialPort.isOpen()) {
+        return false;
     }
-    emit connectionsReady(connections);
-}
-
-bool SerialBackend::sendControlPacket(const Protocol::ControlPacket &pkt)
-{
-    if (!m_serialPort.isOpen()) return false;
     return m_serialPort.write(reinterpret_cast<const char*>(&pkt), sizeof(pkt)) == sizeof(pkt);
 }
 
-void SerialBackend::handleReadyRead()
-{
+void SerialDevice::handleReadyRead() {
     m_rxBuffer.append(m_serialPort.readAll());
     processRxBuffer();
 }
 
-void SerialBackend::processRxBuffer()
-{
+void SerialDevice::processRxBuffer() {
     while (!m_rxBuffer.isEmpty()) {
         if (m_manifestMode) {
             int nullPos = m_rxBuffer.indexOf('\0');
-            if (nullPos == -1) return;
+            if (nullPos == -1) {
+                return;
+            }
 
             m_manifestBuffer.append(m_rxBuffer.left(nullPos));
             const QString manifest = QString::fromUtf8(m_manifestBuffer);
-            
+
             const auto parsed = parseDeviceManifest(manifest);
             qCDebug(Host::Core::LOG_COMM) << "Manifest parsed. Slots:" << parsed.slotCount
                                           << "Effects:" << parsed.availableEffects.count();
             emit manifestReady(parsed);
-            
-            m_rxBuffer.remove(0, nullPos + 1); 
+
+            m_rxBuffer.remove(0, nullPos + 1);
             m_manifestBuffer.clear();
             m_manifestMode = false;
-            continue; 
+            continue;
         }
 
         const uint8_t sof = static_cast<uint8_t>(m_rxBuffer.at(0));
 
         if (sof == Protocol::SOF::Audio) {
-            if (m_rxBuffer.size() < (int)sizeof(Protocol::AudioFramePacket)) return;
-            
+            if (m_rxBuffer.size() < static_cast<int>(sizeof(Protocol::AudioFramePacket))) {
+                return;
+            }
+
             Protocol::AudioFramePacket frame;
             std::memcpy(&frame, m_rxBuffer.constData(), sizeof(frame));
 
@@ -140,15 +129,16 @@ void SerialBackend::processRxBuffer()
                 emit audioFrameReady(frame);
             }
             m_rxBuffer.remove(0, sizeof(Protocol::AudioFramePacket));
-        }
-        else if (sof == Protocol::SOF::Control) {
-            if (m_rxBuffer.size() < (int)sizeof(Protocol::ControlPacket)) return;
+        } else if (sof == Protocol::SOF::Control) {
+            if (m_rxBuffer.size() < static_cast<int>(sizeof(Protocol::ControlPacket))) {
+                return;
+            }
 
             Protocol::ControlPacket pkt;
             std::memcpy(&pkt, m_rxBuffer.constData(), sizeof(pkt));
 
             if (pkt.isValid()) {
-                if (pkt.command == Protocol::Command::ReportState && 
+                if (pkt.command == Protocol::Command::ReportState &&
                     pkt.signalId == Protocol::ReservedParam::ManifestSignal) {
                     qCDebug(Host::Core::LOG_COMM) << "Entering manifest mode...";
                     m_manifestMode = true;
@@ -158,19 +148,17 @@ void SerialBackend::processRxBuffer()
                 }
             }
             m_rxBuffer.remove(0, sizeof(Protocol::ControlPacket));
-        }
-        else {
+        } else {
             m_rxBuffer.remove(0, 1);
         }
     }
 }
 
-void SerialBackend::handleError(QSerialPort::SerialPortError error)
-{
+void SerialDevice::handleError(QSerialPort::SerialPortError error) {
     if (error == QSerialPort::ResourceError) {
         emit errorOccurred(tr("Device disconnected."));
         disconnectFromDevice();
     }
 }
 
-} // namespace Host::Backend
+} // namespace Host::Device

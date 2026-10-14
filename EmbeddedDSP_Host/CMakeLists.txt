@@ -1,27 +1,15 @@
 cmake_minimum_required(VERSION 3.19)
 project(EmbeddedDSP_Host LANGUAGES CXX)
 
-# Enforce C++20 standard
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Find required Qt6 packages
 find_package(Qt6 REQUIRED COMPONENTS
     Core
     Widgets
     SerialPort
 )
-
-# --- Simulator & Demo Mode Configuration ---
-option(ENABLE_SIMULATOR "Enable audio simulator and demo mode" ON)
-
-if(ENABLE_SIMULATOR)
-    add_definitions(-DHOST_SIMULATOR_ENABLED)
-    message(STATUS "Build: Simulator mode ENABLED")
-else()
-    message(STATUS "Build: Simulator mode DISABLED")
-endif()
 
 qt_standard_project_setup()
 
@@ -34,10 +22,25 @@ qt_add_executable(EmbeddedDSP_Host
     Models/DeviceManifestParser.h
     Models/DeviceManifestParser.cpp
     Models/ConnectionInfo.h
-    Backend/IDeviceBackend.h
+    Device/ConnectionIds.h
+    Device/IDevice.h
+    Device/IDeviceFactory.h
+    Device/IConnectionScanner.h
+    Device/DeviceFactory.h
+    Device/DeviceFactory.cpp
+    Device/ConnectionScanner.h
+    Device/ConnectionScanner.cpp
+    Device/DeviceSession.h
+    Device/DeviceSession.cpp
+    Device/SerialDevice.h
+    Device/SerialDevice.cpp
+    Device/DemoDevice.h
+    Device/DemoDevice.cpp
+    Device/Demo/DemoAudioSimulator.h
+    Device/Demo/DemoAudioSimulator.cpp
+    Device/Demo/DemoManifestProvider.h
+    Device/Demo/DemoManifestProvider.cpp
     Core/Logging.h Core/Logging.cpp
-    Backend/SerialBackend.h
-    Backend/SerialBackend.cpp
     Processing/AudioFrameWorker.h
     Processing/AudioFrameWorker.cpp
     Processing/FftProcessor.h Processing/FftProcessor.cpp
@@ -59,28 +62,17 @@ qt_add_executable(EmbeddedDSP_Host
     UI/Effects/EffectRack.h UI/Effects/EffectRack.cpp
 )
 
-# Conditionally add simulator files to build
-if(ENABLE_SIMULATOR)
-    target_sources(EmbeddedDSP_Host PRIVATE
-        Backend/Demo/DemoAudioSimulator.h Backend/Demo/DemoAudioSimulator.cpp
-        Backend/Demo/DemoManifestProvider.h Backend/Demo/DemoManifestProvider.cpp
-        Backend/Demo/DemoBackend.h Backend/Demo/DemoBackend.cpp
-    )
-endif()
-
-# Embed resources directly using Qt6 build system to avoid qrc caching issues
 qt_add_resources(EmbeddedDSP_Host "styles"
     PREFIX "/"
     FILES
         UI/style.qss
 )
 
-# Include directories: local source, UI components, and firmware protocols
 target_include_directories(EmbeddedDSP_Host PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/Core
-    ${CMAKE_CURRENT_SOURCE_DIR}/Backend
-    ${CMAKE_CURRENT_SOURCE_DIR}/Backend/Demo
+    ${CMAKE_CURRENT_SOURCE_DIR}/Device
+    ${CMAKE_CURRENT_SOURCE_DIR}/Device/Demo
     ${CMAKE_CURRENT_SOURCE_DIR}/Processing
     ${CMAKE_CURRENT_SOURCE_DIR}/Models
     ${CMAKE_CURRENT_SOURCE_DIR}/UI
@@ -89,7 +81,6 @@ target_include_directories(EmbeddedDSP_Host PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../EmbeddedDSP_Shared
 )
 
-# Link Qt6 libraries
 target_link_libraries(EmbeddedDSP_Host
     PRIVATE
         Qt::Core
@@ -97,7 +88,6 @@ target_link_libraries(EmbeddedDSP_Host
         Qt::SerialPort
 )
 
-# Optimize build speed using Precompiled Headers
 target_precompile_headers(EmbeddedDSP_Host PRIVATE
     <QApplication>
     <QWidget>
@@ -113,7 +103,6 @@ target_precompile_headers(EmbeddedDSP_Host PRIVATE
     <algorithm>
 )
 
-# Disable debug output in Release builds to improve performance and security
 target_compile_definitions(EmbeddedDSP_Host PRIVATE
     $<$<CONFIG:Release>:QT_NO_DEBUG_OUTPUT>
 )

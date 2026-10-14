@@ -2,13 +2,12 @@
 
 using namespace Host::Models;
 
-namespace Host::Backend::Demo {
+namespace Host::Device::Demo {
 
 DeviceManifest getDemoManifest() {
     DeviceManifest manifest;
     manifest.slotCount = 4;
 
-    // 1. Distortion
     EffectSpec distortion;
     distortion.id = 1;
     distortion.name = "Overdrive";
@@ -19,7 +18,6 @@ DeviceManifest getDemoManifest() {
     };
     manifest.availableEffects[distortion.id] = distortion;
 
-    // 2. Delay
     EffectSpec delay;
     delay.id = 2;
     delay.name = "Stereo Delay";
@@ -30,7 +28,6 @@ DeviceManifest getDemoManifest() {
     };
     manifest.availableEffects[delay.id] = delay;
 
-    // 3. EQ
     EffectSpec eq;
     eq.id = 3;
     eq.name = "3-Band EQ";
@@ -41,7 +38,6 @@ DeviceManifest getDemoManifest() {
     };
     manifest.availableEffects[eq.id] = eq;
 
-    // 4. Reverb
     EffectSpec reverb;
     reverb.id = 4;
     reverb.name = "Hall Reverb";
@@ -55,4 +51,4 @@ DeviceManifest getDemoManifest() {
     return manifest;
 }
 
-} // namespace Host::Backend::Demo
+} // namespace Host::Device::Demo

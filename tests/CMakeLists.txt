@@ -45,7 +45,7 @@ gtest_discover_tests(dsp_unit_tests)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Test)
+find_package(Qt6 REQUIRED COMPONENTS Core Test SerialPort)
 
 add_executable(host_unit_tests
         host/test_manifestparser.cpp
@@ -55,7 +55,8 @@ add_executable(host_unit_tests
         ../EmbeddedDSP_Host/Core/AppController.cpp
         ../EmbeddedDSP_Host/Processing/AudioFrameWorker.cpp
         ../EmbeddedDSP_Host/Processing/FftProcessor.cpp
-        ../EmbeddedDSP_Host/Backend/IDeviceBackend.h
+        ../EmbeddedDSP_Host/Device/DeviceSession.cpp
+        ../EmbeddedDSP_Host/Device/IDevice.h
 )
 
 set_target_properties(host_unit_tests PROPERTIES
@@ -68,7 +69,8 @@ set_target_properties(host_unit_tests PROPERTIES
 target_include_directories(host_unit_tests PRIVATE
         ../EmbeddedDSP_Host/Models
         ../EmbeddedDSP_Host/Core
-        ../EmbeddedDSP_Host/Backend
+        ../EmbeddedDSP_Host/Device
+        ../EmbeddedDSP_Host/Device/Demo
         ../EmbeddedDSP_Host/Processing
         ../EmbeddedDSP_Shared
 )
@@ -78,6 +80,7 @@ target_link_libraries(host_unit_tests PRIVATE
         GTest::gmock
         Qt6::Core
         Qt6::Test
+        Qt6::SerialPort
 )
 
 gtest_discover_tests(host_unit_tests)

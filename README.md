@@ -30,9 +30,10 @@ End-to-end guitar multi-FX system: low-latency processing on a memory-constraine
 
 ### Host (Qt 6, C++20)
 
-- **`AppController`** — UI-facing `int` API (`setParameter`, `setEffectType`, `setBypass`); `Protocol::ControlPacket` stays in Core/Backend.
-- **Polymorphic `IDeviceBackend`:** `SerialBackend` (real hardware) or **`DemoBackend`** (synthetic audio + manifest) when `ENABLE_SIMULATOR` is ON.
-- **`AudioFrameWorker`** on a dedicated **`QThread`** — FFT (`FftProcessor`) off the GUI thread; spectrum fed to custom plot widgets.
+- **`AppController`** — UI-facing `int` API (`setParameter`, `setEffectType`, `setBypass`); protocol packets stay in Core/Device.
+- **Runtime device selection:** `IConnectionScanner` lists COM ports + always-on **Built-in Simulator**; `IDeviceFactory` creates `SerialDevice` or `DemoDevice` on connect (no compile-time `#ifdef`).
+- **`DeviceSession`** owns the active `IDevice` on a worker `QThread` and replaces it safely when the user switches target.
+- **`AudioFrameWorker`** on that worker thread — FFT (`FftProcessor`) off the GUI thread; spectrum fed to custom plot widgets.
 - **Modular UI:** `UI/Spectrum/*`, `UI/Effects/*` (rack/items), global **`style.qss`**, stable `#objectName` IDs in `UI/UiObjectNames.h`.
 
 ### Tests (PC)
@@ -50,7 +51,7 @@ End-to-end guitar multi-FX system: low-latency processing on a memory-constraine
 Since embedded development makes debugging on hardware slow, this project emphasizes **PC-side verification**:
 
 1. **Algorithm Validation:** DSP effects are header-only and C++20 compliant, allowing them to be compiled into native unit tests. We test clipping math and buffer handling without flashing the MCU.
-2. **Hardware Mocking:** The `AppController` is tested against a `MockDeviceBackend`. This allows us to simulate hardware errors or sudden disconnections and verify that the UI responds correctly.
+2. **Hardware Mocking:** `AppController` depends on `IDeviceFactory` / `IConnectionScanner` / `IDevice`. Tests inject mocks so connect/send/error paths run without serial hardware.
 3. **Protocol Integrity:** Shared headers ensure that the bit-layout of packets is identical on both sides, with CRC-16 checks verified in unit tests.
 
 ## Architecture
@@ -62,8 +63,8 @@ Since embedded development makes debugging on hardware slow, this project emphas
 └────────────────────────────┬────────────────────────────────────┘
                              │ signals / int slot API
 ┌────────────────────────────▼────────────────────────────────────┐
-│  AppController + IDeviceBackend (worker QThread)                │
-│  SerialBackend │ DemoBackend  →  ControlPacket TX / RX           │
+│  AppController + IDevice (via factory/session on worker QThread) │
+│  SerialDevice │ DemoDevice  →  ControlPacket TX / RX             │
 │  audioFrameReady ──► AudioFrameWorker ──► spectrumReady          │
 └────────────────────────────┬────────────────────────────────────┘
                              │ USB CDC (115200, VID/PID 0483:5740)
@@ -95,11 +96,11 @@ EmbeddedDSP-FX/
 │   ├── cmake/                  # gcc-arm-none-eabi.cmake, stm32cubemx
 │   └── CMakeLists.txt
 ├── EmbeddedDSP_Host/           # Standalone Qt project (build separately)
-│   ├── main.cpp                # Composition root: backend + worker → AppController
+│   ├── main.cpp                # Composition root: scanner + factory + worker → AppController
 │   ├── Core/                   # AppController, logging
-│   ├── Backend/                # IDeviceBackend, SerialBackend, Demo/
+│   ├── Device/                 # IDevice, SerialDevice, DemoDevice, factory, scanner, session
 │   ├── Processing/             # AudioFrameWorker, FftProcessor
-│   ├── Models/                 # ConnectionInfo, EffectSpec, DeviceManifest
+│   ├── Models/                 # ConnectionInfo, DeviceModel (manifest/effects)
 │   ├── UI/                     # mainwindow, ConnectionToolbar, style.qss
 │   │   ├── Spectrum/           # Plot, axes, welcome overlay
 │   │   └── Effects/            # EffectRack, ParameterRack, items
@@ -138,16 +139,13 @@ Flash with **OpenOCD**, **STM32CubeProgrammer**, or your IDE probe configuration
 
 ### Host (Qt 6)
 
-Demo/simulator mode is **enabled by default** (`ENABLE_SIMULATOR=ON` → `HOST_SIMULATOR_ENABLED`).
+Serial and built-in simulator are always linked. Pick **Built-in Simulator** (`DEMO_MODE`) or a COM port in the connection toolbar at runtime.
 
 ```bash
 cd EmbeddedDSP_Host
 cmake -B build -DCMAKE_PREFIX_PATH="<path-to-Qt6>"
 cmake --build build
 ```
-
-- **Demo:** run the app and pick the simulator entry in the connection toolbar — no board required.
-- **Serial-only build:** `cmake -B build -DENABLE_SIMULATOR=OFF ...` — links `SerialBackend` only.
 
 On Windows, opening `EmbeddedDSP_Host/CMakeLists.txt` in **Qt Creator** with a configured Qt 6 kit is the usual workflow.
 
@@ -168,5 +166,5 @@ Targets: **`dsp_unit_tests`** (protocol + firmware DSP logic) and **`host_unit_t
 ## Host Code Conventions (for contributors)
 
 - **Includes:** short names via `target_include_directories` (e.g. `"AppController.h"`, not `"Core/AppController.h"`). Shared protocol keeps the `Protocol/` prefix.
-- **Namespaces:** `Host::Core`, `Host::Backend`, `Host::Processing`, `Host::UI`, `Host::UI::Spectrum`, `Host::UI::Effects`.
-- **Threading:** backend and `AudioFrameWorker` live on a worker thread; GUI talks to `AppController` on the main thread.
+- **Namespaces:** `Host::Core`, `Host::Device`, `Host::Processing`, `Host::UI`, `Host::UI::Spectrum`, `Host::UI::Effects`.
+- **Threading:** active `IDevice` and `AudioFrameWorker` live on a worker thread; GUI talks to `AppController` on the main thread.

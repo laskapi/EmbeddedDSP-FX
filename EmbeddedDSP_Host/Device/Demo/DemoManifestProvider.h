@@ -3,11 +3,11 @@
 
 #include "DeviceModel.h"
 
-namespace Host::Backend::Demo {
+namespace Host::Device::Demo {
 
 /// @brief Helper providing a pre-filled DeviceManifest for offline testing.
 Models::DeviceManifest getDemoManifest();
 
-} // namespace Host::Backend::Demo
+} // namespace Host::Device::Demo
 
 #endif // EMBEDDEDDSP_HOST_DEMOMANIFESTPROVIDER_H
