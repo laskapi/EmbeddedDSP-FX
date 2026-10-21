@@ -5,11 +5,9 @@
 #include <QString>
 #include <memory>
 #include <vector>
-#include "DeviceModel.h"
 #include "ConnectionInfo.h"
-
-class QThread;
-class QTimer;
+#include "DeviceModel.h"
+#include "WorkerThread.h"
 
 namespace Protocol {
 struct ControlPacket;
@@ -39,8 +37,8 @@ public:
     void setEffectType(int slotIndex, int effectTypeId);
     void setBypass(int slotIndex, bool bypassed);
     void requestSync();
-    void connectToDevice(const QString& target = QString());
-    void disconnectFromDevice();
+    void connectDevice(const QString& connectionId);
+    void disconnectDevice();
 
 signals:
     void manifestReady(const Host::Models::DeviceManifest& manifest);
@@ -56,19 +54,17 @@ private slots:
     void onConnectionStatusChanged(bool connected, const QString& portName);
     void onControlPacketReady(const Protocol::ControlPacket& pkt);
     void onDeviceReady(Host::Device::IDevice* device);
-    void refreshAvailableConnections();
 
 private:
     void setupDeviceSignals(Host::Device::IDevice* device);
     void dispatchControlPacket(Protocol::ControlPacket pkt);
 
-    QThread* m_workerThread{nullptr};
-    QTimer* m_scanTimer{nullptr};
+    /// Declared before session/audio worker so it is destroyed last (quit/wait after clear).
+    WorkerThread m_workerThread;
 
-    std::unique_ptr<Host::Device::IConnectionScanner> m_scanner;
-    std::unique_ptr<Host::Device::IDeviceFactory> m_factory;
     std::unique_ptr<Host::Device::DeviceSession> m_session;
 
+    Host::Device::IConnectionScanner* m_scanner{nullptr};
     Host::Processing::AudioFrameWorker* m_audioWorker{nullptr};
     Host::Device::IDevice* m_device{nullptr};
 

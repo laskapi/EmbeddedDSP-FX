@@ -53,10 +53,12 @@ add_executable(host_unit_tests
         host/test_fftprocessor.cpp
         ../EmbeddedDSP_Host/Models/DeviceManifestParser.cpp
         ../EmbeddedDSP_Host/Core/AppController.cpp
+        ../EmbeddedDSP_Host/Core/WorkerThread.cpp
         ../EmbeddedDSP_Host/Processing/AudioFrameWorker.cpp
         ../EmbeddedDSP_Host/Processing/FftProcessor.cpp
         ../EmbeddedDSP_Host/Device/DeviceSession.cpp
         ../EmbeddedDSP_Host/Device/IDevice.h
+        ../EmbeddedDSP_Host/Device/IConnectionScanner.h
 )
 
 set_target_properties(host_unit_tests PROPERTIES

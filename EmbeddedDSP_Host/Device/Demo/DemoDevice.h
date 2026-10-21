@@ -15,10 +15,9 @@ public:
     explicit DemoDevice(QObject* parent = nullptr);
     ~DemoDevice() override;
 
-    bool connectToDevice(const QString& target) override;
-    void disconnectFromDevice() override;
+    bool open(const QString& connectionId) override;
+    void close() override;
     bool sendControlPacket(const Protocol::ControlPacket& pkt) override;
-    bool isOpen() const override;
 
 private:
     std::unique_ptr<Demo::DemoAudioSimulator> m_simulator;

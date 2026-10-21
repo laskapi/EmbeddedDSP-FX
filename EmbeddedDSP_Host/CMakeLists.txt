@@ -22,7 +22,6 @@ qt_add_executable(EmbeddedDSP_Host
     Models/DeviceManifestParser.h
     Models/DeviceManifestParser.cpp
     Models/ConnectionInfo.h
-    Device/ConnectionIds.h
     Device/IDevice.h
     Device/IDeviceFactory.h
     Device/IConnectionScanner.h
@@ -34,13 +33,15 @@ qt_add_executable(EmbeddedDSP_Host
     Device/DeviceSession.cpp
     Device/SerialDevice.h
     Device/SerialDevice.cpp
-    Device/DemoDevice.h
-    Device/DemoDevice.cpp
+    Device/Demo/DemoConnectionConstants.h
+    Device/Demo/DemoDevice.h
+    Device/Demo/DemoDevice.cpp
     Device/Demo/DemoAudioSimulator.h
     Device/Demo/DemoAudioSimulator.cpp
     Device/Demo/DemoManifestProvider.h
     Device/Demo/DemoManifestProvider.cpp
     Core/Logging.h Core/Logging.cpp
+    Core/WorkerThread.h Core/WorkerThread.cpp
     Processing/AudioFrameWorker.h
     Processing/AudioFrameWorker.cpp
     Processing/FftProcessor.h Processing/FftProcessor.cpp

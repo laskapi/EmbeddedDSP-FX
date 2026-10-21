@@ -19,10 +19,9 @@ public:
     explicit SerialDevice(QObject* parent = nullptr);
     ~SerialDevice() override;
 
-    bool connectToDevice(const QString& target) override;
-    void disconnectFromDevice() override;
+    bool open(const QString& connectionId) override;
+    void close() override;
     bool sendControlPacket(const Protocol::ControlPacket& pkt) override;
-    bool isOpen() const override;
 
 private slots:
     void handleReadyRead();
@@ -30,7 +29,6 @@ private slots:
 
 private:
     void processRxBuffer();
-    QString findDevicePort();
 
     QSerialPort m_serialPort;
     QByteArray m_rxBuffer;

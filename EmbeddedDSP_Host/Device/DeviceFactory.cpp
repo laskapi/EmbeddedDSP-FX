@@ -1,5 +1,5 @@
 #include "DeviceFactory.h"
-#include "ConnectionIds.h"
+#include "DemoConnectionConstants.h"
 #include "DemoDevice.h"
 #include "SerialDevice.h"
 

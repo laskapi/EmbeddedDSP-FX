@@ -2,13 +2,24 @@
 #define EMBEDDEDDSP_HOST_CONNECTION_SCANNER_H
 
 #include "IConnectionScanner.h"
+#include <QTimer>
 
 namespace Host::Device {
 
-/// @brief Scans COM ports and always appends the built-in simulator entry.
+/// @brief Scans COM ports on a timer and always appends the built-in simulator entry.
 class ConnectionScanner : public IConnectionScanner {
+    Q_OBJECT
 public:
-    [[nodiscard]] std::vector<Host::Models::ConnectionInfo> scan() override;
+    explicit ConnectionScanner(QObject* parent = nullptr);
+    void start() override;
+    void stop() override;
+
+private slots:
+    void scan();
+
+private:
+
+    QTimer m_timer;
 };
 
 } // namespace Host::Device

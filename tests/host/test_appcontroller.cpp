@@ -22,10 +22,9 @@ using ::testing::_;
 /// @brief Mock IDevice for AppController tests.
 class MockDevice : public IDevice {
 public:
-    MOCK_METHOD(bool, connectToDevice, (const QString& target), (override));
-    MOCK_METHOD(void, disconnectFromDevice, (), (override));
+    MOCK_METHOD(bool, open, (const QString& connectionId), (override));
+    MOCK_METHOD(void, close, (), (override));
     MOCK_METHOD(bool, sendControlPacket, (const Protocol::ControlPacket& pkt), (override));
-    MOCK_METHOD(bool, isOpen, (), (const, override));
 };
 
 class MockDeviceFactory : public IDeviceFactory {
@@ -35,7 +34,8 @@ public:
 
 class MockConnectionScanner : public IConnectionScanner {
 public:
-    MOCK_METHOD(std::vector<ConnectionInfo>, scan, (), (override));
+    MOCK_METHOD(void, start, (), (override));
+    MOCK_METHOD(void, stop, (), (override));
 };
 
 class AppControllerTest : public ::testing::Test {
@@ -51,7 +51,6 @@ protected:
     void SetUp() override {
         auto scanner = std::make_unique<NiceMock<MockConnectionScanner>>();
         mockScanner = scanner.get();
-        ON_CALL(*mockScanner, scan()).WillByDefault(Return(std::vector<ConnectionInfo>{}));
 
         auto factory = std::make_unique<NiceMock<MockDeviceFactory>>();
         mockFactory = factory.get();
@@ -62,17 +61,17 @@ protected:
     }
 
     /// Creates a mock device, wires factory expectation, connects, returns raw mock pointer.
-    MockDevice* connectWithMock(const QString& target) {
+    MockDevice* connectWithMock(const QString& connectionId) {
         auto mock = std::make_unique<NiceMock<MockDevice>>();
         MockDevice* raw = mock.get();
 
-        EXPECT_CALL(*mockFactory, create(target))
+        EXPECT_CALL(*mockFactory, create(connectionId))
             .WillOnce(Return(ByMove(std::unique_ptr<IDevice>(std::move(mock)))));
 
-        ON_CALL(*raw, connectToDevice(_)).WillByDefault(Return(true));
+        ON_CALL(*raw, open(_)).WillByDefault(Return(true));
         ON_CALL(*raw, sendControlPacket(_)).WillByDefault(Return(true));
 
-        controller->connectToDevice(target);
+        controller->connectDevice(connectionId);
         QCoreApplication::processEvents();
         return raw;
     }
@@ -87,8 +86,8 @@ protected:
     std::unique_ptr<AppController> controller;
 };
 
-TEST_F(AppControllerTest, ConnectToDeviceCallsDeviceWithCorrectPort) {
-    const QString testPort = "COM3";
+TEST_F(AppControllerTest, ConnectDeviceCallsDeviceOpenWithConnectionId) {
+    const QString connectionId = QStringLiteral("COM3");
 
     auto mock = std::make_unique<NiceMock<MockDevice>>();
     MockDevice* raw = mock.get();
@@ -96,16 +95,16 @@ TEST_F(AppControllerTest, ConnectToDeviceCallsDeviceWithCorrectPort) {
     std::promise<void> calledPromise;
     auto calledFuture = calledPromise.get_future();
 
-    EXPECT_CALL(*mockFactory, create(testPort))
+    EXPECT_CALL(*mockFactory, create(connectionId))
         .WillOnce(Return(ByMove(std::unique_ptr<IDevice>(std::move(mock)))));
 
-    EXPECT_CALL(*raw, connectToDevice(testPort))
+    EXPECT_CALL(*raw, open(connectionId))
         .WillOnce([&calledPromise](const QString&) {
             calledPromise.set_value();
             return true;
         });
 
-    controller->connectToDevice(testPort);
+    controller->connectDevice(connectionId);
 
     auto status = calledFuture.wait_for(std::chrono::seconds(1));
     ASSERT_EQ(status, std::future_status::ready) << "Device method was not called within timeout";

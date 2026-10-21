@@ -1,5 +1,5 @@
 #include "DemoDevice.h"
-#include "ConnectionIds.h"
+#include "DemoConnectionConstants.h"
 #include "DemoAudioSimulator.h"
 #include "DemoManifestProvider.h"
 #include <Protocol/ControlPacket.h>
@@ -15,16 +15,16 @@ DemoDevice::DemoDevice(QObject* parent)
 }
 
 DemoDevice::~DemoDevice() {
-    DemoDevice::disconnectFromDevice();
+    DemoDevice::close();
 }
 
-bool DemoDevice::connectToDevice(const QString& target) {
+bool DemoDevice::open(const QString& connectionId) {
     if (m_isOpen) {
         return true;
     }
 
     m_isOpen = true;
-    emit connectionStatusChanged(true, target);
+    emit connectionStatusChanged(true, connectionId);
 
     QTimer::singleShot(100, this, [this]() {
         emit manifestReady(Demo::getDemoManifest());
@@ -34,7 +34,7 @@ bool DemoDevice::connectToDevice(const QString& target) {
     return true;
 }
 
-void DemoDevice::disconnectFromDevice() {
+void DemoDevice::close() {
     if (!m_isOpen) {
         return;
     }
@@ -72,10 +72,6 @@ bool DemoDevice::sendControlPacket(const Protocol::ControlPacket& pkt) {
     }
 
     return true;
-}
-
-bool DemoDevice::isOpen() const {
-    return m_isOpen;
 }
 
 } // namespace Host::Device

@@ -25,11 +25,13 @@ private slots:
     void setConnected(bool connected);
 
 private:
-    [[nodiscard]] QString selectedPortName() const;
+    [[nodiscard]] QString selectedConnectionId() const;
+    [[nodiscard]] bool isCurrentSelectionSelectable() const;
+    [[nodiscard]] int firstSelectableIndex() const;
 
     Core::AppController& m_appController;
     QHBoxLayout *m_layout{nullptr};
-    QComboBox *m_portCombo{nullptr};
+    QComboBox *m_connectionCombo{nullptr};
     QPushButton *m_connectButton{nullptr};
 
     bool m_isConnected{false};

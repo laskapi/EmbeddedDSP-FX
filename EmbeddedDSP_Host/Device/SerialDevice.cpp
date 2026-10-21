@@ -3,7 +3,6 @@
 #include "Logging.h"
 #include <Protocol/AudioFramePacket.h>
 #include <Protocol/ControlPacket.h>
-#include <QSerialPortInfo>
 #include <cstring>
 
 namespace Host::Device {
@@ -19,27 +18,12 @@ SerialDevice::SerialDevice(QObject* parent)
 }
 
 SerialDevice::~SerialDevice() {
-    SerialDevice::disconnectFromDevice();
+    SerialDevice::close();
 }
 
-QString SerialDevice::findDevicePort() {
-    for (const QSerialPortInfo& info : QSerialPortInfo::availablePorts()) {
-        if (info.hasVendorIdentifier() && info.vendorIdentifier() == Protocol::Hardware::USB_VID &&
-            info.hasProductIdentifier() && info.productIdentifier() == Protocol::Hardware::USB_PID) {
-            return info.portName();
-        }
-    }
-    return QString();
-}
-
-bool SerialDevice::connectToDevice(const QString& target) {
-    QString finalTarget = target;
-    if (finalTarget.isEmpty()) {
-        finalTarget = findDevicePort();
-    }
-
-    if (finalTarget.isEmpty()) {
-        emit errorOccurred(tr("No compatible device found."));
+bool SerialDevice::open(const QString& connectionId) {
+    if (connectionId.isEmpty()) {
+        emit errorOccurred(tr("No connection selected."));
         emit connectionStatusChanged(false, QString());
         return false;
     }
@@ -48,7 +32,7 @@ bool SerialDevice::connectToDevice(const QString& target) {
         m_serialPort.close();
     }
 
-    m_serialPort.setPortName(finalTarget);
+    m_serialPort.setPortName(connectionId);
     m_serialPort.setBaudRate(Protocol::Hardware::DEFAULT_BAUD);
     m_serialPort.setDataBits(QSerialPort::Data8);
     m_serialPort.setParity(QSerialPort::NoParity);
@@ -58,16 +42,16 @@ bool SerialDevice::connectToDevice(const QString& target) {
     if (m_serialPort.open(QIODevice::ReadWrite)) {
         m_rxBuffer.clear();
         m_manifestMode = false;
-        emit connectionStatusChanged(true, finalTarget);
+        emit connectionStatusChanged(true, connectionId);
         return true;
     }
 
     emit errorOccurred(m_serialPort.errorString());
-    emit connectionStatusChanged(false, finalTarget);
+    emit connectionStatusChanged(false, connectionId);
     return false;
 }
 
-void SerialDevice::disconnectFromDevice() {
+void SerialDevice::close() {
     if (m_serialPort.isOpen()) {
         QString portName = m_serialPort.portName();
         m_serialPort.close();
@@ -75,10 +59,6 @@ void SerialDevice::disconnectFromDevice() {
         m_manifestMode = false;
         emit connectionStatusChanged(false, portName);
     }
-}
-
-bool SerialDevice::isOpen() const {
-    return m_serialPort.isOpen();
 }
 
 bool SerialDevice::sendControlPacket(const Protocol::ControlPacket& pkt) {
@@ -157,7 +137,7 @@ void SerialDevice::processRxBuffer() {
 void SerialDevice::handleError(QSerialPort::SerialPortError error) {
     if (error == QSerialPort::ResourceError) {
         emit errorOccurred(tr("Device disconnected."));
-        disconnectFromDevice();
+        close();
     }
 }
 

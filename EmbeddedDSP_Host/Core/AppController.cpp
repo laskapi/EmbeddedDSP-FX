@@ -6,8 +6,6 @@
 #include "IDeviceFactory.h"
 
 #include <Protocol/ControlPacket.h>
-#include <QThread>
-#include <QTimer>
 #include <QtGlobal>
 
 using namespace Host::Processing;
@@ -30,34 +28,25 @@ AppController::AppController(std::unique_ptr<IConnectionScanner> scanner,
                              std::unique_ptr<AudioFrameWorker> audioWorker,
                              QObject* parent)
     : QObject(parent)
-    , m_scanner(std::move(scanner))
-    , m_factory(std::move(factory))
 {
-    m_workerThread = new QThread(this);
-    m_session = std::make_unique<DeviceSession>(m_workerThread, this);
+    m_session = std::make_unique<DeviceSession>(m_workerThread, std::move(factory), this);
 
     m_audioWorker = audioWorker.release();
-    m_audioWorker->moveToThread(m_workerThread);
-    connect(m_workerThread, &QThread::finished, m_audioWorker, &QObject::deleteLater);
+    m_scanner = scanner.release();
+
+    m_workerThread.adopt(m_audioWorker);
+    m_workerThread.adopt(m_scanner);
 
     connect(m_audioWorker, &AudioFrameWorker::spectrumReady, this, &AppController::spectrumReady);
     connect(m_session.get(), &DeviceSession::deviceReady, this, &AppController::onDeviceReady);
+    connect(m_scanner, &IConnectionScanner::connectionsUpdated,
+            this, &AppController::connectionsUpdated);
 
-    m_scanTimer = new QTimer(this);
-    connect(m_scanTimer, &QTimer::timeout, this, &AppController::refreshAvailableConnections);
-    m_scanTimer->start(2000);
-    refreshAvailableConnections();
-
-    m_workerThread->start();
+    m_workerThread.start();
+    QMetaObject::invokeMethod(m_scanner, &IConnectionScanner::start, Qt::QueuedConnection);
 }
 
-AppController::~AppController() {
-    if (m_session) {
-        m_session->replace(std::unique_ptr<IDevice>{});
-    }
-    m_workerThread->quit();
-    m_workerThread->wait();
-}
+AppController::~AppController() = default;
 
 void AppController::onDeviceReady(IDevice* device) {
     m_device = device;
@@ -74,38 +63,24 @@ void AppController::setupDeviceSignals(IDevice* device) {
     connect(device, &IDevice::errorOccurred, this, &AppController::errorOccurred);
 }
 
-void AppController::connectToDevice(const QString& target) {
-    if (!m_factory || !m_session) {
+void AppController::connectDevice(const QString& connectionId) {
+    if (connectionId.isEmpty() || !m_session) {
         return;
     }
 
     if (m_isDeviceConnected) {
-        disconnectFromDevice();
+        disconnectDevice();
     }
 
-    auto device = m_factory->create(target);
-    m_session->replace(std::move(device));
+    m_session->open(connectionId);
+}
 
+void AppController::disconnectDevice() {
     if (!m_device) {
         return;
     }
 
-    QMetaObject::invokeMethod(m_device, &IDevice::connectToDevice, Qt::QueuedConnection, target);
-}
-
-void AppController::disconnectFromDevice() {
-    if (!m_device) {
-        return;
-    }
-
-    QMetaObject::invokeMethod(m_device, &IDevice::disconnectFromDevice, Qt::QueuedConnection);
-}
-
-void AppController::refreshAvailableConnections() {
-    if (!m_scanner || m_isDeviceConnected) {
-        return;
-    }
-    emit connectionsUpdated(m_scanner->scan());
+    QMetaObject::invokeMethod(m_device, &IDevice::close, Qt::QueuedConnection);
 }
 
 void AppController::dispatchControlPacket(::Protocol::ControlPacket pkt) {
@@ -173,8 +148,11 @@ void AppController::onControlPacketReady(const Protocol::ControlPacket& pkt) {
 void AppController::onConnectionStatusChanged(bool connected, const QString& portName) {
     m_isDeviceConnected = connected;
     emit connectionChanged(connected, portName);
-    if (!connected) {
-        refreshAvailableConnections();
+
+    if (connected) {
+        QMetaObject::invokeMethod(m_scanner, &IConnectionScanner::stop, Qt::QueuedConnection);
+    } else {
+        QMetaObject::invokeMethod(m_scanner, &IConnectionScanner::start, Qt::QueuedConnection);
     }
 }
 

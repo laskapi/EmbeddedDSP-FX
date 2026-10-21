@@ -10,6 +10,7 @@
 
 namespace {
     constexpr const char* PROP_MAX_HEIGHT = "maximumHeight";
+constexpr std::string_view WINDOW_TITLE = "EmbeddedDSP Host - Universal Control";
 }
 
 namespace Host::UI {
@@ -18,7 +19,7 @@ MainWindow::MainWindow(Core::AppController& controller, QWidget *parent)
     : QMainWindow(parent)
     , m_appController(controller)
 {
-    setWindowTitle(QStringLiteral("EmbeddedDSP Host - Universal Control"));
+    setWindowTitle(QString::fromUtf8(WINDOW_TITLE.data(),WINDOW_TITLE.size()));
 
     setupUiLayout();
 
@@ -59,7 +60,7 @@ void MainWindow::setupUiLayout() {
 
     layout->addWidget(m_connectionToolbar);
     layout->addWidget(m_spectrumPanel, 1);
-    layout->addWidget(m_effectsRack, 0);
+    layout->addWidget(m_effectsRack);
 
     setCentralWidget(centralWidget);
 

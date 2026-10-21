@@ -2,23 +2,27 @@
 #define EMBEDDEDDSP_HOST_DEVICE_SESSION_H
 
 #include <QObject>
+#include <QString>
 #include <memory>
 
-class QThread;
+namespace Host::Core { class WorkerThread; }
 
 namespace Host::Device {
 
 class IDevice;
+class IDeviceFactory;
 
-/// @brief Owns the active IDevice on the worker thread and replaces it safely.
+/// @brief Owns the active IDevice on the host worker thread and replaces it safely.
 class DeviceSession : public QObject {
     Q_OBJECT
 public:
-    explicit DeviceSession(QThread* workerThread, QObject* parent = nullptr);
+    DeviceSession(Host::Core::WorkerThread& worker,
+                  std::unique_ptr<IDeviceFactory> factory,
+                  QObject* parent = nullptr);
     ~DeviceSession() override;
 
-    /// @brief Tears down the previous device (if any) and activates @p device on the worker thread.
-    void replace(std::unique_ptr<IDevice> device);
+    /// @brief Creates a device for @p connectionId, adopts it on the worker, and opens it.
+    void open(const QString& connectionId);
 
     [[nodiscard]] IDevice* device() const { return m_device; }
 
@@ -26,9 +30,11 @@ signals:
     void deviceReady(Host::Device::IDevice* device);
 
 private:
+    void replace(std::unique_ptr<IDevice> device);
     void clearCurrentDevice();
 
-    QThread* m_workerThread{nullptr};
+    Host::Core::WorkerThread* m_worker{nullptr};
+    std::unique_ptr<IDeviceFactory> m_factory;
     IDevice* m_device{nullptr};
 };
 
