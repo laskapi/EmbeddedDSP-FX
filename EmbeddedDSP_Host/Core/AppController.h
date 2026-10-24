@@ -15,8 +15,6 @@ struct ControlPacket;
 
 namespace Host::Processing { class AudioFrameWorker; }
 namespace Host::Device {
-class IDevice;
-class IDeviceFactory;
 class IConnectionScanner;
 class DeviceSession;
 }
@@ -27,8 +25,8 @@ namespace Host::Core {
 class AppController : public QObject {
     Q_OBJECT
 public:
-    explicit AppController(std::unique_ptr<Host::Device::IConnectionScanner> scanner,
-                           std::unique_ptr<Host::Device::IDeviceFactory> factory,
+    explicit AppController(std::unique_ptr<Host::Device::IConnectionScanner> connectionScanner,
+                           std::unique_ptr<Host::Device::DeviceSession> deviceSession,
                            std::unique_ptr<Host::Processing::AudioFrameWorker> audioWorker,
                            QObject* parent = nullptr);
     ~AppController() override;
@@ -53,20 +51,16 @@ signals:
 private slots:
     void onConnectionStatusChanged(bool connected, const QString& portName);
     void onControlPacketReady(const Protocol::ControlPacket& pkt);
-    void onDeviceReady(Host::Device::IDevice* device);
 
 private:
-    void setupDeviceSignals(Host::Device::IDevice* device);
     void dispatchControlPacket(Protocol::ControlPacket pkt);
 
-    /// Declared before session/audio worker so it is destroyed last (quit/wait after clear).
+    /// Declared first so it is destroyed last (quit/wait after adopted objects).
     WorkerThread m_workerThread;
 
-    std::unique_ptr<Host::Device::DeviceSession> m_session;
-
-    Host::Device::IConnectionScanner* m_scanner{nullptr};
+    Host::Device::DeviceSession* m_deviceSession{nullptr};
+    Host::Device::IConnectionScanner* m_connectionScanner{nullptr};
     Host::Processing::AudioFrameWorker* m_audioWorker{nullptr};
-    Host::Device::IDevice* m_device{nullptr};
 
     bool m_isDeviceConnected{false};
 };

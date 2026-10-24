@@ -4,38 +4,46 @@
 #include <QObject>
 #include <QString>
 #include <memory>
+#include "DeviceModel.h"
 
-namespace Host::Core { class WorkerThread; }
+namespace Protocol {
+struct ControlPacket;
+struct AudioFramePacket;
+}
 
 namespace Host::Device {
 
 class IDevice;
 class IDeviceFactory;
 
-/// @brief Owns the active IDevice on the host worker thread and replaces it safely.
+/// @brief Owns the active IDevice on the host worker thread; facade for open/close/send.
 class DeviceSession : public QObject {
     Q_OBJECT
 public:
-    DeviceSession(Host::Core::WorkerThread& worker,
-                  std::unique_ptr<IDeviceFactory> factory,
-                  QObject* parent = nullptr);
+    explicit DeviceSession(std::unique_ptr<IDeviceFactory> factory, QObject* parent = nullptr);
     ~DeviceSession() override;
 
-    /// @brief Creates a device for @p connectionId, adopts it on the worker, and opens it.
+    /// @brief Creates a device for @p connectionId, wires it, and opens it.
     void open(const QString& connectionId);
 
-    [[nodiscard]] IDevice* device() const { return m_device; }
+    /// @brief Closes the current device without destroying the session.
+    void close();
+
+    bool sendControlPacket(const Protocol::ControlPacket& pkt);
 
 signals:
-    void deviceReady(Host::Device::IDevice* device);
+    void manifestReady(const Host::Models::DeviceManifest& manifest);
+    void audioFrameReady(const Protocol::AudioFramePacket& frame);
+    void controlPacketReady(const Protocol::ControlPacket& pkt);
+    void connectionStatusChanged(bool connected, const QString& portName);
+    void errorOccurred(const QString& errorMessage);
 
 private:
-    void replace(std::unique_ptr<IDevice> device);
     void clearCurrentDevice();
+    void wireDevice(IDevice* device);
 
-    Host::Core::WorkerThread* m_worker{nullptr};
     std::unique_ptr<IDeviceFactory> m_factory;
-    IDevice* m_device{nullptr};
+    std::unique_ptr<IDevice> m_device;
 };
 
 } // namespace Host::Device

@@ -16,25 +16,10 @@ void WorkerThread::start()
     m_thread.start();
 }
 
-bool WorkerThread::isRunning() const
-{
-    return m_thread.isRunning();
-}
-
 void WorkerThread::adopt(QObject* object)
 {
     object->moveToThread(&m_thread);
     QObject::connect(&m_thread, &QThread::finished, object, &QObject::deleteLater);
-}
-
-void WorkerThread::release(QObject* object)
-{
-     QObject::disconnect(&m_thread, &QThread::finished, object, &QObject::deleteLater);
-}
-
-bool WorkerThread::hasAffinity(const QObject* object) const
-{
-    return object != nullptr && object->thread() == &m_thread;
 }
 
 } // namespace Host::Core

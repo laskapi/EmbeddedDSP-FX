@@ -1,15 +1,11 @@
 #include "DeviceSession.h"
 #include "IDevice.h"
 #include "IDeviceFactory.h"
-#include "WorkerThread.h"
 
 namespace Host::Device {
 
-DeviceSession::DeviceSession(Host::Core::WorkerThread& worker,
-                             std::unique_ptr<IDeviceFactory> factory,
-                             QObject* parent)
+DeviceSession::DeviceSession(std::unique_ptr<IDeviceFactory> factory, QObject* parent)
     : QObject(parent)
-    , m_worker(&worker)
     , m_factory(std::move(factory))
 {
 }
@@ -18,47 +14,39 @@ DeviceSession::~DeviceSession() {
     clearCurrentDevice();
 }
 
-void DeviceSession::clearCurrentDevice() {
-    if (!m_device) {
-        return;
-    }
-
-    Q_ASSERT(m_worker && m_worker->isRunning());
-    Q_ASSERT(m_worker->hasAffinity(m_device));
-
-    QMetaObject::invokeMethod(m_device, &IDevice::close, Qt::BlockingQueuedConnection);
-
-    m_worker->release(m_device);
-    m_device->disconnect();
-    m_device->deleteLater();
-    m_device = nullptr;
-}
-
-void DeviceSession::replace(std::unique_ptr<IDevice> device) {
-    clearCurrentDevice();
-
-    if (!device) {
-        return;
-    }
-
-    m_device = device.release();
-    m_worker->adopt(m_device);
-    emit deviceReady(m_device);
-}
-
 void DeviceSession::open(const QString& connectionId) {
-    if (connectionId.isEmpty() || !m_factory) {
-        return;
-    }
+    clearCurrentDevice();
+    m_device = m_factory->create(connectionId);
+    wireDevice(m_device.get());
+    m_device->open(connectionId);
+}
 
-    auto device = m_factory->create(connectionId);
-    replace(std::move(device));
+void DeviceSession::close() {
+    if (!m_device) return;
 
-    if (!m_device) {
-        return;
-    }
+    m_device->close();
+}
 
-    QMetaObject::invokeMethod(m_device, &IDevice::open, Qt::QueuedConnection, connectionId);
+bool DeviceSession::sendControlPacket(const Protocol::ControlPacket& pkt) {
+    if (!m_device) return false;
+
+    return m_device->sendControlPacket(pkt);
+}
+
+void DeviceSession::clearCurrentDevice() {
+    if (!m_device) return;
+
+    m_device->close();
+    m_device->disconnect();
+    m_device.reset();
+}
+
+void DeviceSession::wireDevice(IDevice* device) {
+    connect(device, &IDevice::manifestReady, this, &DeviceSession::manifestReady);
+    connect(device, &IDevice::audioFrameReady, this, &DeviceSession::audioFrameReady);
+    connect(device, &IDevice::controlPacketReady, this, &DeviceSession::controlPacketReady);
+    connect(device, &IDevice::connectionStatusChanged, this, &DeviceSession::connectionStatusChanged);
+    connect(device, &IDevice::errorOccurred, this, &DeviceSession::errorOccurred);
 }
 
 } // namespace Host::Device

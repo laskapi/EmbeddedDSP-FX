@@ -2,8 +2,6 @@
 #include "AudioFrameWorker.h"
 #include "DeviceSession.h"
 #include "IConnectionScanner.h"
-#include "IDevice.h"
-#include "IDeviceFactory.h"
 
 #include <Protocol/ControlPacket.h>
 #include <QtGlobal>
@@ -23,73 +21,42 @@ namespace {
 
 namespace Host::Core {
 
-AppController::AppController(std::unique_ptr<IConnectionScanner> scanner,
-                             std::unique_ptr<IDeviceFactory> factory,
+AppController::AppController(std::unique_ptr<IConnectionScanner> connectionScanner,
+                             std::unique_ptr<DeviceSession> deviceSession,
                              std::unique_ptr<AudioFrameWorker> audioWorker,
                              QObject* parent)
     : QObject(parent)
 {
-    m_session = std::make_unique<DeviceSession>(m_workerThread, std::move(factory), this);
-
+    m_deviceSession = deviceSession.release();
     m_audioWorker = audioWorker.release();
-    m_scanner = scanner.release();
+    m_connectionScanner = connectionScanner.release();
 
+    m_workerThread.adopt(m_deviceSession);
     m_workerThread.adopt(m_audioWorker);
-    m_workerThread.adopt(m_scanner);
+    m_workerThread.adopt(m_connectionScanner);
 
     connect(m_audioWorker, &AudioFrameWorker::spectrumReady, this, &AppController::spectrumReady);
-    connect(m_session.get(), &DeviceSession::deviceReady, this, &AppController::onDeviceReady);
-    connect(m_scanner, &IConnectionScanner::connectionsUpdated,
+    connect(m_deviceSession, &DeviceSession::manifestReady, this, &AppController::manifestReady);
+    connect(m_deviceSession, &DeviceSession::audioFrameReady, m_audioWorker, &AudioFrameWorker::processFrame);
+    connect(m_deviceSession, &DeviceSession::controlPacketReady, this, &AppController::onControlPacketReady);
+    connect(m_deviceSession, &DeviceSession::connectionStatusChanged,
+            this, &AppController::onConnectionStatusChanged);
+    connect(m_deviceSession, &DeviceSession::errorOccurred, this, &AppController::errorOccurred);
+    connect(m_connectionScanner, &IConnectionScanner::connectionsUpdated,
             this, &AppController::connectionsUpdated);
 
     m_workerThread.start();
-    QMetaObject::invokeMethod(m_scanner, &IConnectionScanner::start, Qt::QueuedConnection);
+    QMetaObject::invokeMethod(m_connectionScanner, &IConnectionScanner::start, Qt::QueuedConnection);
 }
 
 AppController::~AppController() = default;
 
-void AppController::onDeviceReady(IDevice* device) {
-    m_device = device;
-    if (m_device) {
-        setupDeviceSignals(m_device);
-    }
-}
-
-void AppController::setupDeviceSignals(IDevice* device) {
-    connect(device, &IDevice::manifestReady, this, &AppController::manifestReady);
-    connect(device, &IDevice::audioFrameReady, m_audioWorker, &AudioFrameWorker::processFrame);
-    connect(device, &IDevice::controlPacketReady, this, &AppController::onControlPacketReady);
-    connect(device, &IDevice::connectionStatusChanged, this, &AppController::onConnectionStatusChanged);
-    connect(device, &IDevice::errorOccurred, this, &AppController::errorOccurred);
-}
-
 void AppController::connectDevice(const QString& connectionId) {
-    if (connectionId.isEmpty() || !m_session) {
-        return;
-    }
-
-    if (m_isDeviceConnected) {
-        disconnectDevice();
-    }
-
-    m_session->open(connectionId);
+    QMetaObject::invokeMethod(m_deviceSession, &DeviceSession::open, Qt::QueuedConnection, connectionId);
 }
 
 void AppController::disconnectDevice() {
-    if (!m_device) {
-        return;
-    }
-
-    QMetaObject::invokeMethod(m_device, &IDevice::close, Qt::QueuedConnection);
-}
-
-void AppController::dispatchControlPacket(::Protocol::ControlPacket pkt) {
-    if (!m_device) {
-        return;
-    }
-
-    pkt.applyCRC();
-    QMetaObject::invokeMethod(m_device, &IDevice::sendControlPacket, Qt::QueuedConnection, pkt);
+    QMetaObject::invokeMethod(m_deviceSession, &DeviceSession::close, Qt::QueuedConnection);
 }
 
 void AppController::requestSync() {
@@ -124,6 +91,17 @@ void AppController::setBypass(int slotIndex, bool bypass) {
     dispatchControlPacket(pkt);
 }
 
+void AppController::onConnectionStatusChanged(bool connected, const QString& portName) {
+    m_isDeviceConnected = connected;
+    emit connectionChanged(connected, portName);
+
+    if (connected) {
+        QMetaObject::invokeMethod(m_connectionScanner, &IConnectionScanner::stop, Qt::QueuedConnection);
+    } else {
+        QMetaObject::invokeMethod(m_connectionScanner, &IConnectionScanner::start, Qt::QueuedConnection);
+    }
+}
+
 void AppController::onControlPacketReady(const Protocol::ControlPacket& pkt) {
     using ::Protocol::Command;
 
@@ -145,15 +123,9 @@ void AppController::onControlPacketReady(const Protocol::ControlPacket& pkt) {
     }
 }
 
-void AppController::onConnectionStatusChanged(bool connected, const QString& portName) {
-    m_isDeviceConnected = connected;
-    emit connectionChanged(connected, portName);
-
-    if (connected) {
-        QMetaObject::invokeMethod(m_scanner, &IConnectionScanner::stop, Qt::QueuedConnection);
-    } else {
-        QMetaObject::invokeMethod(m_scanner, &IConnectionScanner::start, Qt::QueuedConnection);
-    }
+void AppController::dispatchControlPacket(::Protocol::ControlPacket pkt) {
+    pkt.applyCRC();
+    QMetaObject::invokeMethod(m_deviceSession, &DeviceSession::sendControlPacket, Qt::QueuedConnection, pkt);
 }
 
 } // namespace Host::Core

@@ -41,6 +41,9 @@ void ConnectionScanner::scan()
 {
     std::vector<Host::Models::ConnectionInfo> connections;
     for (const auto& info : QSerialPortInfo::availablePorts()) {
+        if (info.portName().isEmpty()) {
+            continue;
+        }
         connections.push_back({
             info.portName(),
             info.description(),

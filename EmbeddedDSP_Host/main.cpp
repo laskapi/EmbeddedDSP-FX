@@ -3,6 +3,7 @@
 #include "ConnectionInfo.h"
 #include "ConnectionScanner.h"
 #include "DeviceFactory.h"
+#include "DeviceSession.h"
 #include "AudioFrameWorker.h"
 
 #include <QApplication>
@@ -26,12 +27,13 @@ int main(int argc, char* argv[]) {
         a.setStyleSheet(styleFile.readAll());
     }
 
-    auto scanner = std::make_unique<Host::Device::ConnectionScanner>();
-    auto factory = std::make_unique<Host::Device::DeviceFactory>();
-    auto worker = std::make_unique<Host::Processing::AudioFrameWorker>();
+    auto connectionScanner = std::make_unique<Host::Device::ConnectionScanner>();
+    auto deviceSession = std::make_unique<Host::Device::DeviceSession>(
+        std::make_unique<Host::Device::DeviceFactory>());
+    auto audioWorker = std::make_unique<Host::Processing::AudioFrameWorker>();
 
     auto appController = std::make_unique<Host::Core::AppController>(
-        std::move(scanner), std::move(factory), std::move(worker));
+        std::move(connectionScanner), std::move(deviceSession), std::move(audioWorker));
 
     Host::UI::MainWindow w(*appController);
     w.show();

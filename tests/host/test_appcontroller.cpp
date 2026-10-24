@@ -7,6 +7,7 @@
 #include "IDevice.h"
 #include "IDeviceFactory.h"
 #include "IConnectionScanner.h"
+#include "DeviceSession.h"
 #include "AudioFrameWorker.h"
 #include <Protocol/ControlPacket.h>
 
@@ -49,15 +50,16 @@ protected:
     }
 
     void SetUp() override {
-        auto scanner = std::make_unique<NiceMock<MockConnectionScanner>>();
-        mockScanner = scanner.get();
+        auto connectionScanner = std::make_unique<NiceMock<MockConnectionScanner>>();
+        mockScanner = connectionScanner.get();
 
         auto factory = std::make_unique<NiceMock<MockDeviceFactory>>();
         mockFactory = factory.get();
 
-        auto worker = std::make_unique<AudioFrameWorker>();
+        auto deviceSession = std::make_unique<DeviceSession>(std::move(factory));
+        auto audioWorker = std::make_unique<AudioFrameWorker>();
         controller = std::make_unique<AppController>(
-            std::move(scanner), std::move(factory), std::move(worker));
+            std::move(connectionScanner), std::move(deviceSession), std::move(audioWorker));
     }
 
     /// Creates a mock device, wires factory expectation, connects, returns raw mock pointer.
@@ -68,11 +70,20 @@ protected:
         EXPECT_CALL(*mockFactory, create(connectionId))
             .WillOnce(Return(ByMove(std::unique_ptr<IDevice>(std::move(mock)))));
 
-        ON_CALL(*raw, open(_)).WillByDefault(Return(true));
+        std::promise<void> openedPromise;
+        auto openedFuture = openedPromise.get_future();
+
         ON_CALL(*raw, sendControlPacket(_)).WillByDefault(Return(true));
+        EXPECT_CALL(*raw, open(_))
+            .WillOnce([&openedPromise](const QString&) {
+                openedPromise.set_value();
+                return true;
+            });
 
         controller->connectDevice(connectionId);
-        QCoreApplication::processEvents();
+
+        auto status = openedFuture.wait_for(std::chrono::seconds(1));
+        EXPECT_EQ(status, std::future_status::ready) << "Device open was not called within timeout";
         return raw;
     }
 
@@ -169,6 +180,7 @@ TEST_F(AppControllerTest, EmitsManifestReadyWhenDeviceSignalsIt) {
     manifest.slotCount = 8;
     emit mockDevice->manifestReady(manifest);
 
+    ASSERT_TRUE(spy.wait(1000));
     ASSERT_EQ(spy.count(), 1);
     auto receivedManifest = spy.at(0).at(0).value<DeviceManifest>();
     EXPECT_EQ(receivedManifest.slotCount, 8);
@@ -182,6 +194,7 @@ TEST_F(AppControllerTest, HandlesConnectionErrorFromDevice) {
 
     emit mockDevice->errorOccurred(errorMsg);
 
+    ASSERT_TRUE(errorSpy.wait(1000));
     ASSERT_EQ(errorSpy.count(), 1);
     EXPECT_EQ(errorSpy.at(0).at(0).toString(), errorMsg);
 }

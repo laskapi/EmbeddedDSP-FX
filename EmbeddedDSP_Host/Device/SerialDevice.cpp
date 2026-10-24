@@ -22,11 +22,7 @@ SerialDevice::~SerialDevice() {
 }
 
 bool SerialDevice::open(const QString& connectionId) {
-    if (connectionId.isEmpty()) {
-        emit errorOccurred(tr("No connection selected."));
-        emit connectionStatusChanged(false, QString());
-        return false;
-    }
+    Q_ASSERT(!connectionId.isEmpty());
 
     if (m_serialPort.isOpen()) {
         m_serialPort.close();
@@ -62,9 +58,8 @@ void SerialDevice::close() {
 }
 
 bool SerialDevice::sendControlPacket(const Protocol::ControlPacket& pkt) {
-    if (!m_serialPort.isOpen()) {
-        return false;
-    }
+    if (!m_serialPort.isOpen()) return false;
+
     return m_serialPort.write(reinterpret_cast<const char*>(&pkt), sizeof(pkt)) == sizeof(pkt);
 }
 
