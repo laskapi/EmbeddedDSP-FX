@@ -19,7 +19,7 @@ using ::testing::Return;
 using ::testing::ByMove;
 using ::testing::NiceMock;
 using ::testing::_;
-
+using ::testing::Field;
 /// @brief Mock IDevice for AppController tests.
 class MockDevice : public IDevice {
 public:
@@ -74,7 +74,7 @@ protected:
         auto openedFuture = openedPromise.get_future();
 
         ON_CALL(*raw, sendControlPacket(_)).WillByDefault(Return(true));
-        EXPECT_CALL(*raw, open(_))
+        EXPECT_CALL(*raw, open(connectionId))
             .WillOnce([&openedPromise](const QString&) {
                 openedPromise.set_value();
                 return true;
@@ -96,30 +96,6 @@ protected:
     MockDeviceFactory* mockFactory{nullptr};
     std::unique_ptr<AppController> controller;
 };
-
-TEST_F(AppControllerTest, ConnectDeviceCallsDeviceOpenWithConnectionId) {
-    const QString connectionId = QStringLiteral("COM3");
-
-    auto mock = std::make_unique<NiceMock<MockDevice>>();
-    MockDevice* raw = mock.get();
-
-    std::promise<void> calledPromise;
-    auto calledFuture = calledPromise.get_future();
-
-    EXPECT_CALL(*mockFactory, create(connectionId))
-        .WillOnce(Return(ByMove(std::unique_ptr<IDevice>(std::move(mock)))));
-
-    EXPECT_CALL(*raw, open(connectionId))
-        .WillOnce([&calledPromise](const QString&) {
-            calledPromise.set_value();
-            return true;
-        });
-
-    controller->connectDevice(connectionId);
-
-    auto status = calledFuture.wait_for(std::chrono::seconds(1));
-    ASSERT_EQ(status, std::future_status::ready) << "Device method was not called within timeout";
-}
 
 TEST_F(AppControllerTest, SetParameterSendsCorrectPacket) {
     const int slot = 2;
@@ -156,11 +132,12 @@ TEST_F(AppControllerTest, SetEffectTypeSendsCorrectPacket) {
     std::promise<void> sentPromise;
     auto sentFuture = sentPromise.get_future();
 
-    EXPECT_CALL(*mockDevice, sendControlPacket(_))
-        .WillOnce([&](const Protocol::ControlPacket& pkt) {
-            EXPECT_EQ(pkt.command, Protocol::Command::SetEffectType);
-            EXPECT_EQ(pkt.slotId, slot);
-            EXPECT_EQ(pkt.effectTypeId, typeId);
+    EXPECT_CALL(*mockDevice, sendControlPacket(AllOf(
+                                 Field(&Protocol::ControlPacket::command,      Protocol::Command::SetEffectType),
+                                 Field(&Protocol::ControlPacket::slotId,       slot),
+                                 Field(&Protocol::ControlPacket::effectTypeId, typeId)
+                                 )))
+        .WillOnce([&]() {
             sentPromise.set_value();
             return true;
         });
