@@ -7,12 +7,7 @@
 
 namespace Protocol {
 
-/**
- * @brief Thread-safe Single Producer Single Consumer (SPSC) lock-free queue.
- * 
- * @tparam T Type of items in the queue.
- * @tparam Capacity Maximum number of items (must be power of 2).
- */
+/// @brief Lock-free SPSC queue; Capacity must be a power of 2.
 template <typename T, size_t Capacity>
 class SpscQueue {
     static_assert((Capacity & (Capacity - 1)) == 0, "Capacity must be power of 2");
@@ -20,7 +15,7 @@ class SpscQueue {
 public:
     SpscQueue() : m_head(0), m_tail(0) {}
 
-    /** @brief Pushes an item to the queue. Non-blocking. */
+    /// @brief Non-blocking push; false if full.
     bool push(const T& item) {
         size_t head = m_head.load(std::memory_order_relaxed);
         size_t next_head = (head + 1) & (Capacity - 1);
@@ -30,7 +25,7 @@ public:
         return true;
     }
 
-    /** @brief Pops an item from the queue. Non-blocking. */
+    /// @brief Non-blocking pop; nullopt if empty.
     std::optional<T> pop() {
         size_t tail = m_tail.load(std::memory_order_relaxed);
         if (tail == m_head.load(std::memory_order_acquire)) return std::nullopt;
@@ -39,7 +34,6 @@ public:
         return item;
     }
 
-    /** @return True if the queue is empty. */
     bool isEmpty() const {
         return m_head.load(std::memory_order_acquire) == m_tail.load(std::memory_order_acquire);
     }

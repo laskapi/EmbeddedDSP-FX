@@ -55,7 +55,7 @@ private slots:
 private:
     void dispatchControlPacket(Protocol::ControlPacket pkt);
 
-    /// Declared first so it is destroyed last (quit/wait after adopted objects).
+    /// @brief Declared first so it is destroyed last (quit/wait after adopted objects).
     WorkerThread m_workerThread;
 
     Host::Device::DeviceSession* m_deviceSession{nullptr};

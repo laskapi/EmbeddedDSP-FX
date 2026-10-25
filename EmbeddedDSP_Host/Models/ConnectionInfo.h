@@ -5,7 +5,7 @@
 
 namespace Host::Models {
 
-/// @brief Describes a selectable host-side connection target..
+/// @brief Describes a selectable host-side connection target.
 struct ConnectionInfo {
     QString id;
     QString description;
