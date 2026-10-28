@@ -53,7 +53,7 @@ void MX_I2S3_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN I2S3_Init 2 */
-
+  /* AudioFreq above must stay I2S_AUDIOFREQ_48K to match Protocol::SAMPLE_RATE_HZ. */
   /* USER CODE END I2S3_Init 2 */
 
 }

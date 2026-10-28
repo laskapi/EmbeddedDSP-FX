@@ -3,9 +3,9 @@
 
 #include <QWidget>
 #include <QHBoxLayout>
-#include "AbstractRack.h"
-#include "EffectItem.h"
-#include "DeviceModel.h"
+#include "UI/Effects/AbstractRack.h"
+#include "UI/Effects/EffectItem.h"
+#include "Models/DeviceModel.h"
 
 namespace Host::Core { class AppController; }
 

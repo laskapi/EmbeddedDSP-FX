@@ -1,4 +1,4 @@
-#include "WorkerThread.h"
+#include "Core/WorkerThread.h"
 #include <QObject>
 
 namespace Host::Core {

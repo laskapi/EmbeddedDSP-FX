@@ -15,7 +15,7 @@ add_executable(dsp_unit_tests
         test_protocol.cpp
         test_dsp.cpp
     
-        ../EmbeddedDSP_Firmware/App/Protocol/ControlParser.h
+        ../EmbeddedDSP_Firmware/App/Comm/ControlParser.h
         ../EmbeddedDSP_Shared/Protocol/SpscQueue.h
         ../EmbeddedDSP_Firmware/App/DSP/OverdriveEffect.h
         ../EmbeddedDSP_Firmware/App/DSP/DelayEffect.h
@@ -69,11 +69,7 @@ set_target_properties(host_unit_tests PROPERTIES
 )
 
 target_include_directories(host_unit_tests PRIVATE
-        ../EmbeddedDSP_Host/Models
-        ../EmbeddedDSP_Host/Core
-        ../EmbeddedDSP_Host/Device
-        ../EmbeddedDSP_Host/Device/Demo
-        ../EmbeddedDSP_Host/Processing
+        ../EmbeddedDSP_Host
         ../EmbeddedDSP_Shared
 )
 

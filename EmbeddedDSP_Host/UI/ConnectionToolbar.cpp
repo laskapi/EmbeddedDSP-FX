@@ -1,7 +1,7 @@
-#include "ConnectionToolbar.h"
-#include "AppController.h"
-#include "ConnectionInfo.h"
-#include "DemoConnectionConstants.h"
+#include "UI/ConnectionToolbar.h"
+#include "Core/AppController.h"
+#include "Models/ConnectionInfo.h"
+#include "Device/Demo/DemoConnectionConstants.h"
 #include <QComboBox>
 #include <QHBoxLayout>
 #include <QPushButton>

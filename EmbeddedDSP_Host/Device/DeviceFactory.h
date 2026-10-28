@@ -1,7 +1,7 @@
 #ifndef EMBEDDEDDSP_HOST_DEVICE_FACTORY_H
 #define EMBEDDEDDSP_HOST_DEVICE_FACTORY_H
 
-#include "IDeviceFactory.h"
+#include "Device/IDeviceFactory.h"
 
 namespace Host::Device {
 

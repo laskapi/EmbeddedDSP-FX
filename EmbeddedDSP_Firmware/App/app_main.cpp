@@ -1,12 +1,12 @@
 #include "app_main.h"
 #include "main.h"
-#include <DSP/DynamicAudioPipeline.h>
-#include <DSP/DelayEffect.h>
-#include <DSP/OverdriveEffect.h>
-#include <DSP/VirtualAudioSource.h>
-#include <Protocol/ControlParser.h>
-#include <Protocol/AudioFramePacket.h>
-#include <Protocol/SpscQueue.h>
+#include "DSP/EffectChain.h"
+#include "DSP/DelayEffect.h"
+#include "DSP/OverdriveEffect.h"
+#include "DSP/VirtualAudioSource.h"
+#include "Comm/ControlParser.h"
+#include "Protocol/AudioFramePacket.h"
+#include "Protocol/SpscQueue.h"
 
 #include "stm32f4xx_ll_dma.h"
 #include "stm32f4xx_ll_spi.h"
@@ -28,8 +28,6 @@ namespace
     constexpr std::size_t HALF_BUF_SIZE = DMA_BUF_SIZE / 2;
     constexpr float AUDIO_SCALE_FACTOR = 32767.0f;
     constexpr float INV_AUDIO_SCALE_FACTOR = 1.0f / 32768.0f;
-    constexpr float SYSTEM_SAMPLE_RATE = 48000.0f;
-
     enum class BufferState : int8_t
     {
         None,
@@ -40,9 +38,9 @@ namespace
     alignas(4) std::array<std::int16_t, DMA_BUF_SIZE> dmaRxBuffer{};
     alignas(4) std::array<std::int16_t, DMA_BUF_SIZE> dmaTxBuffer{};
 
-    DynamicAudioPipeline audioPipeline;
+    EffectChain effectChain{Protocol::SAMPLE_RATE_HZ};
     std::atomic<BufferState> activeBufferState{BufferState::None};
-    ControlParser protocolParser{audioPipeline};
+    ControlParser protocolParser{effectChain};
 
 #if APP_USE_VIRTUAL_AUDIO_SOURCE
     VirtualAudioSource* virtualSource = nullptr;
@@ -95,7 +93,7 @@ namespace
             R = static_cast<float>(rxPtr[i * 2 + 1]) * INV_AUDIO_SCALE_FACTOR;
 #endif
 
-            audioPipeline.process(L, R);
+            effectChain.process(L, R);
             txPtr32[i] = floatToQ15SaturateStereo(L * 0.8f, R * 0.8f);
 
             if (txSampleCount < Protocol::AUDIO_SAMPLES)
@@ -162,10 +160,9 @@ void app_audio_transfer_complete_cb(void)
 void app_main(I2S_HandleTypeDef* audio_i2s)
 {
     APP_LOG("Firmware starting...");
-    audioPipeline.prepare(SYSTEM_SAMPLE_RATE);
 
 #if APP_USE_VIRTUAL_AUDIO_SOURCE
-    static VirtualAudioSource sourceInstance(SYSTEM_SAMPLE_RATE);
+    static VirtualAudioSource sourceInstance(Protocol::SAMPLE_RATE_HZ);
     virtualSource = &sourceInstance;
     virtualSource->setFrequency(440.0f);
     virtualSource->setWaveform(VirtualAudioSource::Waveform::Saw);
@@ -184,7 +181,7 @@ void app_main(I2S_HandleTypeDef* audio_i2s)
 
         if (!pendingControl.has_value())
         {
-            pendingControl = protocolParser.getTxQueue().pop();
+            pendingControl = protocolParser.txQueue().pop();
         }
 
         if (pendingControl.has_value())

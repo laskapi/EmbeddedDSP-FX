@@ -1,7 +1,7 @@
 #ifndef EMBEDDEDDSP_HOST_ICONNECTION_SCANNER_H
 #define EMBEDDEDDSP_HOST_ICONNECTION_SCANNER_H
 
-#include "ConnectionInfo.h"
+#include "Models/ConnectionInfo.h"
 #include <QObject>
 #include <vector>
 

@@ -3,7 +3,7 @@
 
 #include <QSerialPort>
 #include <QByteArray>
-#include "IDevice.h"
+#include "Device/IDevice.h"
 
 namespace Protocol {
 struct AudioFramePacket;

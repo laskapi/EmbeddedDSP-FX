@@ -1,9 +1,9 @@
-#include "AppController.h"
-#include "AudioFrameWorker.h"
-#include "DeviceSession.h"
-#include "IConnectionScanner.h"
+#include "Core/AppController.h"
+#include "Processing/AudioFrameWorker.h"
+#include "Device/DeviceSession.h"
+#include "Device/IConnectionScanner.h"
 
-#include <Protocol/ControlPacket.h>
+#include "Protocol/ControlPacket.h"
 #include <QtGlobal>
 
 using namespace Host::Processing;
@@ -109,14 +109,14 @@ void AppController::onControlPacketReady(const Protocol::ControlPacket& pkt) {
     case Command::SetParam:
         emit slotParameterUpdated(static_cast<int>(pkt.slotId),
                                   static_cast<int>(pkt.paramId),
-                                  pkt.getValue());
+                                  pkt.value());
         break;
     case Command::SetEffectType:
         emit slotEffectTypeUpdated(static_cast<int>(pkt.slotId),
                                    static_cast<int>(pkt.effectTypeId));
         break;
     case Command::BypassToggle:
-        emit slotBypassUpdated(static_cast<int>(pkt.slotId), pkt.getValue() > 0.5f);
+        emit slotBypassUpdated(static_cast<int>(pkt.slotId), pkt.value() > 0.5f);
         break;
     default:
         break;

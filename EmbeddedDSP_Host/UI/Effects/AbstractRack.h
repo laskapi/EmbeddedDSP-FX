@@ -6,7 +6,7 @@
 #include <QList>
 #include <algorithm>
 #include <concepts>
-#include "AbstractRackItem.h"
+#include "UI/Effects/AbstractRackItem.h"
 
 namespace Host::UI::Effects {
 

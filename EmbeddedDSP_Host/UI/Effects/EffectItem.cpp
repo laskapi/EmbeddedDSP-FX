@@ -1,6 +1,6 @@
-#include "EffectItem.h"
-#include "ParameterRack.h"
-#include "UiObjectNames.h"
+#include "UI/Effects/EffectItem.h"
+#include "UI/Effects/ParameterRack.h"
+#include "UI/UiObjectNames.h"
 #include <QVBoxLayout>
 #include <QLabel>
 #include <QComboBox>

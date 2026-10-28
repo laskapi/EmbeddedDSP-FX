@@ -3,8 +3,8 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include "Checksums.h"
-#include "ProtocolCommon.h"
+#include "Protocol/Checksums.h"
+#include "Protocol/ProtocolCommon.h"
 
 namespace Protocol {
 

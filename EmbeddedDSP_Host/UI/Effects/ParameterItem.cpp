@@ -1,4 +1,4 @@
-#include "ParameterItem.h"
+#include "UI/Effects/ParameterItem.h"
 #include <QVBoxLayout>
 #include <QLabel>
 #include <QSlider>

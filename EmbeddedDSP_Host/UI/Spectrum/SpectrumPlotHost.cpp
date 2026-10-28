@@ -1,6 +1,6 @@
-#include "SpectrumPlotHost.h"
-#include "SpectrumPlotView.h"
-#include "SpectrumPlotWelcomeOverlay.h"
+#include "UI/Spectrum/SpectrumPlotHost.h"
+#include "UI/Spectrum/SpectrumPlotView.h"
+#include "UI/Spectrum/SpectrumPlotWelcomeOverlay.h"
 #include <QResizeEvent>
 #include <QVBoxLayout>
 

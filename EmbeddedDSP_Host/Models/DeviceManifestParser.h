@@ -1,7 +1,7 @@
 #ifndef EMBEDDEDDSP_HOST_DEVICE_MANIFEST_PARSER_H
 #define EMBEDDEDDSP_HOST_DEVICE_MANIFEST_PARSER_H
 
-#include "DeviceModel.h"
+#include "Models/DeviceModel.h"
 
 namespace Host::Models {
 

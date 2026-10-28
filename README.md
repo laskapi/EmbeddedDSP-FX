@@ -12,7 +12,7 @@ End-to-end guitar multi-FX system: low-latency processing on a memory-constraine
 
 | Layer | Role |
 |--------|------|
-| **Firmware** | I2S capture/playback, DMA double-buffering, `DynamicAudioPipeline` (up to 4 slots), USB framing |
+| **Firmware** | I2S capture/playback, DMA double-buffering, `EffectChain` (fixed slots via manifest `C:SLOTS`), USB framing |
 | **Shared** | `ControlPacket`, `AudioFramePacket`, CRC, constants — single contract for PC and MCU |
 | **Host** | Connection UI, effect rack, spectrum view; **Serial** or **Demo** backend without hardware |
 
@@ -26,7 +26,7 @@ End-to-end guitar multi-FX system: low-latency processing on a memory-constraine
 - **C++20 pipeline:** `std::variant` + `std::visit` and `AudioEffectConcept` — no vtables on the hot path.
 - **Effects:** e.g. delay (SRAM-friendly mono `int16_t` + interpolation), overdrive; empty slot placeholder.
 - **USB Virtual COM:** 9-byte control packets (host → device) and fixed-size audio frames with **CRC-16** (device → host).
-- **State model:** slot effect type, bypass, parameters; optional flash persistence structure (`PipelineSettings`).
+- **State model:** slot effect type, bypass, parameters; optional flash persistence structure (`EffectChain::Settings`).
 
 ### Host (Qt 6, C++20)
 
@@ -69,7 +69,7 @@ Since embedded development makes debugging on hardware slow, this project emphas
 └────────────────────────────┬────────────────────────────────────┘
                              │ USB CDC (115200, VID/PID 0483:5740)
 ┌────────────────────────────▼────────────────────────────────────┐
-│  STM32F411  app_main → ControlParser → DynamicAudioPipeline     │
+│  STM32F411  app_main → ControlParser → EffectChain              │
 │  I2S ↔ effects (variant) ↔ AudioFramePacket upstream            │
 └─────────────────────────────────────────────────────────────────┘
          ▲
@@ -90,7 +90,7 @@ EmbeddedDSP-FX/
 ├── CMakeLists.txt              # Firmware (default) OR BUILD_TESTS for PC unit tests
 ├── README.md
 ├── EmbeddedDSP_Firmware/       # STM32 — CubeMX Core + application
-│   ├── App/                    # app_main, DSP/, Protocol/ControlParser
+│   ├── App/                    # app_main, DSP/, Comm/ControlParser
 │   ├── Core/                   # HAL, I2S, startup
 │   ├── USB_DEVICE/             # CDC class
 │   ├── cmake/                  # gcc-arm-none-eabi.cmake, stm32cubemx
@@ -165,6 +165,6 @@ Targets: **`dsp_unit_tests`** (protocol + firmware DSP logic) and **`host_unit_t
 
 ## Host Code Conventions (for contributors)
 
-- **Includes:** short names via `target_include_directories` (e.g. `"AppController.h"`, not `"Core/AppController.h"`). Shared protocol keeps the `Protocol/` prefix.
+- **Includes:** paths from CMake roots (e.g. `"Core/AppController.h"`, `"Device/Demo/DemoDevice.h"`). Shared wire types use `"Protocol/..."`. Firmware host link lives in `App/Comm/` (not Shared `Protocol/`).
 - **Namespaces:** `Host::Core`, `Host::Device`, `Host::Processing`, `Host::UI`, `Host::UI::Spectrum`, `Host::UI::Effects`.
 - **Threading:** active `IDevice` and `AudioFrameWorker` live on a worker thread; GUI talks to `AppController` on the main thread.

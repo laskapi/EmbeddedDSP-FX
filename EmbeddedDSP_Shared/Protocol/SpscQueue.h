@@ -4,7 +4,7 @@
 #include <atomic>
 #include <optional>
 #include <array>
-
+#include <new>
 namespace Protocol {
 
 /// @brief Lock-free SPSC queue; Capacity must be a power of 2.
@@ -40,8 +40,8 @@ public:
 
 private:
     std::array<T, Capacity> m_buffer;
-    std::atomic<size_t> m_head;
-    std::atomic<size_t> m_tail;
+    alignas(std::hardware_destructive_interference_size) std::atomic<size_t> m_head;
+    alignas(std::hardware_destructive_interference_size) std::atomic<size_t> m_tail;
 };
 
 } // namespace Protocol

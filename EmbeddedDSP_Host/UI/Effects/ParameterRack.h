@@ -1,9 +1,9 @@
 #ifndef EMBEDDEDDSP_HOST_PARAMETERRACK_H
 #define EMBEDDEDDSP_HOST_PARAMETERRACK_H
 
-#include "AbstractRack.h"
-#include "ParameterItem.h"
-#include "DeviceModel.h"
+#include "UI/Effects/AbstractRack.h"
+#include "UI/Effects/ParameterItem.h"
+#include "Models/DeviceModel.h"
 
 namespace Host::UI::Effects {
 

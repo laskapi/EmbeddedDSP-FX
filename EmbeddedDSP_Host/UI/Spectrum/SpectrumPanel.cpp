@@ -1,10 +1,10 @@
-#include "SpectrumPanel.h"
-#include "SpectrumPlotHost.h"
-#include "SpectrumPlotView.h"
-#include "SpectrumAxisX.h"
-#include "SpectrumAxisY.h"
-#include "SpectrumCommon.h"
-#include "UiObjectNames.h"
+#include "UI/Spectrum/SpectrumPanel.h"
+#include "UI/Spectrum/SpectrumPlotHost.h"
+#include "UI/Spectrum/SpectrumPlotView.h"
+#include "UI/Spectrum/SpectrumAxisX.h"
+#include "UI/Spectrum/SpectrumAxisY.h"
+#include "UI/Spectrum/SpectrumCommon.h"
+#include "UI/UiObjectNames.h"
 #include <QGridLayout>
 #include <QSlider>
 #include <QLabel>

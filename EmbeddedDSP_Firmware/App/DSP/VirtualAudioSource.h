@@ -1,21 +1,18 @@
 #ifndef EMBEDDEDDSP_FIRMWARE_VIRTUAL_AUDIO_SOURCE_H
 #define EMBEDDEDDSP_FIRMWARE_VIRTUAL_AUDIO_SOURCE_H
 
+#include "Protocol/ProtocolCommon.h"
 #include <cmath>
 #include <stdint.h>
 
-/**
- * @brief Simple structure for stereo audio samples.
- */
+/// @brief Stereo sample pair (linear float PCM).
 struct StereoSample
 {
     float left;
     float right;
 };
 
-/**
- * @brief Multi-waveform test generator for audio pipeline debugging.
- */
+/// @brief Multi-waveform test oscillator for pipeline debugging.
 class VirtualAudioSource
 {
 public:
@@ -24,9 +21,8 @@ public:
     static constexpr int LUT_SIZE = 1024;
 
     explicit VirtualAudioSource(float sampleRate) noexcept
-        : m_sampleRate(sampleRate > 0 ? sampleRate : 48000.0f)
+        : m_sampleRate(sampleRate > 0 ? sampleRate : Protocol::SAMPLE_RATE_HZ)
     {
-        // Initialize Sine LUT with high precision
         for (int i = 0; i < LUT_SIZE; ++i)
         {
             m_sinLut[i] = sinf(2.0f * 3.1415926535f * (float)i / (float)LUT_SIZE);
@@ -41,9 +37,7 @@ public:
 
     void setWaveform(Waveform type) noexcept { m_type = type; }
 
-    /**
-     * @brief Generates next stereo sample based on current phase and waveform type.
-     */
+    /// @brief Next stereo sample from current phase and waveform.
     [[nodiscard]] StereoSample nextSample() noexcept
     {
         float val = 0.0f;
@@ -53,7 +47,6 @@ public:
         {
         case Waveform::Sine:
             {
-                // Linear interpolation for smooth sine output
                 int i1 = static_cast<int>(m_phase);
                 int i2 = (i1 + 1) & (LUT_SIZE - 1);
                 float frac = m_phase - (float)i1;
@@ -71,7 +64,6 @@ public:
             break;
         }
 
-        // Advance phase and wrap around LUT size
         m_phase += m_step;
         if (m_phase >= (float)LUT_SIZE) m_phase -= (float)LUT_SIZE;
 

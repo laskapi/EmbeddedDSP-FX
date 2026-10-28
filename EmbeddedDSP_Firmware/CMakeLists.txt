@@ -55,11 +55,11 @@ add_executable(${CMAKE_PROJECT_NAME}
         App/app_main.h
         App/SharedBuffer.h
         App/DSP/DelayEffect.h
-        App/DSP/DynamicAudioPipeline.h
+        App/DSP/EffectChain.h
         App/DSP/AudioEffectConcept.h
         App/DSP/OverdriveEffect.h
         App/DSP/EmptyEffect.h
-        App/Protocol/ControlParser.h
+        App/Comm/ControlParser.h
 
         # Shared Protocols (Contract)
         ../EmbeddedDSP_Shared/Protocol/ControlPacket.h

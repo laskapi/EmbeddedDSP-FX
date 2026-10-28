@@ -9,6 +9,9 @@ namespace Protocol {
 /// @brief Samples per audio frame packet.
 inline constexpr size_t AUDIO_SAMPLES = 64;
 
+/// @brief System PCM sample rate (Hz); must match I2S AudioFreq on the MCU.
+inline constexpr float SAMPLE_RATE_HZ = 48000.0f;
+
 } // namespace Protocol
 
 /// @brief Start-of-frame byte values.

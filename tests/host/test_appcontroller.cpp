@@ -2,14 +2,33 @@
 #include <gmock/gmock.h>
 #include <QSignalSpy>
 #include <QCoreApplication>
+#include <QEventLoop>
+#include <chrono>
 #include <future>
-#include "AppController.h"
-#include "IDevice.h"
-#include "IDeviceFactory.h"
-#include "IConnectionScanner.h"
-#include "DeviceSession.h"
-#include "AudioFrameWorker.h"
-#include <Protocol/ControlPacket.h>
+#include "Core/AppController.h"
+#include "Device/IDevice.h"
+#include "Device/IDeviceFactory.h"
+#include "Device/IConnectionScanner.h"
+#include "Device/DeviceSession.h"
+#include "Processing/AudioFrameWorker.h"
+#include "Protocol/ControlPacket.h"
+
+namespace {
+
+/// @brief Blocks until future is ready while pumping the Qt event loop (QueuedConnection / onTxIdle).
+template <typename T>
+bool waitForFuture(std::future<T>& future, std::chrono::milliseconds timeout) {
+    const auto deadline = std::chrono::steady_clock::now() + timeout;
+    while (future.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready) {
+        if (std::chrono::steady_clock::now() >= deadline) {
+            return false;
+        }
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 20);
+    }
+    return true;
+}
+
+} // namespace
 
 using namespace Host::Core;
 using namespace Host::Device;
@@ -112,15 +131,59 @@ TEST_F(AppControllerTest, SetParameterSendsCorrectPacket) {
             EXPECT_EQ(pkt.command, Protocol::Command::SetParam);
             EXPECT_EQ(pkt.slotId, slot);
             EXPECT_EQ(pkt.paramId, param);
-            EXPECT_FLOAT_EQ(pkt.getValue(), value);
+            EXPECT_FLOAT_EQ(pkt.value(), value);
             sentPromise.set_value();
             return true;
         });
 
     controller->setParameter(slot, param, value);
 
-    auto status = sentFuture.wait_for(std::chrono::seconds(1));
-    ASSERT_EQ(status, std::future_status::ready) << "Control packet was not sent within timeout";
+    ASSERT_TRUE(waitForFuture(sentFuture, std::chrono::seconds(1)))
+        << "Control packet was not sent within timeout";
+}
+
+TEST_F(AppControllerTest, SetParameterCoalescesToLatestValue) {
+    MockDevice* mockDevice = connectWithMock(QStringLiteral("COM3"));
+
+    std::promise<void> enteredFirstSend;
+    auto enteredFirstSendFuture = enteredFirstSend.get_future();
+    std::promise<void> releaseFirstSend;
+    auto releaseFirstSendFuture = releaseFirstSend.get_future();
+
+    std::promise<void> donePromise;
+    auto doneFuture = donePromise.get_future();
+
+    /// First send blocks until later SetParams are queued, so they coalesce while tx is busy.
+    EXPECT_CALL(*mockDevice, sendControlPacket(_))
+        .WillOnce([&](const Protocol::ControlPacket& pkt) {
+            EXPECT_EQ(pkt.command, Protocol::Command::SetParam);
+            EXPECT_EQ(pkt.slotId, 1);
+            EXPECT_EQ(pkt.paramId, 0);
+            EXPECT_FLOAT_EQ(pkt.value(), 0.1f);
+            enteredFirstSend.set_value();
+            releaseFirstSendFuture.wait();
+            return true;
+        })
+        .WillOnce([&](const Protocol::ControlPacket& pkt) {
+            EXPECT_EQ(pkt.command, Protocol::Command::SetParam);
+            EXPECT_EQ(pkt.slotId, 1);
+            EXPECT_EQ(pkt.paramId, 0);
+            EXPECT_FLOAT_EQ(pkt.value(), 0.9f);
+            donePromise.set_value();
+            return true;
+        });
+
+    controller->setParameter(1, 0, 0.1f);
+
+    ASSERT_TRUE(waitForFuture(enteredFirstSendFuture, std::chrono::seconds(1)))
+        << "First SetParam did not reach the device";
+
+    controller->setParameter(1, 0, 0.5f);
+    controller->setParameter(1, 0, 0.9f);
+    releaseFirstSend.set_value();
+
+    ASSERT_TRUE(waitForFuture(doneFuture, std::chrono::seconds(1)))
+        << "Coalesced SetParam was not sent within timeout";
 }
 
 TEST_F(AppControllerTest, SetEffectTypeSendsCorrectPacket) {

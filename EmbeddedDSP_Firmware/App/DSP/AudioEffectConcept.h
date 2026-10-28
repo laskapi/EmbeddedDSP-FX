@@ -3,9 +3,10 @@
 
 #include <stdint.h>
 
-/**
- * @brief Static metadata for an effect parameter.
- */
+/// @brief Max parameters for effect (Settings blob capacity per slot).
+inline constexpr uint8_t MAX_EFFECT_PARAMS = 8;
+
+/// @brief Static metadata for one effect parameter (name + range + default).
 struct EffectParam {
     const char* name;
     float min;
@@ -13,20 +14,7 @@ struct EffectParam {
     float defaultValue;
 };
 
-/**
- * @brief Interface documentation for static polymorphism effects.
- * 
- * Each effect must implement:
- * - static constexpr uint8_t Id
- * - static constexpr const char* Name
- * - static constexpr uint8_t ParamCount
- * - static constexpr EffectParam Params[]
- * - void prepare(float sampleRate)
- * - void process(float& left, float& right)
- * - void setParamValue(uint8_t id, float val)
- * - float getParamValue(uint8_t id)
- * - void toggleBypass()
- * - bool isBypassed()
- */
+/// @brief Effect contract: Id/Name/Params + ctor(SR)/updateSampleRate/process/paramValue/bypass.
+/// ParamCount must be <= MAX_EFFECT_PARAMS.
 
 #endif // EMBEDDEDDSP_DYNAMIC_AUDIO_EFFECT_CONCEPT_H

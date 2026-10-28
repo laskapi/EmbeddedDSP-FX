@@ -1,4 +1,4 @@
-#include "Logging.h"
+#include "Core/Logging.h"
 
 namespace Host::Core {
 Q_LOGGING_CATEGORY(LOG_COMM, "dsp.comm")

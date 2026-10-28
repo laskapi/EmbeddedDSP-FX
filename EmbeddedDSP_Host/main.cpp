@@ -1,15 +1,15 @@
-#include "AppController.h"
-#include "mainwindow.h"
-#include "ConnectionInfo.h"
-#include "ConnectionScanner.h"
-#include "DeviceFactory.h"
-#include "DeviceSession.h"
-#include "AudioFrameWorker.h"
+#include "Core/AppController.h"
+#include "UI/mainwindow.h"
+#include "Models/ConnectionInfo.h"
+#include "Device/ConnectionScanner.h"
+#include "Device/DeviceFactory.h"
+#include "Device/DeviceSession.h"
+#include "Processing/AudioFrameWorker.h"
 
 #include <QApplication>
 #include <QFile>
-#include <Protocol/ControlPacket.h>
-#include <Protocol/AudioFramePacket.h>
+#include "Protocol/ControlPacket.h"
+#include "Protocol/AudioFramePacket.h"
 #include <memory>
 #include <vector>
 

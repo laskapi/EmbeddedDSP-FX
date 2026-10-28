@@ -14,20 +14,13 @@ extern "C" {
 #define APP_LOG(fmt, ...)
 #endif
 
-/**
- * @brief Main entry point for the C++ application domain.
- * @param audio_i2s Pointer to the HAL I2S handle for DMA configuration.
- */
+/// @brief C++ application entry; wires DSP, USB control, and I2S DMA.
 void app_main(I2S_HandleTypeDef* audio_i2s);
 
-/**
- * @brief Callback triggered when the DMA receives/transmits the first half of the buffer.
- */
+/// @brief I2S DMA half-transfer callback (first buffer half ready).
 void app_audio_half_transfer_cb(void);
 
-/**
- * @brief Callback triggered when the DMA receives/transmits the second half of the buffer.
- */
+/// @brief I2S DMA complete callback (second buffer half ready).
 void app_audio_transfer_complete_cb(void);
 
 #ifdef __cplusplus

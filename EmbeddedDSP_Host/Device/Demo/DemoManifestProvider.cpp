@@ -1,4 +1,4 @@
-#include "DemoManifestProvider.h"
+#include "Device/Demo/DemoManifestProvider.h"
 
 using namespace Host::Models;
 

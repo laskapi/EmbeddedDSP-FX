@@ -1,6 +1,6 @@
-#include "AudioFrameWorker.h"
-#include "FftProcessor.h"
-#include <Protocol/AudioFramePacket.h>
+#include "Processing/AudioFrameWorker.h"
+#include "Processing/FftProcessor.h"
+#include "Protocol/AudioFramePacket.h"
 #include <span>
 
 namespace Host::Processing {

@@ -1,4 +1,6 @@
-#include "DemoAudioSimulator.h"
+#include "Device/Demo/DemoAudioSimulator.h"
+
+#include "Protocol/ProtocolCommon.h"
 
 #include <algorithm>
 #include <cmath>
@@ -8,7 +10,6 @@ namespace Host::Device::Demo {
 
 namespace {
 constexpr float DEFAULT_AMPLITUDE = 0.5f;
-constexpr float SAMPLE_RATE = 48000.0f;
 }
 
 DemoAudioSimulator::DemoAudioSimulator(QObject* parent)
@@ -46,13 +47,13 @@ void DemoAudioSimulator::onTick() {
     float sweepPhase = ((m_sequence % 300) / 300.0f) * twoPi;
     float currentFreq = 11500.0f + 10500.0f * std::sin(sweepPhase);
 
-    const float phaseStep1 = twoPi * currentFreq / SAMPLE_RATE;
+    const float phaseStep1 = twoPi * currentFreq / Protocol::SAMPLE_RATE_HZ;
 
     float harmonicFreq = currentFreq * 1.2f;
     if (harmonicFreq > 23500.0f) {
         harmonicFreq = 23500.0f;
     }
-    const float phaseStep2 = twoPi * harmonicFreq / SAMPLE_RATE;
+    const float phaseStep2 = twoPi * harmonicFreq / Protocol::SAMPLE_RATE_HZ;
 
     const float scalePrimary = DEFAULT_AMPLITUDE * 32767.0f * 0.65f;
     const float scaleHarmonic = DEFAULT_AMPLITUDE * 32767.0f * 0.35f;

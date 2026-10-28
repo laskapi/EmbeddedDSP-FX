@@ -1,7 +1,11 @@
 #include <gtest/gtest.h>
-#include <Protocol/ControlPacket.h>
-#include <Protocol/ControlParser.h>
-#include <DSP/DynamicAudioPipeline.h>
+#include "Protocol/ControlPacket.h"
+#include "Comm/ControlParser.h"
+#include "Protocol/ProtocolCommon.h"
+#include "DSP/EffectChain.h"
+#include "DSP/OverdriveEffect.h"
+#include "DSP/DelayEffect.h"
+#include "DSP/EmptyEffect.h"
 
 using namespace Protocol;
 
@@ -15,7 +19,7 @@ TEST(ProtocolTest, PacketValidationSuccess) {
     pkt.applyCRC();
 
     EXPECT_TRUE(pkt.isValid());
-    EXPECT_FLOAT_EQ(pkt.getValue(), 0.75f);
+    EXPECT_FLOAT_EQ(pkt.value(), 0.75f);
 }
 
 TEST(ProtocolTest, PacketValidationInvalidSOF) {
@@ -38,11 +42,10 @@ TEST(ProtocolTest, PacketValidationInvalidCRC) {
 }
 
 TEST(ProtocolParserTest, ParseValidByteStreamAndApplyParam) {
-    DynamicAudioPipeline pipeline{};
-    ControlParser parser{pipeline};
-    
-    // Discovery manifest would normally set this up, but we do it manually for test
-    pipeline.setEffectByIndex(0, 2, 48000.0f); // 2 is OverdriveEffect ID
+    EffectChain chain{SAMPLE_RATE_HZ};
+    ControlParser parser{chain};
+
+    chain.setEffectByIndex(0, 2); // 2 is OverdriveEffect ID
 
     ControlPacket originalPkt{};
     originalPkt.command = Command::SetParam;
@@ -58,18 +61,18 @@ TEST(ProtocolParserTest, ParseValidByteStreamAndApplyParam) {
     std::visit([](auto& effect) {
         using T = std::decay_t<decltype(effect)>;
         if constexpr (std::is_same_v<T, OverdriveEffect>) {
-            EXPECT_FLOAT_EQ(effect.getParamValue(0), 8.5f);
+            EXPECT_FLOAT_EQ(effect.paramValue(0), 8.5f);
         } else {
             FAIL() << "Expected OverdriveEffect in slot 0";
         }
-    }, pipeline.getSlot(0));
+    }, chain.slot(0));
 }
 
 TEST(ProtocolParserTest, IgnoreNoiseBeforeSOF) {
-    DynamicAudioPipeline pipeline{};
-    ControlParser parser{pipeline};
+    EffectChain chain{SAMPLE_RATE_HZ};
+    ControlParser parser{chain};
 
-    pipeline.setEffectByIndex(0, 1, 48000.0f); // 1 is DelayEffect ID
+    chain.setEffectByIndex(0, 1); // 1 is DelayEffect ID
 
     ControlPacket originalPkt{};
     originalPkt.command = Command::SetParam;
@@ -88,22 +91,22 @@ TEST(ProtocolParserTest, IgnoreNoiseBeforeSOF) {
     std::visit([](auto& effect) {
         using T = std::decay_t<decltype(effect)>;
         if constexpr (std::is_same_v<T, DelayEffect>) {
-            EXPECT_FLOAT_EQ(effect.getParamValue(1), 0.4f);
+            EXPECT_FLOAT_EQ(effect.paramValue(1), 0.4f);
         } else {
             FAIL() << "Expected DelayEffect in slot 0";
         }
-    }, pipeline.getSlot(0));
+    }, chain.slot(0));
 }
 
 TEST(ProtocolParserTest, ClearSlotCommand) {
-    DynamicAudioPipeline pipeline{};
-    ControlParser parser{pipeline};
+    EffectChain chain{SAMPLE_RATE_HZ};
+    ControlParser parser{chain};
 
-    pipeline.setEffectByIndex(0, 2, 48000.0f);
-    EXPECT_FALSE(std::holds_alternative<EmptyEffect>(pipeline.getSlot(0)));
+    chain.setEffectByIndex(0, 2);
+    EXPECT_FALSE(std::holds_alternative<EmptyEffect>(chain.slot(0)));
 
     ControlPacket pkt{};
-    pkt.command = Command::ClearSlot; 
+    pkt.command = Command::ClearSlot;
     pkt.slotId = 0;
     pkt.applyCRC();
 
@@ -111,5 +114,5 @@ TEST(ProtocolParserTest, ClearSlotCommand) {
     parser.onBytesReceived(bytes, sizeof(ControlPacket));
     parser.processRxQueue();
 
-    EXPECT_TRUE(std::holds_alternative<EmptyEffect>(pipeline.getSlot(0)));
+    EXPECT_TRUE(std::holds_alternative<EmptyEffect>(chain.slot(0)));
 }

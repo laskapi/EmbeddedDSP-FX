@@ -5,9 +5,9 @@
 #include <QString>
 #include <memory>
 #include <vector>
-#include "ConnectionInfo.h"
-#include "DeviceModel.h"
-#include "WorkerThread.h"
+#include "Models/ConnectionInfo.h"
+#include "Models/DeviceModel.h"
+#include "Core/WorkerThread.h"
 
 namespace Protocol {
 struct ControlPacket;

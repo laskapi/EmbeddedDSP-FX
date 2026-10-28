@@ -1,5 +1,5 @@
-#include "SpectrumAxisX.h"
-#include "SpectrumCommon.h"
+#include "UI/Spectrum/SpectrumAxisX.h"
+#include "UI/Spectrum/SpectrumCommon.h"
 #include <QPainter>
 #include <QPaintEvent>
 #include <QEvent>

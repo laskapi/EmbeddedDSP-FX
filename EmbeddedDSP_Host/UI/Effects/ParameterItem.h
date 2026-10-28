@@ -1,8 +1,8 @@
 #ifndef EMBEDDEDDSP_HOST_PARAMETERITEM_H
 #define EMBEDDEDDSP_HOST_PARAMETERITEM_H
 
-#include "AbstractRackItem.h"
-#include "DeviceModel.h"
+#include "UI/Effects/AbstractRackItem.h"
+#include "Models/DeviceModel.h"
 
 class QLabel;
 class QSlider;

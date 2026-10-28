@@ -1,13 +1,19 @@
 #ifndef EMBEDDEDDSP_HOST_DEVICE_SESSION_H
 #define EMBEDDEDDSP_HOST_DEVICE_SESSION_H
 
+#include <QHash>
 #include <QObject>
+#include <QQueue>
 #include <QString>
+#include <cstdint>
 #include <memory>
-#include "DeviceModel.h"
+#include "Protocol/ControlPacket.h"
+
+namespace Host::Models {
+struct DeviceManifest;
+}
 
 namespace Protocol {
-struct ControlPacket;
 struct AudioFramePacket;
 }
 
@@ -29,6 +35,7 @@ public:
     /// @brief Closes the current device without destroying the session.
     void close();
 
+    /// @brief Queues a control packet; SetParam coalesces by (slotId, paramId).
     bool sendControlPacket(const Protocol::ControlPacket& pkt);
 
 signals:
@@ -40,10 +47,17 @@ signals:
 
 private:
     void clearCurrentDevice();
+    void clearPendingTx();
     void wireDevice(IDevice* device);
+    void trySend();
 
     std::unique_ptr<IDeviceFactory> m_factory;
     std::unique_ptr<IDevice> m_device;
+
+    /// @brief Latest-wins SetParam buffer; key = (slotId << 8) | paramId.
+    QHash<uint16_t, Protocol::ControlPacket> m_pendingSetParams;
+    QQueue<Protocol::ControlPacket> m_otherCommands;
+    bool m_txBusy{false};
 };
 
 } // namespace Host::Device

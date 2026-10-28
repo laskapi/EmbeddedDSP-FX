@@ -1,6 +1,6 @@
-#include "SpectrumPlotView.h"
-#include "SpectrumCommon.h"
-#include "AppController.h"
+#include "UI/Spectrum/SpectrumPlotView.h"
+#include "UI/Spectrum/SpectrumCommon.h"
+#include "Core/AppController.h"
 #include <QPainter>
 #include <QPainterPath>
 #include <QPaintEvent>

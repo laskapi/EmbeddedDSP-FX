@@ -1,7 +1,7 @@
 #ifndef EMBEDDEDDSP_HOST_CONNECTION_SCANNER_H
 #define EMBEDDEDDSP_HOST_CONNECTION_SCANNER_H
 
-#include "IConnectionScanner.h"
+#include "Device/IConnectionScanner.h"
 #include <QTimer>
 
 namespace Host::Device {

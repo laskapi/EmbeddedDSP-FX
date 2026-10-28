@@ -1,5 +1,5 @@
-#include "ParameterRack.h"
-#include "ParameterItem.h"
+#include "UI/Effects/ParameterRack.h"
+#include "UI/Effects/ParameterItem.h"
 
 namespace Host::UI::Effects {
 

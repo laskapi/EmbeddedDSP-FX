@@ -1,7 +1,7 @@
 #ifndef EMBEDDEDDSP_HOST_DEMO_DEVICE_H
 #define EMBEDDEDDSP_HOST_DEMO_DEVICE_H
 
-#include "IDevice.h"
+#include "Device/IDevice.h"
 #include <memory>
 
 namespace Host::Device {

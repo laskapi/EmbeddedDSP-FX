@@ -1,8 +1,8 @@
-#include "DemoDevice.h"
-#include "DemoConnectionConstants.h"
-#include "DemoAudioSimulator.h"
-#include "DemoManifestProvider.h"
-#include <Protocol/ControlPacket.h>
+#include "Device/Demo/DemoDevice.h"
+#include "Device/Demo/DemoConnectionConstants.h"
+#include "Device/Demo/DemoAudioSimulator.h"
+#include "Device/Demo/DemoManifestProvider.h"
+#include "Protocol/ControlPacket.h"
 #include <QTimer>
 
 namespace Host::Device {

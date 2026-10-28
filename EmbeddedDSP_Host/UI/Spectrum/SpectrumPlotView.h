@@ -1,6 +1,8 @@
 #ifndef EMBEDDEDDSP_HOST_SPECTRUMPLOTVIEW_H
 #define EMBEDDEDDSP_HOST_SPECTRUMPLOTVIEW_H
 
+#include "Protocol/ProtocolCommon.h"
+
 #include <QWidget>
 #include <vector>
 
@@ -37,7 +39,7 @@ private:
 
     float m_minDb{-100.0f};
     float m_maxDb{0.0f};
-    float m_sampleRate{48000.0f};
+    float m_sampleRate{Protocol::SAMPLE_RATE_HZ};
 };
 
 } // namespace Host::UI::Spectrum

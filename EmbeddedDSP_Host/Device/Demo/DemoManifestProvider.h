@@ -1,7 +1,7 @@
 #ifndef EMBEDDEDDSP_HOST_DEMOMANIFESTPROVIDER_H
 #define EMBEDDEDDSP_HOST_DEMOMANIFESTPROVIDER_H
 
-#include "DeviceModel.h"
+#include "Models/DeviceModel.h"
 
 namespace Host::Device::Demo {
 

@@ -2,7 +2,7 @@
 #define EMBEDDEDDSP_HOST_IDEVICE_H
 
 #include <QObject>
-#include "DeviceModel.h"
+#include "Models/DeviceModel.h"
 
 namespace Protocol {
 struct ControlPacket;

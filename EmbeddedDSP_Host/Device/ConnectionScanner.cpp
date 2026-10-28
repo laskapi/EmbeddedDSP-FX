@@ -1,6 +1,6 @@
-#include "ConnectionScanner.h"
-#include "DemoConnectionConstants.h"
-#include <Protocol/ProtocolCommon.h>
+#include "Device/ConnectionScanner.h"
+#include "Device/Demo/DemoConnectionConstants.h"
+#include "Protocol/ProtocolCommon.h"
 #include <QSerialPortInfo>
 
 namespace Host::Device {
@@ -10,9 +10,7 @@ namespace {
 /// @brief True when the serial port reports our STM32 USB CDC VID/PID.
 bool matchesOurUsbIds(const QSerialPortInfo& info)
 {
-    return info.hasVendorIdentifier()
-           && info.vendorIdentifier() == Protocol::Hardware::USB_VID
-           && info.hasProductIdentifier()
+    return info.vendorIdentifier() == Protocol::Hardware::USB_VID
            && info.productIdentifier() == Protocol::Hardware::USB_PID;
 }
 static constexpr int kScanIntervalMs = 2000;

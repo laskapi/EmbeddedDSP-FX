@@ -1,6 +1,6 @@
-#include "EffectRack.h"
-#include "EffectItem.h"
-#include "AppController.h"
+#include "UI/Effects/EffectRack.h"
+#include "UI/Effects/EffectItem.h"
+#include "Core/AppController.h"
 #include <QHBoxLayout>
 
 using namespace Host::Models;

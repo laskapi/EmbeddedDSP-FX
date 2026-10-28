@@ -1,8 +1,8 @@
 #ifndef EMBEDDEDDSP_HOST_EFFECTITEM_H
 #define EMBEDDEDDSP_HOST_EFFECTITEM_H
 
-#include "AbstractRackItem.h"
-#include "DeviceModel.h"
+#include "UI/Effects/AbstractRackItem.h"
+#include "Models/DeviceModel.h"
 #include <QMap>
 
 class QComboBox;

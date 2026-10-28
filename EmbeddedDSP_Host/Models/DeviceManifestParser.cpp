@@ -1,4 +1,4 @@
-#include "DeviceManifestParser.h"
+#include "Models/DeviceManifestParser.h"
 
 #include <QStringList>
 
@@ -48,6 +48,7 @@ DeviceManifest parseDeviceManifest(const QString& manifestText) {
     }
 
     if (result.slotCount <= 0) {
+        // Last-resort fallback if manifest omits C:SLOTS (firmware reports the real count).
         result.slotCount = 4;
     }
 

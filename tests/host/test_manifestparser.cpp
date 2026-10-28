@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "DeviceManifestParser.h"
+#include "Models/DeviceManifestParser.h"
 
 using Host::Models::parseDeviceManifest;
 

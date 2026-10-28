@@ -3,8 +3,8 @@
 
 #include <stdint.h>
 #include <string.h>
-#include "Checksums.h"
-#include "ProtocolCommon.h"
+#include "Protocol/Checksums.h"
+#include "Protocol/ProtocolCommon.h"
 
 namespace Protocol {
 
@@ -15,7 +15,7 @@ enum class Command : uint8_t {
     BypassToggle   = 0x03,
     ClearSlot      = 0x04,
     SwapSlots      = 0x05,
-    SetActiveSlots = 0x06,
+        SetActiveSlots = 0x06, // reserved in v1 (fixed rack; unused slots = Empty)
     GetState       = 0x07,
     ReportState    = 0x08
 };
@@ -49,7 +49,7 @@ public:
     }
 
     /// @brief FPU-safe float read (memcpy, avoids unaligned load).
-    [[nodiscard]] float getValue() const noexcept {
+    [[nodiscard]] float value() const noexcept {
         float temp;
         memcpy(&temp, &m_rawValue, sizeof(float));
         return temp;

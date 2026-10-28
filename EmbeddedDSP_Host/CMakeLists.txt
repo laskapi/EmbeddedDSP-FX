@@ -71,14 +71,6 @@ qt_add_resources(EmbeddedDSP_Host "styles"
 
 target_include_directories(EmbeddedDSP_Host PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/Core
-    ${CMAKE_CURRENT_SOURCE_DIR}/Device
-    ${CMAKE_CURRENT_SOURCE_DIR}/Device/Demo
-    ${CMAKE_CURRENT_SOURCE_DIR}/Processing
-    ${CMAKE_CURRENT_SOURCE_DIR}/Models
-    ${CMAKE_CURRENT_SOURCE_DIR}/UI
-    ${CMAKE_CURRENT_SOURCE_DIR}/UI/Spectrum
-    ${CMAKE_CURRENT_SOURCE_DIR}/UI/Effects
     ${CMAKE_CURRENT_SOURCE_DIR}/../EmbeddedDSP_Shared
 )
 

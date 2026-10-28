@@ -1,6 +1,6 @@
-#include "SpectrumPlotWelcomeOverlay.h"
-#include "AppController.h"
-#include "UiObjectNames.h"
+#include "UI/Spectrum/SpectrumPlotWelcomeOverlay.h"
+#include "Core/AppController.h"
+#include "UI/UiObjectNames.h"
 #include <QLabel>
 #include <QVBoxLayout>
 

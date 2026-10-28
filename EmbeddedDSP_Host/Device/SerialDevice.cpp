@@ -1,8 +1,8 @@
-#include "SerialDevice.h"
-#include "DeviceManifestParser.h"
-#include "Logging.h"
-#include <Protocol/AudioFramePacket.h>
-#include <Protocol/ControlPacket.h>
+#include "Device/SerialDevice.h"
+#include "Models/DeviceManifestParser.h"
+#include "Core/Logging.h"
+#include "Protocol/AudioFramePacket.h"
+#include "Protocol/ControlPacket.h"
 #include <cstring>
 
 namespace Host::Device {

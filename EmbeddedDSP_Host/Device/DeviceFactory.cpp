@@ -1,7 +1,7 @@
-#include "DeviceFactory.h"
-#include "DemoConnectionConstants.h"
-#include "DemoDevice.h"
-#include "SerialDevice.h"
+#include "Device/DeviceFactory.h"
+#include "Device/Demo/DemoConnectionConstants.h"
+#include "Device/Demo/DemoDevice.h"
+#include "Device/SerialDevice.h"
 
 namespace Host::Device {
 

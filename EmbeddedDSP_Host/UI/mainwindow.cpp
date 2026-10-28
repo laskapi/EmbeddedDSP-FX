@@ -1,8 +1,8 @@
-#include "mainwindow.h"
-#include "ConnectionToolbar.h"
-#include "EffectRack.h"
-#include "SpectrumPanel.h"
-#include "AppController.h"
+#include "UI/mainwindow.h"
+#include "UI/ConnectionToolbar.h"
+#include "UI/Effects/EffectRack.h"
+#include "UI/Spectrum/SpectrumPanel.h"
+#include "Core/AppController.h"
 #include <QVBoxLayout>
 #include <QStatusBar>
 #include <QPropertyAnimation>
