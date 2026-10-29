@@ -25,5 +25,6 @@ Makefile
 *.mxproject
 
 status.txt
+build_log.txt
 .DS_Store
 Thumbs.db
