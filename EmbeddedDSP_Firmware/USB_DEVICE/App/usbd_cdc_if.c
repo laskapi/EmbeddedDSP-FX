@@ -22,7 +22,7 @@
 #include "usbd_cdc_if.h"
 
 /* USER CODE BEGIN INCLUDE */
-extern void ProtocolParser_OnBytesReceived(const uint8_t* Buf, uint32_t Len);
+#include "app_main.h"
 /* USER CODE END INCLUDE */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -166,6 +166,7 @@ static int8_t CDC_Init_FS(void)
 static int8_t CDC_DeInit_FS(void)
 {
   /* USER CODE BEGIN 4 */
+  on_usb_host_gone();
   return (USBD_OK);
   /* USER CODE END 4 */
 }
@@ -264,7 +265,7 @@ static int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t *Len)
   USBD_CDC_SetRxBuffer(&hUsbDeviceFS, &Buf[0]);
   USBD_CDC_ReceivePacket(&hUsbDeviceFS);
 
-  ProtocolParser_OnBytesReceived(Buf, *Len);
+  on_cdc_bytes(Buf, *Len);
 
   return (USBD_OK);
   /* USER CODE END 6 */

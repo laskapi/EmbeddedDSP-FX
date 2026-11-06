@@ -38,7 +38,7 @@ int main(void)
         Error_Handler();
     }
     
-    app_main(&hi2s3);
+    app_main();
     /* USER CODE END 2 */
 
     while (1)

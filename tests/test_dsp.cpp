@@ -1,8 +1,12 @@
 #include <gtest/gtest.h>
 #include "DSP/OverdriveEffect.h"
 #include "DSP/DelayEffect.h"
-#include "DSP/EffectChain.h"
+#include "DSP/FxChain.h"
 #include "Protocol/ProtocolCommon.h"
+
+using App::Dsp::OverdriveEffect;
+using App::Dsp::DelayEffect;
+using App::Dsp::FxChain;
 
 TEST(OverdriveTest, ClippingLogic) {
     OverdriveEffect overdrive{Protocol::SAMPLE_RATE_HZ};
@@ -47,8 +51,8 @@ TEST(DelayTest, SignalPassThroughAndFeedback) {
     EXPECT_FLOAT_EQ(left, 0.5f); // Bypassed should pass clean signal
 }
 
-TEST(EffectChainTest, SlotManagement) {
-    EffectChain chain{Protocol::SAMPLE_RATE_HZ};
+TEST(FxChainTest, SlotManagement) {
+    FxChain chain{Protocol::SAMPLE_RATE_HZ};
 
     // Initially all slots should be EmptyEffect (ID 0)
     std::visit([](auto& fx) {

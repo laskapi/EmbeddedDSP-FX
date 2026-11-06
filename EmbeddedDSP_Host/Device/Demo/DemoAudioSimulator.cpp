@@ -38,7 +38,7 @@ void DemoAudioSimulator::stop() {
 }
 
 void DemoAudioSimulator::onTick() {
-    Protocol::AudioFramePacket frame{};
+    Protocol::AudioFrame frame{};
     frame.sequence = m_sequence++;
     frame.applyCRC();
 

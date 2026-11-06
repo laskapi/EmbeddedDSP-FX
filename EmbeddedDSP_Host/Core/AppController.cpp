@@ -106,17 +106,20 @@ void AppController::onControlPacketReady(const Protocol::ControlPacket& pkt) {
     using ::Protocol::Command;
 
     switch (pkt.command) {
-    case Command::SetParam:
+    case Command::ReportParam:
         emit slotParameterUpdated(static_cast<int>(pkt.slotId),
                                   static_cast<int>(pkt.paramId),
                                   pkt.value());
         break;
-    case Command::SetEffectType:
+    case Command::ReportEffectType:
         emit slotEffectTypeUpdated(static_cast<int>(pkt.slotId),
                                    static_cast<int>(pkt.effectTypeId));
         break;
-    case Command::BypassToggle:
+    case Command::ReportBypass:
         emit slotBypassUpdated(static_cast<int>(pkt.slotId), pkt.value() > 0.5f);
+        break;
+    case Command::ReportMasterVolume:
+        // Host UI master slider not wired yet; accept wire reports for future sync.
         break;
     default:
         break;

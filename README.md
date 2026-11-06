@@ -12,8 +12,8 @@ End-to-end guitar multi-FX system: low-latency processing on a memory-constraine
 
 | Layer | Role |
 |--------|------|
-| **Firmware** | I2S capture/playback, DMA double-buffering, `EffectChain` (fixed slots via manifest `C:SLOTS`), USB framing |
-| **Shared** | `ControlPacket`, `AudioFramePacket`, CRC, constants — single contract for PC and MCU |
+| **Firmware** | I2S capture/playback, DMA double-buffering, `DspChain` (fixed FX slots via manifest `C:SLOTS` + master volume), USB framing |
+| **Shared** | `ControlPacket`, `AudioFrame`, CRC, constants — single contract for PC and MCU |
 | **Host** | Connection UI, effect rack, spectrum view; **Serial** or **Demo** backend without hardware |
 
 ---
@@ -23,10 +23,11 @@ End-to-end guitar multi-FX system: low-latency processing on a memory-constraine
 ### Firmware (STM32F411RE)
 
 - **I2S audio** with half/complete DMA callbacks and double buffering.
+- **Optional bench input:** CMake `USE_VIRTUAL_AUDIO` (default **OFF**) swaps ADC samples for an on-device `App::Audio::VirtualSource` oscillator — lab use only, not a product demo mode.
 - **C++20 pipeline:** `std::variant` + `std::visit` and `AudioEffectConcept` — no vtables on the hot path.
 - **Effects:** e.g. delay (SRAM-friendly mono `int16_t` + interpolation), overdrive; empty slot placeholder.
-- **USB Virtual COM:** 9-byte control packets (host → device) and fixed-size audio frames with **CRC-16** (device → host).
-- **State model:** slot effect type, bypass, parameters; optional flash persistence structure (`EffectChain::Settings`).
+- **USB Virtual COM:** 9-byte control packets; opcodes use high-nibble direction (`0x0*` device→host `Report*`/`ManifestFollows`, `0x1*` host→device `Set*`/`GetState`) and fixed-size audio frames with **CRC-16** (device → host).
+- **State model:** slot effect type, bypass, parameters; optional flash persistence structure (`DspChain::Settings`).
 
 ### Host (Qt 6, C++20)
 
@@ -38,7 +39,7 @@ End-to-end guitar multi-FX system: low-latency processing on a memory-constraine
 
 ### Tests (PC)
 
-- **DSP & Firmware Logic:** `dsp_unit_tests` verify audio algorithms (Overdrive, Delay clipping) and the `ControlParser` byte-stream logic in isolation from the hardware.
+- **DSP & Firmware Logic:** `dsp_unit_tests` verify audio algorithms (Overdrive, Delay clipping) and Comm control RX/dispatch logic in isolation from the hardware.
 - **Host Application:** `host_unit_tests` focus on system reliability:
   - **Manifest Parsing:** Robust interpretation of hardware-provided capability strings.
   - **Async Controller Logic:** Uses **Google Mock** and `std::promise` to verify multi-threaded communication between the GUI and hardware backends.
@@ -69,8 +70,8 @@ Since embedded development makes debugging on hardware slow, this project emphas
 └────────────────────────────┬────────────────────────────────────┘
                              │ USB CDC (115200, VID/PID 0483:5740)
 ┌────────────────────────────▼────────────────────────────────────┐
-│  STM32F411  app_main → ControlParser → EffectChain              │
-│  I2S ↔ effects (variant) ↔ AudioFramePacket upstream            │
+│  STM32F411  app_main → App::Comm / App::Dsp → FX               │
+│  I2S ↔ effects (variant) ↔ AudioFrame upstream                  │
 └─────────────────────────────────────────────────────────────────┘
          ▲
          │  EmbeddedDSP_Shared/Protocol/*.h
@@ -79,7 +80,7 @@ Since embedded development makes debugging on hardware slow, this project emphas
 
 **Control (9 bytes):** SOF `0xA5`, command (`SetParam`, `SetEffectType`, `BypassToggle`, …), slot id, payload union, CRC.
 
-**Audio upstream:** SOF `0xA6`, **64 samples** per frame (`Protocol::AUDIO_SAMPLES`), checksum per shared headers.
+**Audio upstream:** SOF `0xA6`, **128 samples** per frame (`Protocol::AUDIO_SAMPLES`, one I2S DMA half), checksum per shared headers.
 
 ---
 
@@ -90,7 +91,7 @@ EmbeddedDSP-FX/
 ├── CMakeLists.txt              # Firmware (default) OR BUILD_TESTS for PC unit tests
 ├── README.md
 ├── EmbeddedDSP_Firmware/       # STM32 — CubeMX Core + application
-│   ├── App/                    # app_main, DSP/, Comm/ControlParser
+│   ├── App/                    # app_main, DSP/, Audio/, Comm/
 │   ├── Core/                   # HAL, I2S, startup
 │   ├── USB_DEVICE/             # CDC class
 │   ├── cmake/                  # gcc-arm-none-eabi.cmake, stm32cubemx

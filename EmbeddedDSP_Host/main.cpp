@@ -9,13 +9,13 @@
 #include <QApplication>
 #include <QFile>
 #include "Protocol/ControlPacket.h"
-#include "Protocol/AudioFramePacket.h"
+#include "Protocol/AudioFrame.h"
 #include <memory>
 #include <vector>
 
 int main(int argc, char* argv[]) {
     qRegisterMetaType<Protocol::ControlPacket>("Protocol::ControlPacket");
-    qRegisterMetaType<Protocol::AudioFramePacket>("Protocol::AudioFramePacket");
+    qRegisterMetaType<Protocol::AudioFrame>("Protocol::AudioFrame");
     qRegisterMetaType<std::vector<float>>("std::vector<float>");
     qRegisterMetaType<std::vector<Host::Models::ConnectionInfo>>(
         "std::vector<Host::Models::ConnectionInfo>");

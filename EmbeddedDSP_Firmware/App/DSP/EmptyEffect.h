@@ -3,6 +3,8 @@
 
 #include "DSP/AudioEffectConcept.h"
 
+namespace App::Dsp {
+
 /// @brief Pass-through null effect (empty slot placeholder).
 class EmptyEffect {
 public:
@@ -10,7 +12,7 @@ public:
     static constexpr const char* Name = "None";
     static constexpr uint8_t ParamCount = 0;
     static constexpr EffectParam Params[1] = {}; // empty-array workaround for ParamCount 0
-    static_assert(ParamCount <= MAX_EFFECT_PARAMS);
+    static_assert(ParamCount <= kMaxEffectParams);
 
     EmptyEffect() noexcept = default;
 
@@ -27,5 +29,7 @@ public:
     void toggleBypass() noexcept {}
     [[nodiscard]] bool isBypassed() const noexcept { return false; }
 };
+
+} // namespace App::Dsp
 
 #endif // EMBEDDEDDSP_FIRMWARE_EMPTY_EFFECT_H

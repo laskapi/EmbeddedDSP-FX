@@ -6,8 +6,8 @@
 
 namespace Protocol {
 
-/// @brief Samples per audio frame packet.
-inline constexpr size_t AUDIO_SAMPLES = 64;
+/// @brief Samples per audio frame.
+inline constexpr size_t AUDIO_SAMPLES = 128;
 
 /// @brief System PCM sample rate (Hz); must match I2S AudioFreq on the MCU.
 inline constexpr float SAMPLE_RATE_HZ = 48000.0f;
@@ -21,13 +21,6 @@ inline constexpr uint8_t Control = 0xA5;
 inline constexpr uint8_t Audio   = 0xA6;
 
 } // namespace Protocol::SOF
-
-/// @brief Reserved signal ids (not user params).
-namespace Protocol::ReservedParam {
-
-inline constexpr uint8_t ManifestSignal = 0xFE;
-
-} // namespace Protocol::ReservedParam
 
 /// @brief STM32 USB CDC discovery constants.
 namespace Protocol::Hardware {

@@ -5,7 +5,7 @@
 #include <memory>
 #include <vector>
 
-namespace Protocol { struct AudioFramePacket; }
+namespace Protocol { struct AudioFrame; }
 
 namespace Host::Processing {
 
@@ -19,7 +19,7 @@ public:
     ~AudioFrameWorker() override;
 
 public slots:
-    void processFrame(const Protocol::AudioFramePacket& frame);
+    void processFrame(const Protocol::AudioFrame& frame);
 
 signals:
     void spectrumReady(const std::vector<float>& magnitudeDb);

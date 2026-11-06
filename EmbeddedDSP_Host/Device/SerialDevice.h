@@ -6,7 +6,7 @@
 #include "Device/IDevice.h"
 
 namespace Protocol {
-struct AudioFramePacket;
+struct AudioFrame;
 struct ControlPacket;
 }
 

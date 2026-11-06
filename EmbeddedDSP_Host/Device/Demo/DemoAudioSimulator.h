@@ -3,7 +3,7 @@
 
 #include <QTimer>
 #include <cstdint>
-#include "Protocol/AudioFramePacket.h"
+#include "Protocol/AudioFrame.h"
 
 namespace Host::Device::Demo {
 
@@ -18,7 +18,7 @@ public slots:
     void stop();
 
 signals:
-    void audioFrameReady(const Protocol::AudioFramePacket& frame);
+    void audioFrameReady(const Protocol::AudioFrame& frame);
 
 private slots:
     void onTick();

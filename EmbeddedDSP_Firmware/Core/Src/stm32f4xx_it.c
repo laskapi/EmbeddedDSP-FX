@@ -209,11 +209,11 @@ void DMA1_Stream0_IRQHandler(void)
   /* USER CODE BEGIN DMA1_Stream0_IRQn 0 */
   if (LL_DMA_IsActiveFlag_TC0(DMA1)) {
     LL_DMA_ClearFlag_TC0(DMA1);
-    app_audio_transfer_complete_cb();
+    on_i2s_dma_full();
   }
   if (LL_DMA_IsActiveFlag_HT0(DMA1)) {
     LL_DMA_ClearFlag_HT0(DMA1);
-    app_audio_half_transfer_cb();
+    on_i2s_dma_half();
   }
   return;
   /* USER CODE END DMA1_Stream0_IRQn 0 */

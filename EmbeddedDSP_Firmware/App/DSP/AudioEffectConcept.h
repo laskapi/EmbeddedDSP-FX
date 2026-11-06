@@ -3,8 +3,10 @@
 
 #include <stdint.h>
 
+namespace App::Dsp {
+
 /// @brief Max parameters for effect (Settings blob capacity per slot).
-inline constexpr uint8_t MAX_EFFECT_PARAMS = 8;
+inline constexpr uint8_t kMaxEffectParams = 8;
 
 /// @brief Static metadata for one effect parameter (name + range + default).
 struct EffectParam {
@@ -15,6 +17,8 @@ struct EffectParam {
 };
 
 /// @brief Effect contract: Id/Name/Params + ctor(SR)/updateSampleRate/process/paramValue/bypass.
-/// ParamCount must be <= MAX_EFFECT_PARAMS.
+/// ParamCount must be <= kMaxEffectParams.
+
+} // namespace App::Dsp
 
 #endif // EMBEDDEDDSP_DYNAMIC_AUDIO_EFFECT_CONCEPT_H

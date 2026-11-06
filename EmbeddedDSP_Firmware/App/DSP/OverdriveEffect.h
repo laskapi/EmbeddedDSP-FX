@@ -5,13 +5,15 @@
 #include <algorithm>
 #include <cmath>
 
+namespace App::Dsp {
+
 /// @brief Soft-clip overdrive with one-pole tone (LPF) section.
 class OverdriveEffect {
 public:
     static constexpr uint8_t Id = 0x02;
     static constexpr const char* Name = "Overdrive";
     static constexpr uint8_t ParamCount = 2;
-    static_assert(ParamCount <= MAX_EFFECT_PARAMS);
+    static_assert(ParamCount <= kMaxEffectParams);
 
     static constexpr EffectParam Params[ParamCount] = {
         {"Gain", 1.0f, 20.0f, 5.0f},
@@ -83,5 +85,7 @@ private:
     float m_b0{1.0f};
     float m_a1{0.0f};
 };
+
+} // namespace App::Dsp
 
 #endif // EMBEDDEDDSP_FIRMWARE_OVERDRIVE_EFFECT_H

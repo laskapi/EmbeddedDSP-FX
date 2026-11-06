@@ -52,7 +52,7 @@ bool DemoDevice::sendControlPacket(const Protocol::ControlPacket& pkt) {
     if (pkt.command == ::Protocol::Command::GetState) {
         for (uint8_t i = 0; i < 4; ++i) {
             ::Protocol::ControlPacket statePkt;
-            statePkt.command = ::Protocol::Command::SetEffectType;
+            statePkt.command = ::Protocol::Command::ReportEffectType;
             statePkt.slotId = i;
             statePkt.effectTypeId = i + 1;
             statePkt.setValue(0.0f);
@@ -60,7 +60,7 @@ bool DemoDevice::sendControlPacket(const Protocol::ControlPacket& pkt) {
 
             for (uint8_t p = 0; p < 3; ++p) {
                 ::Protocol::ControlPacket pPkt;
-                pPkt.command = ::Protocol::Command::SetParam;
+                pPkt.command = ::Protocol::Command::ReportParam;
                 pPkt.slotId = i;
                 pPkt.paramId = p;
                 pPkt.setValue(0.5f);

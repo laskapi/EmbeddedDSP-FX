@@ -15,8 +15,12 @@ add_executable(dsp_unit_tests
         test_protocol.cpp
         test_dsp.cpp
     
-        ../EmbeddedDSP_Firmware/App/Comm/ControlParser.h
-        ../EmbeddedDSP_Shared/Protocol/SpscQueue.h
+        ../EmbeddedDSP_Firmware/App/Comm/UsbRx.h
+        ../EmbeddedDSP_Firmware/App/Comm/CommandDispatcher.h
+        ../EmbeddedDSP_Firmware/App/Comm/UsbTx.h
+        ../EmbeddedDSP_Firmware/App/DSP/MasterVolume.h
+        ../EmbeddedDSP_Firmware/App/DSP/FxChain.h
+        ../EmbeddedDSP_Firmware/App/Comm/ManifestBuilder.h
         ../EmbeddedDSP_Firmware/App/DSP/OverdriveEffect.h
         ../EmbeddedDSP_Firmware/App/DSP/DelayEffect.h
      )

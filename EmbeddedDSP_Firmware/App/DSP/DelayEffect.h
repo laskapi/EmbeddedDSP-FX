@@ -4,6 +4,9 @@
 #include "DSP/AudioEffectConcept.h"
 #include "SharedBuffer.h"
 #include <algorithm>
+#include <cstring>
+
+namespace App::Dsp {
 
 /// @brief Mono digital delay (time / feedback / mix) using SharedBuffer.
 class DelayEffect {
@@ -11,7 +14,7 @@ public:
     static constexpr uint8_t Id = 0x01;
     static constexpr const char* Name = "Delay";
     static constexpr uint8_t ParamCount = 3;
-    static_assert(ParamCount <= MAX_EFFECT_PARAMS);
+    static_assert(ParamCount <= kMaxEffectParams);
 
     static constexpr EffectParam Params[ParamCount] = {
         {"Time", 0.01f, 1.0f, 0.5f},
@@ -23,6 +26,15 @@ public:
         updateSampleRate(sampleRate);
     }
 
+    ~DelayEffect() {
+        App::g_sharedBuffer.release(App::SharedBuffer::Owner::Delay);
+    }
+
+    DelayEffect(const DelayEffect&) = delete;
+    DelayEffect& operator=(const DelayEffect&) = delete;
+    DelayEffect(DelayEffect&&) noexcept = default;
+    DelayEffect& operator=(DelayEffect&&) noexcept = default;
+
     void updateSampleRate(float sampleRate) noexcept {
         m_sampleRate = sampleRate;
         m_writePos = 0;
@@ -31,19 +43,33 @@ public:
     void process(float& left, float& right) noexcept {
         if (m_bypassed) return;
 
+        if (!App::g_sharedBuffer.acquire(App::SharedBuffer::Owner::Delay)) {
+            m_needsClear = true;
+            return; // dry while Manifest owns the arena
+        }
+
+        const auto line = App::g_sharedBuffer.get<float>(App::SharedBuffer::Owner::Delay);
+        float* const buffer = line.data;
+        const int capacity = static_cast<int>(line.count);
+
+        if (m_needsClear) {
+            std::memset(buffer, 0, line.count * sizeof(float));
+            m_writePos = 0;
+            m_needsClear = false;
+        }
+
         float delaySamples = m_time * m_sampleRate;
         float readPos = static_cast<float>(m_writePos) - delaySamples;
 
-        constexpr int capacity = SharedBuffer::Capacity / sizeof(float);
         while (readPos < 0.0f) readPos += static_cast<float>(capacity);
 
         int i0 = static_cast<int>(readPos);
         int i1 = (i0 + 1) % capacity;
         float frac = readPos - static_cast<float>(i0);
 
-        float delayed = m_buffer[i0] * (1.0f - frac) + m_buffer[i1] * frac;
+        float delayed = buffer[i0] * (1.0f - frac) + buffer[i1] * frac;
 
-        m_buffer[m_writePos] = left + (delayed * m_feedback);
+        buffer[m_writePos] = left + (delayed * m_feedback);
         m_writePos = (m_writePos + 1) % capacity;
 
         left = (left * (1.0f - m_mix)) + (delayed * m_mix);
@@ -67,13 +93,15 @@ public:
     [[nodiscard]] bool isBypassed() const noexcept { return m_bypassed; }
 
 private:
-    float* m_buffer = reinterpret_cast<float*>(SharedBuffer::s_buffer);
     int m_writePos{0};
     float m_sampleRate{};
     float m_time{0.5f};
     float m_feedback{0.3f};
     float m_mix{0.4f};
     bool m_bypassed{false};
+    bool m_needsClear{true};
 };
+
+} // namespace App::Dsp
 
 #endif // EMBEDDEDDSP_FIRMWARE_DELAY_EFFECT_H

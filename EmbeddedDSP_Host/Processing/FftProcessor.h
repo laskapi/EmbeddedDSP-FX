@@ -12,7 +12,7 @@ namespace Host::Processing {
 /// @brief Utility class for real-time audio spectrum analysis.
 class FftProcessor {
 public:
-    explicit FftProcessor(size_t fftSize = 128) noexcept;
+    explicit FftProcessor(size_t fftSize) noexcept;
 
     /// @brief Converts raw PCM samples to magnitude spectrum (dB).
     const std::vector<float>& processFrame(std::span<const int16_t> pcmSamples) noexcept;

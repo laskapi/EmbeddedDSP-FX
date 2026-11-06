@@ -1,7 +1,7 @@
 #include "Device/SerialDevice.h"
 #include "Models/DeviceManifestParser.h"
 #include "Core/Logging.h"
-#include "Protocol/AudioFramePacket.h"
+#include "Protocol/AudioFrame.h"
 #include "Protocol/ControlPacket.h"
 #include <cstring>
 
@@ -93,17 +93,17 @@ void SerialDevice::processRxBuffer() {
         const uint8_t sof = static_cast<uint8_t>(m_rxBuffer.at(0));
 
         if (sof == Protocol::SOF::Audio) {
-            if (m_rxBuffer.size() < static_cast<int>(sizeof(Protocol::AudioFramePacket))) {
+            if (m_rxBuffer.size() < static_cast<int>(sizeof(Protocol::AudioFrame))) {
                 return;
             }
 
-            Protocol::AudioFramePacket frame;
+            Protocol::AudioFrame frame;
             std::memcpy(&frame, m_rxBuffer.constData(), sizeof(frame));
 
             if (frame.isValid()) {
                 emit audioFrameReady(frame);
             }
-            m_rxBuffer.remove(0, sizeof(Protocol::AudioFramePacket));
+            m_rxBuffer.remove(0, sizeof(Protocol::AudioFrame));
         } else if (sof == Protocol::SOF::Control) {
             if (m_rxBuffer.size() < static_cast<int>(sizeof(Protocol::ControlPacket))) {
                 return;
@@ -113,8 +113,7 @@ void SerialDevice::processRxBuffer() {
             std::memcpy(&pkt, m_rxBuffer.constData(), sizeof(pkt));
 
             if (pkt.isValid()) {
-                if (pkt.command == Protocol::Command::ReportState &&
-                    pkt.signalId == Protocol::ReservedParam::ManifestSignal) {
+                if (pkt.command == Protocol::Command::ManifestFollows) {
                     qCDebug(Host::Core::LOG_COMM) << "Entering manifest mode...";
                     m_manifestMode = true;
                     m_manifestBuffer.clear();

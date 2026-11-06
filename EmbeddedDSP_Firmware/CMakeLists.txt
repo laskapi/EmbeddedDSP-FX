@@ -25,6 +25,11 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 
 project(${CMAKE_PROJECT_NAME} C CXX ASM)
 
+# Bench-only: software oscillator instead of I2S ADC samples (default = real hardware path).
+option(USE_VIRTUAL_AUDIO
+        "Use App::Audio::VirtualSource instead of I2S ADC input (lab bench)"
+        OFF)
+
 # ==============================================================================
 # 2. HARDWARE & ARCHITECTURE FLAGS
 # ==============================================================================
@@ -54,20 +59,27 @@ add_executable(${CMAKE_PROJECT_NAME}
         App/app_main.cpp
         App/app_main.h
         App/SharedBuffer.h
+        App/SpscQueue.h
         App/DSP/DelayEffect.h
-        App/DSP/EffectChain.h
+        App/DSP/FxChain.h
+        App/Comm/ManifestBuilder.h
         App/DSP/AudioEffectConcept.h
         App/DSP/OverdriveEffect.h
         App/DSP/EmptyEffect.h
-        App/Comm/ControlParser.h
+        App/Audio/VirtualSource.h
+        App/Audio/Source.h
+        App/Audio/I2sDma.h
+        App/Audio/ProcessHalf.h
+        App/DSP/MasterVolume.h
+        App/Comm/UsbRx.h
+        App/Comm/CommandDispatcher.h
+        App/Comm/UsbTx.h
 
         # Shared Protocols (Contract)
         ../EmbeddedDSP_Shared/Protocol/ControlPacket.h
-        ../EmbeddedDSP_Shared/Protocol/AudioFramePacket.h
+        ../EmbeddedDSP_Shared/Protocol/AudioFrame.h
         ../EmbeddedDSP_Shared/Protocol/ProtocolCommon.h
         ../EmbeddedDSP_Shared/Protocol/Checksums.h
-        ../EmbeddedDSP_Shared/Protocol/SpscQueue.h
-
         # USB Device Stack
         USB_DEVICE/Target/usbd_conf.c
         USB_DEVICE/App/usb_device.c
@@ -122,9 +134,10 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
         stm32cubemx
 )
 
-# Enable application logging only in Debug builds
+# Debug logging + optional bench audio input (always 0/1 for #if).
 target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
-        $<$<CONFIG:Debug>:APP_LOG_ENABLED>
+        $<$<CONFIG:Debug>:LOG_ENABLED>
+        USE_VIRTUAL_AUDIO=$<BOOL:${USE_VIRTUAL_AUDIO}>
 )
 
 # Workaround for unwanted libob.a dependency in C++ builds

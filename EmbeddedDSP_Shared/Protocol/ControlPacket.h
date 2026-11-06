@@ -8,16 +8,28 @@
 
 namespace Protocol {
 
-/// @brief Host <-> device control commands.
+/// @brief Control opcodes. High nibble = direction for easy hex debugging:
+///        0x0* device→host (report/notify), 0x1* host→device (set/request).
+///        0x00 and 0x10 are intentionally empty.
 enum class Command : uint8_t {
-    SetParam       = 0x01,
-    SetEffectType  = 0x02,
-    BypassToggle   = 0x03,
-    ClearSlot      = 0x04,
-    SwapSlots      = 0x05,
-        SetActiveSlots = 0x06, // reserved in v1 (fixed rack; unused slots = Empty)
-    GetState       = 0x07,
-    ReportState    = 0x08
+    // --- 0x00–0x0F: device → host ---
+    // 0x00 reserved empty
+    ReportParam         = 0x01,
+    ReportEffectType    = 0x02,
+    ReportBypass        = 0x03,
+    ManifestFollows     = 0x04, ///< Next bytes are null-terminated manifest text.
+    ReportMasterVolume  = 0x05,
+
+    // --- 0x10–0x1F: host → device ---
+    // 0x10 reserved empty
+    SetParam            = 0x11,
+    SetEffectType       = 0x12,
+    BypassToggle        = 0x13,
+    ClearSlot           = 0x14,
+    SwapSlots           = 0x15,
+    SetActiveSlots      = 0x16, ///< Reserved in v1 (fixed rack; unused slots = Empty).
+    GetState            = 0x17,
+    SetMasterVolume     = 0x18  ///< Global output gain in value(); range 0..1.
 };
 
 #pragma pack(push, 1)

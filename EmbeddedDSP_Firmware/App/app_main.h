@@ -8,20 +8,26 @@ extern "C" {
 #include "main.h"
 #include <stdio.h>
 
-#ifdef APP_LOG_ENABLED
+#ifdef LOG_ENABLED
 #define APP_LOG(fmt, ...) printf("[APP] " fmt "\n", ##__VA_ARGS__)
 #else
 #define APP_LOG(fmt, ...)
 #endif
 
 /// @brief C++ application entry; wires DSP, USB control, and I2S DMA.
-void app_main(I2S_HandleTypeDef* audio_i2s);
+void app_main(void);
 
-/// @brief I2S DMA half-transfer callback (first buffer half ready).
-void app_audio_half_transfer_cb(void);
+/// @brief USB CDC RX hook (host→device bytes).
+void on_cdc_bytes(const uint8_t* Buf, uint32_t Len);
 
-/// @brief I2S DMA complete callback (second buffer half ready).
-void app_audio_transfer_complete_cb(void);
+/// @brief USB CDC deinit / host gone — stops device→host audio streaming.
+void on_usb_host_gone(void);
+
+/// @brief I2S DMA half-transfer (first buffer half ready).
+void on_i2s_dma_half(void);
+
+/// @brief I2S DMA transfer complete (second buffer half ready).
+void on_i2s_dma_full(void);
 
 #ifdef __cplusplus
 }

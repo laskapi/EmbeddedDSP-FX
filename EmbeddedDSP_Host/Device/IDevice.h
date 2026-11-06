@@ -6,7 +6,7 @@
 
 namespace Protocol {
 struct ControlPacket;
-struct AudioFramePacket;
+struct AudioFrame;
 }
 
 namespace Host::Device {
@@ -24,7 +24,7 @@ public:
 
 signals:
     void manifestReady(const Host::Models::DeviceManifest& manifest);
-    void audioFrameReady(const Protocol::AudioFramePacket& frame);
+    void audioFrameReady(const Protocol::AudioFrame& frame);
     void controlPacketReady(const Protocol::ControlPacket& pkt);
     void connectionStatusChanged(bool connected, const QString& portName);
     void errorOccurred(const QString& errorMessage);
