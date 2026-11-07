@@ -17,7 +17,7 @@ public:
 
     bool open(const QString& connectionId) override;
     void close() override;
-    bool sendControlPacket(const Protocol::ControlPacket& pkt) override;
+    bool writeControlPacket(const Protocol::ControlPacket& pkt) override;
 
 private:
     std::unique_ptr<Demo::DemoAudioSimulator> m_simulator;

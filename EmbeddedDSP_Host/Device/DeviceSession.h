@@ -36,7 +36,7 @@ public:
     void close();
 
     /// @brief Queues a control packet; SetParam coalesces by (slotId, paramId).
-    bool sendControlPacket(const Protocol::ControlPacket& pkt);
+    bool writeControlPacket(const Protocol::ControlPacket& pkt);
 
 signals:
     void manifestReady(const Host::Models::DeviceManifest& manifest);

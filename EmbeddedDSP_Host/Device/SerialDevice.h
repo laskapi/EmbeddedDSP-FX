@@ -21,7 +21,7 @@ public:
 
     bool open(const QString& connectionId) override;
     void close() override;
-    bool sendControlPacket(const Protocol::ControlPacket& pkt) override;
+    bool writeControlPacket(const Protocol::ControlPacket& pkt) override;
 
 private slots:
     void handleReadyRead();

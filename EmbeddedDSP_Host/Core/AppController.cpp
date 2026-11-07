@@ -129,7 +129,7 @@ void AppController::onControlPacketReady(const Protocol::ControlPacket& pkt) {
 
 void AppController::dispatchControlPacket(::Protocol::ControlPacket pkt) {
     pkt.applyCRC();
-    QMetaObject::invokeMethod(m_deviceSession, &DeviceSession::sendControlPacket, Qt::QueuedConnection, pkt);
+    QMetaObject::invokeMethod(m_deviceSession, &DeviceSession::writeControlPacket, Qt::QueuedConnection, pkt);
 }
 
 } // namespace Host::Core

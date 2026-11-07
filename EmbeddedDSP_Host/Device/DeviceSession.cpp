@@ -36,7 +36,7 @@ void DeviceSession::close() {
     m_device->close();
 }
 
-bool DeviceSession::sendControlPacket(const Protocol::ControlPacket& pkt) {
+bool DeviceSession::writeControlPacket(const Protocol::ControlPacket& pkt) {
     if (!m_device) return false;
 
     if (pkt.command == Protocol::Command::SetParam) {
@@ -65,7 +65,7 @@ void DeviceSession::trySend() {
     }
 
     m_txBusy = true;
-    if (!m_device->sendControlPacket(pkt)) {
+    if (!m_device->writeControlPacket(pkt)) {
         m_txBusy = false;
         return;
     }

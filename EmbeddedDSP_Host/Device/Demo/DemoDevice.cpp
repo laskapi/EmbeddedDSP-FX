@@ -37,7 +37,7 @@ void DemoDevice::close() {
     emit connectionStatusChanged(false, kDemoConnectionId);
 }
 
-bool DemoDevice::sendControlPacket(const Protocol::ControlPacket& pkt) {
+bool DemoDevice::writeControlPacket(const Protocol::ControlPacket& pkt) {
     if (!m_isOpen) {
         return false;
     }

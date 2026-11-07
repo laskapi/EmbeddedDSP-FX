@@ -44,7 +44,7 @@ class MockDevice : public IDevice {
 public:
     MOCK_METHOD(bool, open, (const QString& connectionId), (override));
     MOCK_METHOD(void, close, (), (override));
-    MOCK_METHOD(bool, sendControlPacket, (const Protocol::ControlPacket& pkt), (override));
+    MOCK_METHOD(bool, writeControlPacket, (const Protocol::ControlPacket& pkt), (override));
 };
 
 class MockDeviceFactory : public IDeviceFactory {
@@ -92,7 +92,7 @@ protected:
         std::promise<void> openedPromise;
         auto openedFuture = openedPromise.get_future();
 
-        ON_CALL(*raw, sendControlPacket(_)).WillByDefault(Return(true));
+        ON_CALL(*raw, writeControlPacket(_)).WillByDefault(Return(true));
         EXPECT_CALL(*raw, open(connectionId))
             .WillOnce([&openedPromise](const QString&) {
                 openedPromise.set_value();
@@ -126,7 +126,7 @@ TEST_F(AppControllerTest, SetParameterSendsCorrectPacket) {
     std::promise<void> sentPromise;
     auto sentFuture = sentPromise.get_future();
 
-    EXPECT_CALL(*mockDevice, sendControlPacket(_))
+    EXPECT_CALL(*mockDevice, writeControlPacket(_))
         .WillOnce([&](const Protocol::ControlPacket& pkt) {
             EXPECT_EQ(pkt.command, Protocol::Command::SetParam);
             EXPECT_EQ(pkt.slotId, slot);
@@ -154,7 +154,7 @@ TEST_F(AppControllerTest, SetParameterCoalescesToLatestValue) {
     auto doneFuture = donePromise.get_future();
 
     /// First send blocks until later SetParams are queued, so they coalesce while tx is busy.
-    EXPECT_CALL(*mockDevice, sendControlPacket(_))
+    EXPECT_CALL(*mockDevice, writeControlPacket(_))
         .WillOnce([&](const Protocol::ControlPacket& pkt) {
             EXPECT_EQ(pkt.command, Protocol::Command::SetParam);
             EXPECT_EQ(pkt.slotId, 1);
@@ -195,7 +195,7 @@ TEST_F(AppControllerTest, SetEffectTypeSendsCorrectPacket) {
     std::promise<void> sentPromise;
     auto sentFuture = sentPromise.get_future();
 
-    EXPECT_CALL(*mockDevice, sendControlPacket(AllOf(
+    EXPECT_CALL(*mockDevice, writeControlPacket(AllOf(
                                  Field(&Protocol::ControlPacket::command,      Protocol::Command::SetEffectType),
                                  Field(&Protocol::ControlPacket::slotId,       slot),
                                  Field(&Protocol::ControlPacket::effectTypeId, typeId)

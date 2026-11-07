@@ -57,7 +57,7 @@ void SerialDevice::close() {
     }
 }
 
-bool SerialDevice::sendControlPacket(const Protocol::ControlPacket& pkt) {
+bool SerialDevice::writeControlPacket(const Protocol::ControlPacket& pkt) {
     if (!m_serialPort.isOpen()) return false;
 
     return m_serialPort.write(reinterpret_cast<const char*>(&pkt), sizeof(pkt)) == sizeof(pkt);

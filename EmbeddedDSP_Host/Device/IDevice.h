@@ -20,7 +20,7 @@ public:
 
     virtual bool open(const QString& connectionId) = 0;
     virtual void close() = 0;
-    virtual bool sendControlPacket(const Protocol::ControlPacket& pkt) = 0;
+    virtual bool writeControlPacket(const Protocol::ControlPacket& pkt) = 0;
 
 signals:
     void manifestReady(const Host::Models::DeviceManifest& manifest);
