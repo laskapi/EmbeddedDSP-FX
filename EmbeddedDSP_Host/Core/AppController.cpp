@@ -97,6 +97,7 @@ void AppController::onConnectionStatusChanged(bool connected, const QString& por
 
     if (connected) {
         QMetaObject::invokeMethod(m_connectionScanner, &IConnectionScanner::stop, Qt::QueuedConnection);
+        requestSync();
     } else {
         QMetaObject::invokeMethod(m_connectionScanner, &IConnectionScanner::start, Qt::QueuedConnection);
     }

@@ -3,7 +3,6 @@
 #include "Device/Demo/DemoAudioSimulator.h"
 #include "Device/Demo/DemoManifestProvider.h"
 #include "Protocol/ControlPacket.h"
-#include <QTimer>
 
 namespace Host::Device {
 
@@ -25,12 +24,6 @@ bool DemoDevice::open(const QString& connectionId) {
 
     m_isOpen = true;
     emit connectionStatusChanged(true, connectionId);
-
-    QTimer::singleShot(100, this, [this]() {
-        emit manifestReady(Demo::getDemoManifest());
-        m_simulator->start();
-    });
-
     return true;
 }
 
@@ -49,14 +42,23 @@ bool DemoDevice::sendControlPacket(const Protocol::ControlPacket& pkt) {
         return false;
     }
 
+    // Mirror MCU beginSync: GetState → manifest, then Report*, then audio stream on.
     if (pkt.command == ::Protocol::Command::GetState) {
+        emit manifestReady(Demo::getDemoManifest());
+
         for (uint8_t i = 0; i < 4; ++i) {
-            ::Protocol::ControlPacket statePkt;
-            statePkt.command = ::Protocol::Command::ReportEffectType;
-            statePkt.slotId = i;
-            statePkt.effectTypeId = i + 1;
-            statePkt.setValue(0.0f);
-            emit controlPacketReady(statePkt);
+            ::Protocol::ControlPacket typePkt;
+            typePkt.command = ::Protocol::Command::ReportEffectType;
+            typePkt.slotId = i;
+            typePkt.effectTypeId = i + 1;
+            typePkt.setValue(0.0f);
+            emit controlPacketReady(typePkt);
+
+            ::Protocol::ControlPacket bypassPkt;
+            bypassPkt.command = ::Protocol::Command::ReportBypass;
+            bypassPkt.slotId = i;
+            bypassPkt.setValue(0.0f); // not bypassed
+            emit controlPacketReady(bypassPkt);
 
             for (uint8_t p = 0; p < 3; ++p) {
                 ::Protocol::ControlPacket pPkt;
@@ -67,8 +69,13 @@ bool DemoDevice::sendControlPacket(const Protocol::ControlPacket& pkt) {
                 emit controlPacketReady(pPkt);
             }
         }
-    } else {
-        emit controlPacketReady(pkt);
+
+        ::Protocol::ControlPacket masterPkt;
+        masterPkt.command = ::Protocol::Command::ReportMasterVolume;
+        masterPkt.setValue(1.0f);
+        emit controlPacketReady(masterPkt);
+
+        m_simulator->start();
     }
 
     return true;

@@ -31,8 +31,6 @@ void EffectRack::onManifestReady(const DeviceManifest& manifest) {
         connect(item, &EffectItem::typeChanged, &m_appController, &AppController::setEffectType);
         connect(item, &EffectItem::bypassToggled, &m_appController, &AppController::setBypass);
     }
-
-    m_appController.requestSync();
 }
 
 void EffectRack::clear() {
