@@ -11,6 +11,7 @@
 #include "DSP/EmptyEffect.h"
 
 #include <cstring>
+#include <string>
 #include <vector>
 
 using namespace Protocol;
@@ -225,4 +226,113 @@ TEST(ControlRxTest, GetStateSyncViaUsbTx) {
     }
     EXPECT_TRUE(sawEffectType);
     EXPECT_TRUE(sawMasterVolume);
+
+    bool sawNoneInManifest = false;
+    for (const auto& chunk : g_txChunks) {
+        if (chunk.size() == sizeof(ControlPacket)) {
+            continue;
+        }
+        const std::string text(chunk.begin(), chunk.end());
+        if (text.find("E:0:None") != std::string::npos) {
+            sawNoneInManifest = true;
+        }
+    }
+    EXPECT_TRUE(sawNoneInManifest);
+}
+
+TEST(ControlRxTest, SetEffectTypeEnqueuesSlotReportsWhenIdle) {
+    ControlRxFixture fx;
+
+    ControlPacket setType{};
+    setType.command = Command::SetEffectType;
+    setType.slotId = 0;
+    setType.effectTypeId = OverdriveEffect::Id;
+    setType.applyCRC();
+
+    const auto* bytes = reinterpret_cast<const uint8_t*>(&setType);
+    fx.feed(bytes, sizeof(ControlPacket));
+    fx.process();
+
+    g_txChunks.clear();
+    for (int i = 0; i < 16; ++i) {
+        fx.usbTx.sendNext();
+    }
+
+    bool sawType = false;
+    bool sawBypass = false;
+    int paramReports = 0;
+    for (const auto& chunk : g_txChunks) {
+        ASSERT_EQ(chunk.size(), sizeof(ControlPacket));
+        ControlPacket pkt{};
+        std::memcpy(&pkt, chunk.data(), sizeof(pkt));
+        ASSERT_TRUE(pkt.isValid());
+        if (pkt.command == Command::ReportEffectType) {
+            sawType = true;
+            EXPECT_EQ(pkt.slotId, 0);
+            EXPECT_EQ(pkt.effectTypeId, OverdriveEffect::Id);
+        } else if (pkt.command == Command::ReportBypass) {
+            sawBypass = true;
+            EXPECT_EQ(pkt.slotId, 0);
+            EXPECT_FLOAT_EQ(pkt.value(), 0.0f);
+        } else if (pkt.command == Command::ReportParam) {
+            ++paramReports;
+            EXPECT_EQ(pkt.slotId, 0);
+        }
+    }
+    EXPECT_TRUE(sawType);
+    EXPECT_TRUE(sawBypass);
+    EXPECT_EQ(paramReports, OverdriveEffect::ParamCount);
+}
+
+TEST(ControlRxTest, SetParamDoesNotEnqueueReport) {
+    ControlRxFixture fx;
+    fx.chain.setEffectByIndex(0, OverdriveEffect::Id);
+
+    ControlPacket setParam{};
+    setParam.command = Command::SetParam;
+    setParam.slotId = 0;
+    setParam.paramId = 0;
+    setParam.setValue(7.0f);
+    setParam.applyCRC();
+
+    const auto* bytes = reinterpret_cast<const uint8_t*>(&setParam);
+    fx.feed(bytes, sizeof(ControlPacket));
+    fx.process();
+
+    g_txChunks.clear();
+    for (int i = 0; i < 8; ++i) {
+        fx.usbTx.sendNext();
+    }
+    EXPECT_TRUE(g_txChunks.empty());
+}
+
+TEST(ControlRxTest, BypassToggleSetsAbsoluteAndReports) {
+    ControlRxFixture fx;
+    fx.chain.setEffectByIndex(0, DelayEffect::Id);
+
+    ControlPacket bypass{};
+    bypass.command = Command::BypassToggle;
+    bypass.slotId = 0;
+    bypass.setValue(1.0f);
+    bypass.applyCRC();
+
+    const auto* bytes = reinterpret_cast<const uint8_t*>(&bypass);
+    fx.feed(bytes, sizeof(ControlPacket));
+    fx.process();
+
+    std::visit([](auto& effect) {
+        EXPECT_TRUE(effect.isBypassed());
+    }, fx.chain.slot(0));
+
+    g_txChunks.clear();
+    for (int i = 0; i < 4; ++i) {
+        fx.usbTx.sendNext();
+    }
+
+    ASSERT_EQ(g_txChunks.size(), 1u);
+    ControlPacket report{};
+    std::memcpy(&report, g_txChunks.front().data(), sizeof(report));
+    EXPECT_TRUE(report.isValid());
+    EXPECT_EQ(report.command, Command::ReportBypass);
+    EXPECT_FLOAT_EQ(report.value(), 1.0f);
 }

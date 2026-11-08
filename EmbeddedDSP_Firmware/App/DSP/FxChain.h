@@ -107,7 +107,7 @@ public:
             setEffectByIndex(i, s.slots[i].effectId);
 
             std::visit([&s, i](auto& fx) {
-                if (s.slots[i].bypassed != fx.isBypassed()) fx.toggleBypass();
+                fx.setBypassed(s.slots[i].bypassed);
                 for (uint8_t p = 0; p < kMaxEffectParams; ++p) {
                     fx.setParamValue(p, s.slots[i].params[p]);
                 }

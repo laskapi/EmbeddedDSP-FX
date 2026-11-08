@@ -27,6 +27,9 @@ public:
     /// @brief Sets the list of available effects for the combo box.
     void setAvailableEffects(const QMap<int, Host::Models::EffectSpec> &availableEffects);
 
+    /// @brief Asks ParameterRack to reserve space; locks this slot's total height.
+    void setUniformSlotMetrics(int maxParamCount);
+
 signals:
     void parameterChanged(int slotIdx, int paramIdx, float newValue);
     void typeChanged(int slotIdx, int effectTypeId);
@@ -39,6 +42,7 @@ private slots:
 private:
     void setupUi();
     void setupEffect(int effectTypeId);
+    void setBypassVisible(bool visible);
 
     QLabel *m_titleLabel{nullptr};
     QComboBox *m_typeCombo{nullptr};

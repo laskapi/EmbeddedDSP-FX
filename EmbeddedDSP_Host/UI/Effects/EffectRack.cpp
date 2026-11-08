@@ -2,6 +2,7 @@
 #include "UI/Effects/EffectItem.h"
 #include "Core/AppController.h"
 #include <QHBoxLayout>
+#include <algorithm>
 
 using namespace Host::Models;
 using namespace Host::Core;
@@ -23,9 +24,16 @@ void EffectRack::onManifestReady(const DeviceManifest& manifest) {
     m_expectedSlotsCount = manifest.slotCount;
     m_isSyncing = true;
 
+    int maxParamCount = 0;
+    for (const auto& spec : manifest.availableEffects) {
+        maxParamCount = std::max(maxParamCount, static_cast<int>(spec.params.size()));
+    }
+
     for (int i = 0; i < manifest.slotCount; ++i) {
         auto *item = createItem(this);
         item->setAvailableEffects(manifest.availableEffects);
+        item->setUniformSlotMetrics(maxParamCount);
+        layout()->setStretch(i, 1);
 
         connect(item, &EffectItem::parameterChanged, &m_appController, &AppController::setParameter);
         connect(item, &EffectItem::typeChanged, &m_appController, &AppController::setEffectType);

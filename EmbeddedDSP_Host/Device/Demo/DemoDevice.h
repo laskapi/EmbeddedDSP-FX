@@ -2,13 +2,14 @@
 #define EMBEDDEDDSP_HOST_DEMO_DEVICE_H
 
 #include "Device/IDevice.h"
+#include <array>
 #include <memory>
 
 namespace Host::Device {
 
 namespace Demo { class DemoAudioSimulator; }
 
-/// @brief Local simulated device for running the host without hardware.
+/// @brief Offline IDevice: GetState + Set* Report* echoes (parity with MCU UsbTx).
 class DemoDevice : public IDevice {
     Q_OBJECT
 public:
@@ -20,8 +21,25 @@ public:
     bool writeControlPacket(const Protocol::ControlPacket& pkt) override;
 
 private:
-    std::unique_ptr<Demo::DemoAudioSimulator> m_simulator;
+    static constexpr int kSlotCount = 4;
+    static constexpr int kMaxParams = 8;
+
+    struct SlotState {
+        int effectTypeId{0};
+        bool bypassed{false};
+        std::array<float, kMaxParams> params{};
+    };
+
+    void emitSlotReports(int slotIndex);
+    void emitBypassReport(int slotIndex);
+    void emitMasterVolumeReport();
+    void resetSlotsToEmpty();
+    void applyEffectDefaults(int slotIndex, int effectTypeId);
+
     bool m_isOpen{false};
+    float m_masterGain{0.8f};
+    std::array<SlotState, kSlotCount> m_slots{};
+    std::unique_ptr<Demo::DemoAudioSimulator> m_simulator;
 };
 
 } // namespace Host::Device

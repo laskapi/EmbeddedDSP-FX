@@ -1,7 +1,8 @@
 #include "UI/Effects/ParameterItem.h"
-#include <QVBoxLayout>
 #include <QLabel>
+#include <QSizePolicy>
 #include <QSlider>
+#include <QVBoxLayout>
 
 namespace {
     constexpr int SLIDER_RESOLUTION = 1000;
@@ -12,6 +13,9 @@ namespace Host::UI::Effects {
 ParameterItem::ParameterItem(int index, const Host::Models::ParamSpec &spec, QWidget *parent)
     : AbstractRackItem(index, parent), m_spec(spec) {
     m_range = m_spec.max - m_spec.min;
+
+    // Keep natural row height; ParameterRack reserves spare space below, not inside rows.
+    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
     auto *layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 2, 0, 2);

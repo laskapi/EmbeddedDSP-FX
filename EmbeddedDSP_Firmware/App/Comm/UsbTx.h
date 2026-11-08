@@ -23,7 +23,7 @@ namespace App::Comm {
 /// @brief Single owner of USB CDC TX (control sync + audio frames).
 ///
 /// GetState: ManifestFollows → manifest bytes (+ '\\0') → Report* packets (TX priority).
-/// Audio for host production uses a short ring with drop-oldest when host stream is enabled.
+/// After sync (Idle): pending Report* drain before audio frames.
 class UsbTx {
 public:
     using TransmitFn = uint8_t (*)(uint8_t* buf, uint16_t len);
@@ -37,8 +37,9 @@ public:
             return;
         }
         m_audioStreamEnabled = true;
+        clearReports();
         using enum App::SharedBuffer::Owner;
-        assert(App::g_sharedBuffer.acquire(Manifest));   
+        assert(App::g_sharedBuffer.acquire(Manifest));
         const auto manifestBuf = App::g_sharedBuffer.get<char>(Manifest);
         m_manifestSize = writeManifest(manifestBuf, App::Dsp::FxChain::kMaxEffectSlots);
         enqueueAllReports(chain);
@@ -50,6 +51,30 @@ public:
     [[nodiscard]] bool isAudioStreamEnabled() const noexcept { return m_audioStreamEnabled; }
 
     void setAudioStreamEnabled(bool enabled) noexcept { m_audioStreamEnabled = enabled; }
+
+    /// @brief Queues ReportEffectType + Bypass + Params for one slot (Idle only).
+    void enqueueSlotReports(App::Dsp::FxChain& chain, uint8_t slotId) noexcept {
+        if (isSyncActive() || slotId >= App::Dsp::FxChain::kMaxEffectSlots) {
+            return;
+        }
+        enqueueSlotReportsUnchecked(chain, slotId);
+    }
+
+    /// @brief Queues ReportBypass for one slot (Idle only).
+    void enqueueBypassReport(uint8_t slotId, bool bypassed) noexcept {
+        if (isSyncActive() || slotId >= App::Dsp::FxChain::kMaxEffectSlots) {
+            return;
+        }
+        pushReport(Protocol::Command::ReportBypass, slotId, 0, bypassed ? 1.0f : 0.0f);
+    }
+
+    /// @brief Queues ReportMasterVolume (Idle only).
+    void enqueueMasterVolumeReport(float gain) noexcept {
+        if (isSyncActive()) {
+            return;
+        }
+        pushReport(Protocol::Command::ReportMasterVolume, 0, 0, gain);
+    }
 
     /// @brief Zero-copy audio slot; drops oldest frame if the ring is full.
     [[nodiscard]] Protocol::AudioFrame& acquireAudioFrame() noexcept {
@@ -90,9 +115,7 @@ public:
                     break;
                 }
                 case Phase::Reports: {
-                    if (auto pkt = m_reports.pop()) {
-                        m_txPacket = *pkt;
-                        m_pending = Pending::from(&m_txPacket, sizeof(m_txPacket));
+                    if (tryArmNextReport()) {
                         flushPending(m_pending);
                     } else {
                         finishSync();
@@ -102,6 +125,12 @@ public:
                 default:
                     break;
             }
+            return;
+        }
+
+        // Idle: async Report* before audio (control wins over stream).
+        if (tryArmNextReport()) {
+            flushPending(m_pending);
             return;
         }
 
@@ -155,28 +184,45 @@ private:
         App::g_sharedBuffer.release(App::SharedBuffer::Owner::Manifest);
     }
 
-    void enqueueAllReports(App::Dsp::FxChain& chain) noexcept {
-        auto pushReport = [this](Protocol::Command cmd, uint8_t slot, uint8_t paramOrType, float val) {
-            Protocol::ControlPacket pkt{};
-            pkt.command = cmd;
-            pkt.slotId = slot;
-            pkt.paramId = paramOrType;
-            pkt.setValue(val);
-            pkt.applyCRC();
-            (void)m_reports.push(pkt);
-        };
-
-        for (uint8_t slotId = 0; slotId < App::Dsp::FxChain::kMaxEffectSlots; ++slotId) {
-            std::visit([&](auto& fx) {
-                using T = std::decay_t<decltype(fx)>;
-                pushReport(Protocol::Command::ReportEffectType, slotId, static_cast<uint8_t>(T::Id), 0.0f);
-                pushReport(Protocol::Command::ReportBypass, slotId, 0, fx.isBypassed() ? 1.0f : 0.0f);
-                for (uint8_t p = 0; p < T::ParamCount; ++p) {
-                    pushReport(Protocol::Command::ReportParam, slotId, p, fx.paramValue(p));
-                }
-            }, chain.slot(slotId));
+    void clearReports() noexcept {
+        while (m_reports.pop()) {
         }
+    }
 
+    [[nodiscard]] bool tryArmNextReport() noexcept {
+        if (auto pkt = m_reports.pop()) {
+            m_txPacket = *pkt;
+            m_pending = Pending::from(&m_txPacket, sizeof(m_txPacket));
+            return true;
+        }
+        return false;
+    }
+
+    void pushReport(Protocol::Command cmd, uint8_t slot, uint8_t paramOrType, float val) noexcept {
+        Protocol::ControlPacket pkt{};
+        pkt.command = cmd;
+        pkt.slotId = slot;
+        pkt.paramId = paramOrType;
+        pkt.setValue(val);
+        pkt.applyCRC();
+        (void)m_reports.push(pkt);
+    }
+
+    void enqueueSlotReportsUnchecked(App::Dsp::FxChain& chain, uint8_t slotId) noexcept {
+        std::visit([&](auto& fx) {
+            using T = std::decay_t<decltype(fx)>;
+            pushReport(Protocol::Command::ReportEffectType, slotId, static_cast<uint8_t>(T::Id), 0.0f);
+            pushReport(Protocol::Command::ReportBypass, slotId, 0, fx.isBypassed() ? 1.0f : 0.0f);
+            for (uint8_t p = 0; p < T::ParamCount; ++p) {
+                pushReport(Protocol::Command::ReportParam, slotId, p, fx.paramValue(p));
+            }
+        }, chain.slot(slotId));
+    }
+
+    void enqueueAllReports(App::Dsp::FxChain& chain) noexcept {
+        for (uint8_t slotId = 0; slotId < App::Dsp::FxChain::kMaxEffectSlots; ++slotId) {
+            enqueueSlotReportsUnchecked(chain, slotId);
+        }
         pushReport(Protocol::Command::ReportMasterVolume, 0, 0, chain.masterGain());
     }
 

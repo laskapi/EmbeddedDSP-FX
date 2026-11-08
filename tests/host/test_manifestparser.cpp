@@ -4,6 +4,22 @@
 using Host::Models::parseDeviceManifest;
 
 /// @brief Tests the robustness and correctness of the device manifest text parser.
+TEST(ManifestParserTest, ParsesEmptyEffectWithoutParams) {
+    const QString text =
+        "C:SLOTS:4\n"
+        "E:0:None\n"
+        "E:1:Delay;P:Time:0.01:1.00:0.50\n";
+
+    const auto manifest = parseDeviceManifest(text);
+
+    EXPECT_EQ(manifest.slotCount, 4);
+    ASSERT_TRUE(manifest.availableEffects.contains(0));
+    EXPECT_EQ(manifest.availableEffects[0].name, QStringLiteral("None"));
+    EXPECT_TRUE(manifest.availableEffects[0].params.isEmpty());
+    ASSERT_TRUE(manifest.availableEffects.contains(1));
+    EXPECT_EQ(manifest.availableEffects[1].params.size(), 1);
+}
+
 TEST(ManifestParserTest, ParsesSlotsAndOneEffect) {
     const QString text =
         "C:SLOTS:4\n"

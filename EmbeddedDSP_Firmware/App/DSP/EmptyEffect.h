@@ -27,6 +27,7 @@ public:
     void setParamValue(uint8_t, float) noexcept {}
     [[nodiscard]] float paramValue(uint8_t) const noexcept { return 0.0f; }
     void toggleBypass() noexcept {}
+    void setBypassed(bool) noexcept {}
     [[nodiscard]] bool isBypassed() const noexcept { return false; }
 };
 

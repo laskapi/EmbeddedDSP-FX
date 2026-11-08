@@ -1,12 +1,17 @@
 #include "UI/Effects/EffectItem.h"
 #include "UI/Effects/ParameterRack.h"
 #include "UI/UiObjectNames.h"
-#include <QVBoxLayout>
-#include <QLabel>
 #include <QComboBox>
+#include <QLabel>
 #include <QPushButton>
+#include <QSizePolicy>
+#include <QVBoxLayout>
 
 namespace Host::UI::Effects {
+
+namespace {
+constexpr int kEmptyEffectId = 0;
+}
 
 EffectItem::EffectItem(int index, QWidget *parent)
     : AbstractRackItem(index, parent) {
@@ -30,13 +35,27 @@ void EffectItem::setupUi() {
     m_typeCombo = new QComboBox(this);
     connect(m_typeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &EffectItem::onTypeChanged);
 
+    m_parameterRack = new ParameterRack(this);
+    connect(m_parameterRack, &ParameterRack::parameterChanged, this, [this](int paramIdx, float val) {
+        emit parameterChanged(m_index, paramIdx, val);
+    });
+
     m_bypassBtn = new QPushButton(tr("Bypass"), this);
     m_bypassBtn->setCheckable(true);
+    {
+        QSizePolicy sp = m_bypassBtn->sizePolicy();
+        sp.setRetainSizeWhenHidden(true);
+        m_bypassBtn->setSizePolicy(sp);
+    }
     connect(m_bypassBtn, &QPushButton::toggled, this, &EffectItem::onBypassToggled);
+    setBypassVisible(false);
 
     m_mainLayout->addWidget(m_titleLabel);
     m_mainLayout->addWidget(m_typeCombo);
+    m_mainLayout->addWidget(m_parameterRack);
     m_mainLayout->addWidget(m_bypassBtn);
+
+    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 }
 
 void EffectItem::setAvailableEffects(const QMap<int, Host::Models::EffectSpec> &availableEffects) {
@@ -44,10 +63,24 @@ void EffectItem::setAvailableEffects(const QMap<int, Host::Models::EffectSpec> &
 
     m_typeCombo->blockSignals(true);
     m_typeCombo->clear();
-    for (const auto &spec : m_availableEffects) {
+    for (const auto &spec : std::as_const(m_availableEffects)) {
         m_typeCombo->addItem(spec.name, spec.id);
     }
     m_typeCombo->blockSignals(false);
+}
+
+void EffectItem::setUniformSlotMetrics(int maxParamCount) {
+    m_parameterRack->reserveCapacity(maxParamCount);
+
+    setMinimumHeight(0);
+    setMaximumHeight(QWIDGETSIZE_MAX);
+    adjustSize();
+    setFixedHeight(sizeHint().height());
+}
+
+void EffectItem::setBypassVisible(bool visible) {
+    m_bypassBtn->setVisible(visible);
+    m_bypassBtn->setEnabled(visible);
 }
 
 void EffectItem::onTypeChanged(int index) {
@@ -60,21 +93,15 @@ void EffectItem::onBypassToggled() {
 }
 
 void EffectItem::setupEffect(int effectTypeId) {
-    if (m_parameterRack) {
-        m_parameterRack->deleteLater();
-        m_parameterRack = nullptr;
+    if (!m_availableEffects.contains(effectTypeId)) {
+        m_parameterRack->clearParams();
+        setBypassVisible(false);
+        return;
     }
 
-    if (!m_availableEffects.contains(effectTypeId)) return;
     const auto &spec = m_availableEffects[effectTypeId];
-
-    m_parameterRack = new ParameterRack(spec, this);
-
-    connect(m_parameterRack, &ParameterRack::parameterChanged, this, [this](int paramIdx, float val) {
-        emit parameterChanged(m_index, paramIdx, val);
-    });
-
-    m_mainLayout->insertWidget(2, m_parameterRack);
+    m_parameterRack->rebuild(spec);
+    setBypassVisible(effectTypeId != kEmptyEffectId);
 }
 
 void EffectItem::applyEffectType(int effectTypeId) {
@@ -94,9 +121,7 @@ void EffectItem::applyBypass(bool bypassed) {
 }
 
 void EffectItem::applyParameter(int paramIndex, float value) {
-    if (m_parameterRack) {
-        m_parameterRack->updateParam(paramIndex, value);
-    }
+    m_parameterRack->updateParam(paramIndex, value);
 }
 
 } // namespace Host::UI::Effects

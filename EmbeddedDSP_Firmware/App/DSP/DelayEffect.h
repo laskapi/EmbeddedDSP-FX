@@ -90,6 +90,7 @@ public:
     }
 
     void toggleBypass() noexcept { m_bypassed = !m_bypassed; }
+    void setBypassed(bool bypassed) noexcept { m_bypassed = bypassed; }
     [[nodiscard]] bool isBypassed() const noexcept { return m_bypassed; }
 
 private:

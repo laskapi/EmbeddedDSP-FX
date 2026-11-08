@@ -10,9 +10,10 @@
 
 namespace App::Audio::Source {
 
+
 #if USE_VIRTUAL_AUDIO
 inline VirtualSource g_virtualSource{
-    Protocol::SAMPLE_RATE_HZ, 440.0f, VirtualSource::Waveform::Saw};
+    Protocol::SAMPLE_RATE_HZ, 440.0f, VirtualSource::Waveform::Sine};
 #else
 inline constexpr float kInvAudioScale = 1.0f / 32768.0f;
 #endif

@@ -4,6 +4,7 @@
 #include "DSP/FxChain.h"
 #include "SharedBuffer.h"
 
+#include <cstdint>
 #include <cstdio>
 #include <utility>
 #include <variant>
@@ -25,17 +26,14 @@ namespace App::Comm {
     }
 
     auto appendEffect = [&]<typename T>() {
-        if constexpr (T::Id == 0) {
-            return; // skip EmptyEffect
-        }
-
         written = std::snprintf(dest + offset, maxSize - offset, "E:%d:%s",
                                 static_cast<int>(T::Id), T::Name);
         if (written > 0 && static_cast<std::size_t>(written) < (maxSize - offset)) {
             offset += static_cast<std::size_t>(written);
         }
 
-        for (const auto& p : T::Params) {
+        for (uint8_t i = 0; i < T::ParamCount; ++i) {
+            const auto& p = T::Params[i];
             written = std::snprintf(dest + offset, maxSize - offset, ";P:%s:%.2f:%.2f:%.2f",
                                     p.name, p.min, p.max, p.defaultValue);
             if (written > 0 && static_cast<std::size_t>(written) < (maxSize - offset)) {
