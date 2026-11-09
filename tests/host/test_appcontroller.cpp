@@ -186,6 +186,46 @@ TEST_F(AppControllerTest, SetParameterCoalescesToLatestValue) {
         << "Coalesced SetParam was not sent within timeout";
 }
 
+TEST_F(AppControllerTest, SetMasterVolumeCoalescesToLatestValue) {
+    MockDevice* mockDevice = connectWithMock(QStringLiteral("COM3"));
+
+    std::promise<void> enteredFirstSend;
+    auto enteredFirstSendFuture = enteredFirstSend.get_future();
+    std::promise<void> releaseFirstSend;
+    auto releaseFirstSendFuture = releaseFirstSend.get_future();
+
+    std::promise<void> donePromise;
+    auto doneFuture = donePromise.get_future();
+
+    /// First send blocks until later SetMasterVolume are queued, so they coalesce while tx is busy.
+    EXPECT_CALL(*mockDevice, writeControlPacket(_))
+        .WillOnce([&](const Protocol::ControlPacket& pkt) {
+            EXPECT_EQ(pkt.command, Protocol::Command::SetMasterVolume);
+            EXPECT_FLOAT_EQ(pkt.value(), 0.1f);
+            enteredFirstSend.set_value();
+            releaseFirstSendFuture.wait();
+            return true;
+        })
+        .WillOnce([&](const Protocol::ControlPacket& pkt) {
+            EXPECT_EQ(pkt.command, Protocol::Command::SetMasterVolume);
+            EXPECT_FLOAT_EQ(pkt.value(), 0.9f);
+            donePromise.set_value();
+            return true;
+        });
+
+    controller->setMasterVolume(0.1f);
+
+    ASSERT_TRUE(waitForFuture(enteredFirstSendFuture, std::chrono::seconds(1)))
+        << "First SetMasterVolume did not reach the device";
+
+    controller->setMasterVolume(0.5f);
+    controller->setMasterVolume(0.9f);
+    releaseFirstSend.set_value();
+
+    ASSERT_TRUE(waitForFuture(doneFuture, std::chrono::seconds(1)))
+        << "Coalesced SetMasterVolume was not sent within timeout";
+}
+
 TEST_F(AppControllerTest, SetEffectTypeSendsCorrectPacket) {
     const int slot = 0;
     const int typeId = 4;

@@ -60,7 +60,9 @@ qt_add_executable(EmbeddedDSP_Host
     UI/Effects/ParameterItem.h UI/Effects/ParameterItem.cpp
     UI/Effects/ParameterRack.h UI/Effects/ParameterRack.cpp
     UI/Effects/EffectItem.h UI/Effects/EffectItem.cpp
+    UI/Effects/EffectChainArrow.h UI/Effects/EffectChainArrow.cpp
     UI/Effects/EffectRack.h UI/Effects/EffectRack.cpp
+    UI/Effects/MasterVolumeControl.h UI/Effects/MasterVolumeControl.cpp
 )
 
 qt_add_resources(EmbeddedDSP_Host "styles"

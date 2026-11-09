@@ -1,4 +1,5 @@
 #include "UI/Effects/EffectRack.h"
+#include "UI/Effects/EffectChainArrow.h"
 #include "UI/Effects/EffectItem.h"
 #include "Core/AppController.h"
 #include <QHBoxLayout>
@@ -11,6 +12,7 @@ namespace Host::UI::Effects {
 
 EffectRack::EffectRack(AppController& controller, QWidget *parent)
     : AbstractRack(parent), m_appController(controller) {
+    layout()->setSpacing(0);
 
     connect(&m_appController, &AppController::manifestReady, this, &EffectRack::onManifestReady);
     connect(&m_appController, &AppController::slotParameterUpdated, this, &EffectRack::onSlotParameterUpdated);
@@ -19,7 +21,7 @@ EffectRack::EffectRack(AppController& controller, QWidget *parent)
 }
 
 void EffectRack::onManifestReady(const DeviceManifest& manifest) {
-    clearRack();
+    clear();
     m_syncedSlotsCount = 0;
     m_expectedSlotsCount = manifest.slotCount;
     m_isSyncing = true;
@@ -30,10 +32,14 @@ void EffectRack::onManifestReady(const DeviceManifest& manifest) {
     }
 
     for (int i = 0; i < manifest.slotCount; ++i) {
+        if (i > 0) {
+            layout()->addWidget(new EffectChainArrow(this), 0);
+        }
+
         auto *item = createItem(this);
         item->setAvailableEffects(manifest.availableEffects);
-        item->setUniformSlotMetrics(maxParamCount);
-        layout()->setStretch(i, 1);
+        item->lockHeightForParamCapacity(maxParamCount);
+        layout()->setStretchFactor(item, 1);
 
         connect(item, &EffectItem::parameterChanged, &m_appController, &AppController::setParameter);
         connect(item, &EffectItem::typeChanged, &m_appController, &AppController::setEffectType);
@@ -43,6 +49,10 @@ void EffectRack::onManifestReady(const DeviceManifest& manifest) {
 
 void EffectRack::clear() {
     clearRack();
+    while (QLayoutItem* child = layout()->takeAt(0)) {
+        delete child->widget();
+        delete child;
+    }
 }
 
 void EffectRack::onSlotParameterUpdated(int slotIndex, int paramIndex, float value) {

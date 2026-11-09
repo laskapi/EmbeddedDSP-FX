@@ -23,7 +23,7 @@ namespace Host::Core {
 
 /// @brief Central controller managing UI-to-device communication hub.
 class AppController : public QObject {
-    Q_OBJECT
+     Q_OBJECT
 public:
     explicit AppController(std::unique_ptr<Host::Device::IConnectionScanner> connectionScanner,
                            std::unique_ptr<Host::Device::DeviceSession> deviceSession,
@@ -34,6 +34,7 @@ public:
     void setParameter(int slotIndex, int paramIndex, float value);
     void setEffectType(int slotIndex, int effectTypeId);
     void setBypass(int slotIndex, bool bypassed);
+    void setMasterVolume(float gain);
     void requestSync();
     void connectDevice(const QString& connectionId);
     void disconnectDevice();
@@ -43,6 +44,7 @@ signals:
     void slotParameterUpdated(int slotIndex, int paramIndex, float value);
     void slotEffectTypeUpdated(int slotIndex, int effectTypeId);
     void slotBypassUpdated(int slotIndex, bool bypassed);
+    void masterVolumeUpdated(float gain);
     void connectionChanged(bool connected, const QString& portName);
     void connectionsUpdated(const std::vector<Host::Models::ConnectionInfo>& connections);
     void errorOccurred(const QString& errorMessage);

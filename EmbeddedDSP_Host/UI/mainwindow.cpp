@@ -1,12 +1,16 @@
 #include "UI/mainwindow.h"
 #include "UI/ConnectionToolbar.h"
 #include "UI/Effects/EffectRack.h"
+#include "UI/Effects/MasterVolumeControl.h"
 #include "UI/Spectrum/SpectrumPanel.h"
 #include "Core/AppController.h"
-#include <QVBoxLayout>
-#include <QStatusBar>
+#include <QHBoxLayout>
 #include <QPropertyAnimation>
+#include <QSizePolicy>
+#include <QStatusBar>
 #include <QTimer>
+#include <QVBoxLayout>
+#include <algorithm>
 
 namespace {
     constexpr const char* PROP_MAX_HEIGHT = "maximumHeight";
@@ -28,12 +32,12 @@ MainWindow::MainWindow(Core::AppController& controller, QWidget *parent)
                 statusBar()->showMessage(connected ? tr("Connected to %1").arg(portName)
                                                    : tr("Disconnected"));
                 if (!connected) {
-                    animateRack(false);
+                    animateFxStrip(false);
                 }
             });
 
     connect(m_effectsRack, &Effects::EffectRack::rackReady, this, [this]() {
-        animateRack(true);
+        animateFxStrip(true);
     });
 
     connect(&m_appController, &Core::AppController::errorOccurred, this,
@@ -49,9 +53,19 @@ void MainWindow::setupUiLayout() {
     m_connectionToolbar = new ConnectionToolbar(m_appController, this);
     m_spectrumPanel = new Spectrum::SpectrumPanel(m_appController, this);
     m_effectsRack = new Effects::EffectRack(m_appController, this);
+    m_masterVolume = new Effects::MasterVolumeControl(m_appController, this);
 
-    m_effectsRack->setMaximumHeight(0);
+    m_fxStrip = new QWidget(this);
+    auto *fxLayout = new QHBoxLayout(m_fxStrip);
+    fxLayout->setContentsMargins(0, 0, 0, 0);
+    fxLayout->setSpacing(8);
+    fxLayout->addWidget(m_effectsRack, 1);
+    fxLayout->addWidget(m_masterVolume);
+
+    m_fxStrip->setMaximumHeight(0);
+    m_fxStrip->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
     m_effectsRack->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
+    m_masterVolume->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
 
     auto *centralWidget = new QWidget(this);
     auto *layout = new QVBoxLayout(centralWidget);
@@ -60,29 +74,33 @@ void MainWindow::setupUiLayout() {
 
     layout->addWidget(m_connectionToolbar);
     layout->addWidget(m_spectrumPanel, 1);
-    layout->addWidget(m_effectsRack);
+    layout->addWidget(m_fxStrip);
 
     setCentralWidget(centralWidget);
 
     setMinimumSize(1000, 600);
 }
 
-void MainWindow::animateRack(bool show) {
+void MainWindow::animateFxStrip(bool show) {
     if (show) {
         // Wait for layout to process new items before measuring
         QTimer::singleShot(0, this, [this]() {
-            auto *animation = new QPropertyAnimation(m_effectsRack, PROP_MAX_HEIGHT);
+            const int rackH = m_effectsRack->sizeHint().height();
+            const int masterH = m_masterVolume->sizeHint().height();
+            const int endH = std::max(rackH, masterH);
+
+            auto *animation = new QPropertyAnimation(m_fxStrip, PROP_MAX_HEIGHT);
             animation->setDuration(400);
             animation->setEasingCurve(QEasingCurve::InOutQuad);
             animation->setStartValue(0);
-            animation->setEndValue(m_effectsRack->sizeHint().height());
+            animation->setEndValue(endH);
             animation->start(QAbstractAnimation::DeleteWhenStopped);
         });
     } else {
-        auto *animation = new QPropertyAnimation(m_effectsRack, PROP_MAX_HEIGHT);
+        auto *animation = new QPropertyAnimation(m_fxStrip, PROP_MAX_HEIGHT);
         animation->setDuration(300);
         animation->setEasingCurve(QEasingCurve::InQuad);
-        animation->setStartValue(m_effectsRack->height());
+        animation->setStartValue(m_fxStrip->height());
         animation->setEndValue(0);
 
         // Clear rack only AFTER animation finishes

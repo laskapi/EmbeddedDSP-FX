@@ -12,7 +12,12 @@ inline constexpr char kSpectrumUnitLabel[] = "SpectrumUnitLabel";
 inline constexpr char kSpectrumAxisX[] = "SpectrumAxisX";
 
 inline constexpr char kEffectItemBox[] = "effectItemBox";
-inline constexpr char kEffectTitle[] = "effectTitle";
+inline constexpr char kEffectChainArrow[] = "effectChainArrow";
+
+inline constexpr char kMasterVolumeBox[] = "masterVolumeBox";
+inline constexpr char kMasterVolumeTitle[] = "masterVolumeTitle";
+inline constexpr char kMasterVolumeSlider[] = "masterVolumeSlider";
+inline constexpr char kMasterVolumeValue[] = "masterVolumeValue";
 
 } // namespace Host::UI::UiObjectNames
 

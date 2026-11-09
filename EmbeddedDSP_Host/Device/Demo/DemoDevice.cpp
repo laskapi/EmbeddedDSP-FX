@@ -58,7 +58,7 @@ void DemoDevice::resetSlotsToEmpty() {
     for (auto& slot : m_slots) {
         slot = SlotState{};
     }
-    m_masterGain = 0.8f;
+    m_masterGain = kDefaultMasterGain;
 }
 
 void DemoDevice::applyEffectDefaults(int slotIndex, int effectTypeId) {

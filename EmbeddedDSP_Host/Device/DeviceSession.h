@@ -7,6 +7,7 @@
 #include <QString>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include "Protocol/ControlPacket.h"
 
 namespace Host::Models {
@@ -35,7 +36,7 @@ public:
     /// @brief Closes the current device without destroying the session.
     void close();
 
-    /// @brief Queues a control packet; SetParam coalesces by (slotId, paramId).
+    /// @brief Queues a control packet; SetParam and SetMasterVolume coalesce (latest-wins).
     bool writeControlPacket(const Protocol::ControlPacket& pkt);
 
 signals:
@@ -56,6 +57,8 @@ private:
 
     /// @brief Latest-wins SetParam buffer; key = (slotId << 8) | paramId.
     QHash<uint16_t, Protocol::ControlPacket> m_pendingSetParams;
+    /// @brief Latest-wins SetMasterVolume while TX is busy.
+    std::optional<Protocol::ControlPacket> m_pendingMasterVolume;
     QQueue<Protocol::ControlPacket> m_otherCommands;
     bool m_txBusy{false};
 };

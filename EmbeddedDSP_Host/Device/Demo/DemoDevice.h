@@ -36,8 +36,11 @@ private:
     void resetSlotsToEmpty();
     void applyEffectDefaults(int slotIndex, int effectTypeId);
 
+    /// @brief Matches App::Dsp::MasterVolume::kDefaultGain (MCU boot default).
+    static constexpr float kDefaultMasterGain = 0.8f;
+
     bool m_isOpen{false};
-    float m_masterGain{0.8f};
+    float m_masterGain{kDefaultMasterGain};
     std::array<SlotState, kSlotCount> m_slots{};
     std::unique_ptr<Demo::DemoAudioSimulator> m_simulator;
 };

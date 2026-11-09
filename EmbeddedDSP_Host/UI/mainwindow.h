@@ -5,10 +5,15 @@
 
 namespace Host::Core { class AppController; }
 namespace Host::UI {
-    namespace Effects { class EffectRack; }
+    namespace Effects {
+    class EffectRack;
+    class MasterVolumeControl;
+    }
     namespace Spectrum { class SpectrumPanel; }
     class ConnectionToolbar;
 }
+
+class QWidget;
 
 namespace Host::UI {
 
@@ -22,7 +27,7 @@ public:
 
 private:
     void setupUiLayout();
-    void animateRack(bool show);
+    void animateFxStrip(bool show);
     
     // State and Logic
     Core::AppController& m_appController;
@@ -30,7 +35,9 @@ private:
     // UI Components
     ConnectionToolbar *m_connectionToolbar{nullptr};
     Spectrum::SpectrumPanel *m_spectrumPanel{nullptr};
+    QWidget *m_fxStrip{nullptr};
     Effects::EffectRack *m_effectsRack{nullptr};
+    Effects::MasterVolumeControl *m_masterVolume{nullptr};
 };
 
 } // namespace Host::UI

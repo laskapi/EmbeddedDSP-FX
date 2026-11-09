@@ -91,6 +91,13 @@ void AppController::setBypass(int slotIndex, bool bypass) {
     dispatchControlPacket(pkt);
 }
 
+void AppController::setMasterVolume(float gain) {
+    ::Protocol::ControlPacket pkt;
+    pkt.command = ::Protocol::Command::SetMasterVolume;
+    pkt.setValue(gain);
+    dispatchControlPacket(pkt);
+}
+
 void AppController::onConnectionStatusChanged(bool connected, const QString& portName) {
     m_isDeviceConnected = connected;
     emit connectionChanged(connected, portName);
@@ -120,7 +127,7 @@ void AppController::onControlPacketReady(const Protocol::ControlPacket& pkt) {
         emit slotBypassUpdated(static_cast<int>(pkt.slotId), pkt.value() > 0.5f);
         break;
     case Command::ReportMasterVolume:
-        // Host UI master slider not wired yet; accept wire reports for future sync.
+        emit masterVolumeUpdated(pkt.value());
         break;
     default:
         break;

@@ -2,7 +2,6 @@
 #include "UI/Effects/ParameterRack.h"
 #include "UI/UiObjectNames.h"
 #include <QComboBox>
-#include <QLabel>
 #include <QPushButton>
 #include <QSizePolicy>
 #include <QVBoxLayout>
@@ -18,19 +17,12 @@ EffectItem::EffectItem(int index, QWidget *parent)
     setObjectName(Host::UI::UiObjectNames::kEffectItemBox);
     setAttribute(Qt::WA_StyledBackground, true);
     setupUi();
-
-    if (m_titleLabel) {
-        m_titleLabel->setText(tr("SLOT %1").arg(m_index + 1));
-    }
 }
 
 void EffectItem::setupUi() {
     m_mainLayout = new QVBoxLayout(this);
     m_mainLayout->setContentsMargins(10, 10, 10, 10);
     m_mainLayout->setSpacing(8);
-
-    m_titleLabel = new QLabel(this);
-    m_titleLabel->setObjectName(Host::UI::UiObjectNames::kEffectTitle);
 
     m_typeCombo = new QComboBox(this);
     connect(m_typeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &EffectItem::onTypeChanged);
@@ -50,7 +42,6 @@ void EffectItem::setupUi() {
     connect(m_bypassBtn, &QPushButton::toggled, this, &EffectItem::onBypassToggled);
     setBypassVisible(false);
 
-    m_mainLayout->addWidget(m_titleLabel);
     m_mainLayout->addWidget(m_typeCombo);
     m_mainLayout->addWidget(m_parameterRack);
     m_mainLayout->addWidget(m_bypassBtn);
@@ -69,7 +60,7 @@ void EffectItem::setAvailableEffects(const QMap<int, Host::Models::EffectSpec> &
     m_typeCombo->blockSignals(false);
 }
 
-void EffectItem::setUniformSlotMetrics(int maxParamCount) {
+void EffectItem::lockHeightForParamCapacity(int maxParamCount) {
     m_parameterRack->reserveCapacity(maxParamCount);
 
     setMinimumHeight(0);

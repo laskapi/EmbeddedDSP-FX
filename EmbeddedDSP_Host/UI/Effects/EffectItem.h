@@ -8,7 +8,6 @@
 class QComboBox;
 class QPushButton;
 class QVBoxLayout;
-class QLabel;
 
 namespace Host::UI::Effects {
 
@@ -27,8 +26,8 @@ public:
     /// @brief Sets the list of available effects for the combo box.
     void setAvailableEffects(const QMap<int, Host::Models::EffectSpec> &availableEffects);
 
-    /// @brief Asks ParameterRack to reserve space; locks this slot's total height.
-    void setUniformSlotMetrics(int maxParamCount);
+    /// @brief Reserves ParameterRack capacity and locks this slot's total height.
+    void lockHeightForParamCapacity(int maxParamCount);
 
 signals:
     void parameterChanged(int slotIdx, int paramIdx, float newValue);
@@ -44,7 +43,6 @@ private:
     void setupEffect(int effectTypeId);
     void setBypassVisible(bool visible);
 
-    QLabel *m_titleLabel{nullptr};
     QComboBox *m_typeCombo{nullptr};
     ParameterRack *m_parameterRack{nullptr};
     QPushButton *m_bypassBtn{nullptr};

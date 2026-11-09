@@ -41,6 +41,8 @@ bool DeviceSession::writeControlPacket(const Protocol::ControlPacket& pkt) {
 
     if (pkt.command == Protocol::Command::SetParam) {
         m_pendingSetParams.insert(paramKey(pkt.slotId, pkt.paramId), pkt);
+    } else if (pkt.command == Protocol::Command::SetMasterVolume) {
+        m_pendingMasterVolume = pkt;
     } else {
         m_otherCommands.enqueue(pkt);
     }
@@ -57,6 +59,9 @@ void DeviceSession::trySend() {
     Protocol::ControlPacket pkt;
     if (!m_otherCommands.isEmpty()) {
         pkt = m_otherCommands.dequeue();
+    } else if (m_pendingMasterVolume.has_value()) {
+        pkt = *m_pendingMasterVolume;
+        m_pendingMasterVolume.reset();
     } else if (!m_pendingSetParams.isEmpty()) {
         const uint16_t key = m_pendingSetParams.constBegin().key();
         pkt = m_pendingSetParams.take(key);
@@ -78,6 +83,7 @@ void DeviceSession::trySend() {
 
 void DeviceSession::clearPendingTx() {
     m_pendingSetParams.clear();
+    m_pendingMasterVolume.reset();
     m_otherCommands.clear();
     m_txBusy = false;
 }
