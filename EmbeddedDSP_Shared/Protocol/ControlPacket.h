@@ -26,10 +26,12 @@ enum class Command : uint8_t {
     SetEffectType       = 0x12,
     BypassToggle        = 0x13,
     ClearSlot           = 0x14,
-    SwapSlots           = 0x15,
+    MoveEffect          = 0x15, ///< Move effect from slotId to targetSlotId (insert; others shift).
     SetActiveSlots      = 0x16, ///< Reserved in v1 (fixed rack; unused slots = Empty).
-    GetState            = 0x17,
-    SetMasterVolume     = 0x18  ///< Global output gain in value(); range 0..1.
+    GetState            = 0x17, ///< Full Manifest + reports from MCU.
+    SetMasterVolume     = 0x18, ///< Gain 0..1 in value(); no Report* echo while dragging.
+    GetParam            = 0x19, ///< → ReportParam (slotId + paramId).
+    GetMasterVolume     = 0x1A  ///< → ReportMasterVolume.
 };
 
 #pragma pack(push, 1)

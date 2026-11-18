@@ -8,6 +8,7 @@
 class QComboBox;
 class QPushButton;
 class QVBoxLayout;
+class QWidget;
 
 namespace Host::UI::Effects {
 
@@ -18,6 +19,8 @@ class EffectItem : public AbstractRackItem {
     Q_OBJECT
 public:
     explicit EffectItem(int index, QWidget *parent = nullptr);
+
+    [[nodiscard]] int slotIndex() const { return m_index; }
 
     void applyEffectType(int effectTypeId);
     void applyBypass(bool bypassed);
@@ -43,6 +46,7 @@ private:
     void setupEffect(int effectTypeId);
     void setBypassVisible(bool visible);
 
+    QWidget* m_dragHandle{nullptr};
     QComboBox *m_typeCombo{nullptr};
     ParameterRack *m_parameterRack{nullptr};
     QPushButton *m_bypassBtn{nullptr};

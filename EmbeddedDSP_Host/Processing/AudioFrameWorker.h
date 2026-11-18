@@ -11,7 +11,7 @@ namespace Host::Processing {
 
 class FftProcessor;
 
-/// @brief Processes raw audio frames and coordinates analysis tasks in a worker thread.
+/// @brief Worker-thread audio sink: runs FFT and emits spectrum updates.
 class AudioFrameWorker : public QObject {
     Q_OBJECT
 public:

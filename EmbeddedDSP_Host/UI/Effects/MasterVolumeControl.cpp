@@ -46,6 +46,13 @@ MasterVolumeControl::MasterVolumeControl(Host::Core::AppController& controller, 
 }
 
 void MasterVolumeControl::applyMasterVolume(float gain) {
+    const float clamped = std::clamp(gain, 0.0f, 1.0f);
+    const int pos = static_cast<int>(
+        std::lround(clamped * static_cast<float>(kSliderResolution)));
+    if (m_slider->value() == pos) {
+        m_valueLabel->setText(QString::number(clamped, 'f', 2));
+        return;
+    }
     m_slider->blockSignals(true);
     setSliderFromGain(gain);
     m_slider->blockSignals(false);

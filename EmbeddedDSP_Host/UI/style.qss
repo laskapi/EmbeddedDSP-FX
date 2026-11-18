@@ -1,15 +1,93 @@
-/* EmbeddedDSP-FX Stylesheet - Source of Truth */
-/* #objectName selectors: see UI/UiObjectNames.h (Host::UI::UiObjectNames) */
+/* EmbeddedDSP-FX Stylesheet */
+/* Color tokens {{...}} are filled from UI/UiTheme.h at startup. */
+/* #objectName selectors: see UI/UiObjectNames.h */
+
+QComboBox {
+    background-color: {{panel}};
+    color: {{text}};
+    border: 1px solid {{border}};
+    border-radius: 4px;
+    padding: 4px 8px;
+    min-height: 22px;
+}
+
+QComboBox:hover {
+    border: 1px solid {{accent}};
+}
+
+QComboBox::drop-down {
+    border: none;
+    width: 20px;
+}
+
+QComboBox QAbstractItemView {
+    background-color: {{panel}};
+    color: {{text}};
+    border: 1px solid {{border}};
+    outline: 0;
+    selection-background-color: {{accentMuted}};
+    selection-color: {{text}};
+}
+
+QComboBox QAbstractItemView::item {
+    min-height: 22px;
+    padding: 2px 6px;
+    color: {{text}};
+    background-color: {{panel}};
+    border: none;
+    border-left: 3px solid transparent;
+}
+
+QComboBox QAbstractItemView::item:hover {
+    background-color: {{listHover}};
+    color: {{text}};
+}
+
+QComboBox QAbstractItemView::item:selected {
+    background-color: {{accentMuted}};
+    color: {{text}};
+    border-left: 3px solid {{accent}};
+}
+
+QComboBox QAbstractItemView::item:selected:hover {
+    background-color: {{accentMutedHover}};
+    color: {{text}};
+    border-left: 3px solid {{accent}};
+}
+
+QPushButton {
+    background-color: {{panel}};
+    color: {{text}};
+    border: 1px solid {{border}};
+    border-radius: 4px;
+    padding: 4px 12px;
+    min-height: 22px;
+}
+
+QPushButton:hover {
+    border: 1px solid {{accent}};
+    background-color: {{panelHover}};
+}
+
+QPushButton:pressed {
+    background-color: {{window}};
+}
+
+QPushButton:checked {
+    background-color: {{window}};
+    border: 1px solid {{accent}};
+    color: {{accent}};
+}
 
 Host--UI--Spectrum--SpectrumPanel {
     background-color: transparent;
-    border: 1px solid #333333;
+    border: 1px solid {{border}};
     border-radius: 8px;
     padding: 12px;
 }
 
 #SpectrumZoomIcon {
-    color: #50c88c;
+    color: {{accent}};
     font-size: 20px;
     background: transparent;
     max-width: 24px;
@@ -23,20 +101,20 @@ Host--UI--Spectrum--SpectrumPanel {
 
 #SpectrumUnitLabel {
     font-size: 8pt;
-    color: #888888;
+    color: {{textMuted}};
     font-weight: bold;
     padding-bottom: 2px;
 }
 
 #SpectrumSensitivitySlider::groove:vertical {
-    background: #1a1a1a;
+    background: {{groove}};
     width: 4px;
     border-radius: 2px;
 }
 
 #SpectrumSensitivitySlider::handle:vertical {
-    background: #50c88c;
-    border: 1px solid #50c88c;
+    background: {{accent}};
+    border: 1px solid {{accent}};
     height: 16px;
     width: 16px;
     margin: 0 -6px;
@@ -45,53 +123,60 @@ Host--UI--Spectrum--SpectrumPanel {
 
 Host--UI--Spectrum--SpectrumPlotView {
     background-color: transparent;
-    alternate-background-color: #000000;  /* Inner Plot Area */
+    alternate-background-color: {{plotBg}};
     border: none;
-    color: #333333;                       /* Grid Lines (WindowText) */
-    selection-background-color: #50c88c;  /* FFT Curve (Highlight) */
+    color: {{grid}};
+    selection-background-color: {{accent}};
 }
 
 Host--UI--Spectrum--SpectrumAxisX, Host--UI--Spectrum--SpectrumAxisY {
     font-size: 8pt;
-    color: #888888;
+    color: {{textMuted}};
 }
 
 #SpectrumWelcomeLabel {
     font-size: 14pt;
-    color: #aaaaaa;
+    color: {{textDim}};
     font-weight: bold;
 }
 
 #effectItemBox {
-    background-color: #2a2a2a;
-    border: 1px solid #3a3a3a;
-    border-bottom: 2px solid #1a1a1a;
+    background-color: {{panel}};
+    border: 1px solid {{border}};
     border-radius: 8px;
     padding: 8px;
 }
 
 #effectItemBox:hover {
-    border: 1px solid #50c88c;
-    background-color: #303030;
+    border: 1px solid {{accent}};
+    background-color: {{panelHover}};
 }
 
-/* Styl dla etykiet parametrów wewnątrz slotów */
+#effectDragHandle {
+    background-color: transparent;
+    selection-background-color: {{accent}};
+}
+
+#effectDropIndicator {
+    background-color: {{accent}};
+    border-radius: 1px;
+}
+
 Host--UI--Effects--ParameterItem QLabel {
-    color: #e0e0e0;
+    color: {{text}};
     font-size: 8pt;
     font-weight: bold;
 }
 
-/* Styl dla suwaków wewnątrz slotów */
 Host--UI--Effects--ParameterItem QSlider::groove:horizontal {
-    background: #1a1a1a;
+    background: {{groove}};
     height: 4px;
     border-radius: 2px;
 }
 
 Host--UI--Effects--ParameterItem QSlider::handle:horizontal {
-    background: #50c88c;
-    border: 1px solid #50c88c;
+    background: {{accent}};
+    border: 1px solid {{accent}};
     width: 14px;
     height: 14px;
     margin: -5px 0;
@@ -99,25 +184,24 @@ Host--UI--Effects--ParameterItem QSlider::handle:horizontal {
 }
 
 Host--UI--Effects--ParameterItem QSlider::handle:horizontal:hover {
-    background: #70dbaf;
-    border: 1px solid #70dbaf;
+    background: {{accentHover}};
+    border: 1px solid {{accentHover}};
 }
 
 #masterVolumeBox {
-    background-color: #2a2a2a;
-    border: 1px solid #3a3a3a;
-    border-bottom: 2px solid #1a1a1a;
+    background-color: {{panel}};
+    border: 1px solid {{border}};
     border-radius: 8px;
 }
 
 #masterVolumeTitle {
-    color: #50c88c;
+    color: {{accent}};
     font-weight: bold;
     font-size: 8pt;
 }
 
 #masterVolumeValue {
-    color: #e0e0e0;
+    color: {{text}};
     font-size: 8pt;
     font-weight: bold;
 }
@@ -129,14 +213,14 @@ Host--UI--Effects--ParameterItem QSlider::handle:horizontal:hover {
 }
 
 #masterVolumeSlider::groove:vertical {
-    background: #1a1a1a;
+    background: {{groove}};
     width: 4px;
     border-radius: 2px;
 }
 
 #masterVolumeSlider::handle:vertical {
-    background: #50c88c;
-    border: 1px solid #50c88c;
+    background: {{accent}};
+    border: 1px solid {{accent}};
     height: 16px;
     width: 16px;
     margin: 0 -6px;
@@ -144,6 +228,6 @@ Host--UI--Effects--ParameterItem QSlider::handle:horizontal:hover {
 }
 
 #masterVolumeSlider::handle:vertical:hover {
-    background: #70dbaf;
-    border: 1px solid #70dbaf;
+    background: {{accentHover}};
+    border: 1px solid {{accentHover}};
 }

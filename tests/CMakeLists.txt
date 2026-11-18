@@ -57,6 +57,8 @@ add_executable(host_unit_tests
         host/test_fftprocessor.cpp
         ../EmbeddedDSP_Host/Models/DeviceManifestParser.cpp
         ../EmbeddedDSP_Host/Core/AppController.cpp
+        ../EmbeddedDSP_Host/Core/ReportAckGuard.cpp
+        ../EmbeddedDSP_Host/Core/GetRequestDebouncer.cpp
         ../EmbeddedDSP_Host/Core/WorkerThread.cpp
         ../EmbeddedDSP_Host/Processing/AudioFrameWorker.cpp
         ../EmbeddedDSP_Host/Processing/FftProcessor.cpp

@@ -13,6 +13,9 @@ namespace Demo { class DemoAudioSimulator; }
 class DemoDevice : public IDevice {
     Q_OBJECT
 public:
+    /// @brief Matches App::Dsp::FxChain::kMaxEffectSlots on firmware.
+    static constexpr int kSlotCount = 4;
+
     explicit DemoDevice(QObject* parent = nullptr);
     ~DemoDevice() override;
 
@@ -21,7 +24,6 @@ public:
     bool writeControlPacket(const Protocol::ControlPacket& pkt) override;
 
 private:
-    static constexpr int kSlotCount = 4;
     static constexpr int kMaxParams = 8;
 
     struct SlotState {

@@ -1,4 +1,5 @@
 #include "Device/Demo/DemoManifestProvider.h"
+#include "Device/Demo/DemoDevice.h"
 
 using namespace Host::Models;
 
@@ -6,7 +7,7 @@ namespace Host::Device::Demo {
 
 DeviceManifest getDemoManifest() {
     DeviceManifest manifest;
-    manifest.slotCount = 4;
+    manifest.slotCount = DemoDevice::kSlotCount;
 
     // Match firmware EmptyEffect / Delay / Overdrive ids and param metadata.
     EffectSpec none;
@@ -18,7 +19,7 @@ DeviceManifest getDemoManifest() {
     delay.id = 1;
     delay.name = QStringLiteral("Delay");
     delay.params = {
-        {QStringLiteral("Time"), 0.01f, 1.0f, 0.5f},
+        {QStringLiteral("Time"), 0.01f, 1.0f, 0.5f, QStringLiteral("s")},
         {QStringLiteral("Feedback"), 0.0f, 0.95f, 0.3f},
         {QStringLiteral("Mix"), 0.0f, 1.0f, 0.4f}
     };

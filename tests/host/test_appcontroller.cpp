@@ -15,7 +15,7 @@
 
 namespace {
 
-/// @brief Blocks until future is ready while pumping the Qt event loop (QueuedConnection / onTxIdle).
+/// Pumps Qt events until future is ready (QueuedConnection / onTxIdle).
 template <typename T>
 bool waitForFuture(std::future<T>& future, std::chrono::milliseconds timeout) {
     const auto deadline = std::chrono::steady_clock::now() + timeout;
@@ -39,7 +39,7 @@ using ::testing::ByMove;
 using ::testing::NiceMock;
 using ::testing::_;
 using ::testing::Field;
-/// @brief Mock IDevice for AppController tests.
+
 class MockDevice : public IDevice {
 public:
     MOCK_METHOD(bool, open, (const QString& connectionId), (override));
@@ -81,7 +81,6 @@ protected:
             std::move(connectionScanner), std::move(deviceSession), std::move(audioWorker));
     }
 
-    /// Creates a mock device, wires factory expectation, connects, returns raw mock pointer.
     MockDevice* connectWithMock(const QString& connectionId) {
         auto mock = std::make_unique<NiceMock<MockDevice>>();
         MockDevice* raw = mock.get();
@@ -106,6 +105,14 @@ protected:
         return raw;
     }
 
+    /// Emits C:SLOTS so ReportAckGuard becomes active.
+    void emitDemoManifest(MockDevice* mockDevice, int slotCount = 4) {
+        DeviceManifest manifest;
+        manifest.slotCount = slotCount;
+        emit mockDevice->manifestReady(manifest);
+        QCoreApplication::processEvents();
+    }
+
     void TearDown() override {
         controller.reset();
         QCoreApplication::processEvents();
@@ -122,6 +129,7 @@ TEST_F(AppControllerTest, SetParameterSendsCorrectPacket) {
     const float value = 0.75f;
 
     MockDevice* mockDevice = connectWithMock(QStringLiteral("COM3"));
+    emitDemoManifest(mockDevice);
 
     std::promise<void> sentPromise;
     auto sentFuture = sentPromise.get_future();
@@ -134,7 +142,8 @@ TEST_F(AppControllerTest, SetParameterSendsCorrectPacket) {
             EXPECT_FLOAT_EQ(pkt.value(), value);
             sentPromise.set_value();
             return true;
-        });
+        })
+        .WillRepeatedly(Return(true)); // GetParam debounce
 
     controller->setParameter(slot, param, value);
 
@@ -144,6 +153,7 @@ TEST_F(AppControllerTest, SetParameterSendsCorrectPacket) {
 
 TEST_F(AppControllerTest, SetParameterCoalescesToLatestValue) {
     MockDevice* mockDevice = connectWithMock(QStringLiteral("COM3"));
+    emitDemoManifest(mockDevice);
 
     std::promise<void> enteredFirstSend;
     auto enteredFirstSendFuture = enteredFirstSend.get_future();
@@ -153,7 +163,7 @@ TEST_F(AppControllerTest, SetParameterCoalescesToLatestValue) {
     std::promise<void> donePromise;
     auto doneFuture = donePromise.get_future();
 
-    /// First send blocks until later SetParams are queued, so they coalesce while tx is busy.
+    // Block first write so later SetParams coalesce while tx is busy.
     EXPECT_CALL(*mockDevice, writeControlPacket(_))
         .WillOnce([&](const Protocol::ControlPacket& pkt) {
             EXPECT_EQ(pkt.command, Protocol::Command::SetParam);
@@ -171,7 +181,8 @@ TEST_F(AppControllerTest, SetParameterCoalescesToLatestValue) {
             EXPECT_FLOAT_EQ(pkt.value(), 0.9f);
             donePromise.set_value();
             return true;
-        });
+        })
+        .WillRepeatedly(Return(true)); // GetParam debounce / ack recover
 
     controller->setParameter(1, 0, 0.1f);
 
@@ -186,8 +197,32 @@ TEST_F(AppControllerTest, SetParameterCoalescesToLatestValue) {
         << "Coalesced SetParam was not sent within timeout";
 }
 
+TEST_F(AppControllerTest, MoveEffectSendsCorrectPacket) {
+    MockDevice* mockDevice = connectWithMock(QStringLiteral("COM3"));
+    emitDemoManifest(mockDevice);
+
+    std::promise<void> sentPromise;
+    auto sentFuture = sentPromise.get_future();
+
+    EXPECT_CALL(*mockDevice, writeControlPacket(_))
+        .WillOnce([&](const Protocol::ControlPacket& pkt) {
+            EXPECT_EQ(pkt.command, Protocol::Command::MoveEffect);
+            EXPECT_EQ(pkt.slotId, 1);
+            EXPECT_EQ(pkt.targetSlotId, 3);
+            sentPromise.set_value();
+            return true;
+        })
+        .WillRepeatedly(Return(true)); // GetState if ack times out in teardown window
+
+    controller->moveEffect(1, 3);
+
+    ASSERT_TRUE(waitForFuture(sentFuture, std::chrono::seconds(1)))
+        << "MoveEffect packet was not sent within timeout";
+}
+
 TEST_F(AppControllerTest, SetMasterVolumeCoalescesToLatestValue) {
     MockDevice* mockDevice = connectWithMock(QStringLiteral("COM3"));
+    emitDemoManifest(mockDevice);
 
     std::promise<void> enteredFirstSend;
     auto enteredFirstSendFuture = enteredFirstSend.get_future();
@@ -197,7 +232,7 @@ TEST_F(AppControllerTest, SetMasterVolumeCoalescesToLatestValue) {
     std::promise<void> donePromise;
     auto doneFuture = donePromise.get_future();
 
-    /// First send blocks until later SetMasterVolume are queued, so they coalesce while tx is busy.
+    // Block first write so later SetMasterVolume coalesces while tx is busy.
     EXPECT_CALL(*mockDevice, writeControlPacket(_))
         .WillOnce([&](const Protocol::ControlPacket& pkt) {
             EXPECT_EQ(pkt.command, Protocol::Command::SetMasterVolume);
@@ -211,7 +246,8 @@ TEST_F(AppControllerTest, SetMasterVolumeCoalescesToLatestValue) {
             EXPECT_FLOAT_EQ(pkt.value(), 0.9f);
             donePromise.set_value();
             return true;
-        });
+        })
+        .WillRepeatedly(Return(true)); // GetMasterVolume debounce / ack recover
 
     controller->setMasterVolume(0.1f);
 
@@ -231,19 +267,20 @@ TEST_F(AppControllerTest, SetEffectTypeSendsCorrectPacket) {
     const int typeId = 4;
 
     MockDevice* mockDevice = connectWithMock(QStringLiteral("COM3"));
+    emitDemoManifest(mockDevice);
 
     std::promise<void> sentPromise;
     auto sentFuture = sentPromise.get_future();
 
-    EXPECT_CALL(*mockDevice, writeControlPacket(AllOf(
-                                 Field(&Protocol::ControlPacket::command,      Protocol::Command::SetEffectType),
-                                 Field(&Protocol::ControlPacket::slotId,       slot),
-                                 Field(&Protocol::ControlPacket::effectTypeId, typeId)
-                                 )))
-        .WillOnce([&]() {
+    EXPECT_CALL(*mockDevice, writeControlPacket(_))
+        .WillOnce([&](const Protocol::ControlPacket& pkt) {
+            EXPECT_EQ(pkt.command, Protocol::Command::SetEffectType);
+            EXPECT_EQ(pkt.slotId, slot);
+            EXPECT_EQ(pkt.effectTypeId, typeId);
             sentPromise.set_value();
             return true;
-        });
+        })
+        .WillRepeatedly(Return(true));
 
     controller->setEffectType(slot, typeId);
 

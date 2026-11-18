@@ -23,7 +23,11 @@ DeviceManifest parseDeviceManifest(const QString& manifestText) {
 
         if (tag == QLatin1String("C")) {
             if (header.size() >= 3 && header[1] == QLatin1String("SLOTS")) {
-                result.slotCount = header[2].toInt();
+                bool ok = false;
+                const int parsedSlotCount = header[2].toInt(&ok);
+                if (ok && parsedSlotCount > 0) {
+                    result.slotCount = parsedSlotCount;
+                }
             }
         } else if (tag == QLatin1String("E")) {
             if (header.size() < 3) {
@@ -41,15 +45,18 @@ DeviceManifest parseDeviceManifest(const QString& manifestText) {
                     continue;
                 }
 
-                spec.params.append({p[1], p[2].toFloat(), p[3].toFloat(), p[4].toFloat()});
+                ParamSpec ps;
+                ps.name = p[1];
+                ps.min = p[2].toFloat();
+                ps.max = p[3].toFloat();
+                ps.defaultValue = p[4].toFloat();
+                if (p.size() >= 6) {
+                    ps.unit = p[5];
+                }
+                spec.params.append(ps);
             }
             result.availableEffects[spec.id] = spec;
         }
-    }
-
-    if (result.slotCount <= 0) {
-        // Last-resort fallback if manifest omits C:SLOTS (firmware reports the real count).
-        result.slotCount = 4;
     }
 
     return result;

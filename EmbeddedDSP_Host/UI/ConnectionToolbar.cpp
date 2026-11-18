@@ -26,7 +26,7 @@ QString connectionComboLabel(const Host::Models::ConnectionInfo& info)
 namespace Host::UI {
 
 ConnectionToolbar::ConnectionToolbar(Core::AppController& controller, QWidget *parent)
-    : QFrame(parent)
+    : QWidget(parent)
     , m_appController(controller)
 {
     m_connectionCombo = new QComboBox(this);

@@ -33,7 +33,7 @@ uint8_t captureTransmit(uint8_t* buf, uint16_t len) {
     return 0;
 }
 
-/// @brief Test harness: UsbRx + dispatcher + UsbTx (capture transport).
+/// UsbRx + dispatcher + UsbTx with captured TX chunks.
 struct ControlRxFixture {
     FxChain chain{SAMPLE_RATE_HZ};
     UsbRx usbRx{};
@@ -147,6 +147,27 @@ TEST(ControlRxTest, IgnoreNoiseBeforeSOF) {
             FAIL() << "Expected DelayEffect in slot 0";
         }
     }, fx.chain.slot(0));
+}
+
+TEST(ControlRxTest, MoveEffectCommand) {
+    ControlRxFixture fx;
+    fx.chain.setEffectByIndex(0, DelayEffect::Id);
+    fx.chain.setEffectByIndex(1, OverdriveEffect::Id);
+    ASSERT_TRUE(std::holds_alternative<DelayEffect>(fx.chain.slot(0)));
+    ASSERT_TRUE(std::holds_alternative<OverdriveEffect>(fx.chain.slot(1)));
+
+    ControlPacket pkt{};
+    pkt.command = Command::MoveEffect;
+    pkt.slotId = 0;
+    pkt.targetSlotId = 1;
+    pkt.applyCRC();
+
+    const auto* bytes = reinterpret_cast<const uint8_t*>(&pkt);
+    fx.feed(bytes, sizeof(ControlPacket));
+    fx.process();
+
+    EXPECT_TRUE(std::holds_alternative<OverdriveEffect>(fx.chain.slot(0)));
+    EXPECT_TRUE(std::holds_alternative<DelayEffect>(fx.chain.slot(1)));
 }
 
 TEST(ControlRxTest, ClearSlotCommand) {
@@ -304,6 +325,79 @@ TEST(ControlRxTest, SetParamDoesNotEnqueueReport) {
         fx.usbTx.sendNext();
     }
     EXPECT_TRUE(g_txChunks.empty());
+}
+
+TEST(ControlRxTest, SetMasterVolumeDoesNotEnqueueReport) {
+    ControlRxFixture fx;
+
+    ControlPacket setMaster{};
+    setMaster.command = Command::SetMasterVolume;
+    setMaster.setValue(0.42f);
+    setMaster.applyCRC();
+
+    const auto* bytes = reinterpret_cast<const uint8_t*>(&setMaster);
+    fx.feed(bytes, sizeof(ControlPacket));
+    fx.process();
+
+    g_txChunks.clear();
+    for (int i = 0; i < 8; ++i) {
+        fx.usbTx.sendNext();
+    }
+    EXPECT_TRUE(g_txChunks.empty());
+    EXPECT_FLOAT_EQ(fx.chain.masterGain(), 0.42f);
+}
+
+TEST(ControlRxTest, GetParamEnqueuesReportParam) {
+    ControlRxFixture fx;
+    fx.chain.setEffectByIndex(0, OverdriveEffect::Id);
+    std::visit([](auto& effect) { effect.setParamValue(0, 3.5f); }, fx.chain.slot(0));
+
+    ControlPacket getParam{};
+    getParam.command = Command::GetParam;
+    getParam.slotId = 0;
+    getParam.paramId = 0;
+    getParam.applyCRC();
+
+    const auto* bytes = reinterpret_cast<const uint8_t*>(&getParam);
+    fx.feed(bytes, sizeof(ControlPacket));
+    fx.process();
+
+    g_txChunks.clear();
+    for (int i = 0; i < 8; ++i) {
+        fx.usbTx.sendNext();
+    }
+
+    ASSERT_EQ(g_txChunks.size(), 1u);
+    ControlPacket pkt{};
+    std::memcpy(&pkt, g_txChunks.front().data(), sizeof(pkt));
+    EXPECT_EQ(pkt.command, Command::ReportParam);
+    EXPECT_EQ(pkt.slotId, 0);
+    EXPECT_EQ(pkt.paramId, 0);
+    EXPECT_FLOAT_EQ(pkt.value(), 3.5f);
+}
+
+TEST(ControlRxTest, GetMasterVolumeEnqueuesReport) {
+    ControlRxFixture fx;
+    fx.chain.setMasterGain(0.33f);
+
+    ControlPacket getMaster{};
+    getMaster.command = Command::GetMasterVolume;
+    getMaster.applyCRC();
+
+    const auto* bytes = reinterpret_cast<const uint8_t*>(&getMaster);
+    fx.feed(bytes, sizeof(ControlPacket));
+    fx.process();
+
+    g_txChunks.clear();
+    for (int i = 0; i < 8; ++i) {
+        fx.usbTx.sendNext();
+    }
+
+    ASSERT_EQ(g_txChunks.size(), 1u);
+    ControlPacket pkt{};
+    std::memcpy(&pkt, g_txChunks.front().data(), sizeof(pkt));
+    EXPECT_EQ(pkt.command, Command::ReportMasterVolume);
+    EXPECT_FLOAT_EQ(pkt.value(), 0.33f);
 }
 
 TEST(ControlRxTest, BypassToggleSetsAbsoluteAndReports) {

@@ -17,7 +17,7 @@ public:
     static_assert(ParamCount <= kMaxEffectParams);
 
     static constexpr EffectParam Params[ParamCount] = {
-        {"Time", 0.01f, 1.0f, 0.5f},
+        {"Time", 0.01f, 1.0f, 0.5f, "s"},
         {"Feedback", 0.0f, 0.95f, 0.3f},
         {"Mix", 0.0f, 1.0f, 0.4f}
     };

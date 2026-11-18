@@ -1,4 +1,5 @@
 #include "UI/Effects/EffectItem.h"
+#include "UI/Effects/EffectDragHandle.h"
 #include "UI/Effects/ParameterRack.h"
 #include "UI/UiObjectNames.h"
 #include <QComboBox>
@@ -21,8 +22,10 @@ EffectItem::EffectItem(int index, QWidget *parent)
 
 void EffectItem::setupUi() {
     m_mainLayout = new QVBoxLayout(this);
-    m_mainLayout->setContentsMargins(10, 10, 10, 10);
+    m_mainLayout->setContentsMargins(10, 6, 10, 10);
     m_mainLayout->setSpacing(8);
+
+    m_dragHandle = new EffectDragHandle(this, this);
 
     m_typeCombo = new QComboBox(this);
     connect(m_typeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &EffectItem::onTypeChanged);
@@ -42,6 +45,7 @@ void EffectItem::setupUi() {
     connect(m_bypassBtn, &QPushButton::toggled, this, &EffectItem::onBypassToggled);
     setBypassVisible(false);
 
+    m_mainLayout->addWidget(m_dragHandle);
     m_mainLayout->addWidget(m_typeCombo);
     m_mainLayout->addWidget(m_parameterRack);
     m_mainLayout->addWidget(m_bypassBtn);
@@ -96,16 +100,27 @@ void EffectItem::setupEffect(int effectTypeId) {
 }
 
 void EffectItem::applyEffectType(int effectTypeId) {
-    int index = m_typeCombo->findData(effectTypeId);
-    if (index != -1) {
-        m_typeCombo->blockSignals(true);
-        m_typeCombo->setCurrentIndex(index);
-        m_typeCombo->blockSignals(false);
-        setupEffect(effectTypeId);
+    if (m_typeCombo
+        && m_typeCombo->currentIndex() >= 0
+        && m_typeCombo->currentData().toInt() == effectTypeId) {
+        return;
     }
+
+    const int index = m_typeCombo ? m_typeCombo->findData(effectTypeId) : -1;
+    if (index == -1) {
+        return;
+    }
+
+    m_typeCombo->blockSignals(true);
+    m_typeCombo->setCurrentIndex(index);
+    m_typeCombo->blockSignals(false);
+    setupEffect(effectTypeId);
 }
 
 void EffectItem::applyBypass(bool bypassed) {
+    if (m_bypassBtn && m_bypassBtn->isChecked() == bypassed) {
+        return;
+    }
     m_bypassBtn->blockSignals(true);
     m_bypassBtn->setChecked(bypassed);
     m_bypassBtn->blockSignals(false);

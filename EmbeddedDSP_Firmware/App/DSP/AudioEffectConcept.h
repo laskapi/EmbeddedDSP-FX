@@ -5,19 +5,19 @@
 
 namespace App::Dsp {
 
-/// @brief Max parameters for effect (Settings blob capacity per slot).
+/// @brief How many params one effect may expose.
 inline constexpr uint8_t kMaxEffectParams = 8;
 
-/// @brief Static metadata for one effect parameter (name + range + default).
+/// @brief Name, range, default and unit for one knob (goes into the manifest).
 struct EffectParam {
     const char* name;
     float min;
     float max;
     float defaultValue;
+    const char* unit = "";
 };
 
-/// @brief Effect contract: Id/Name/Params + ctor(SR)/updateSampleRate/process/paramValue/bypass.
-/// ParamCount must be <= kMaxEffectParams.
+/// @brief Duck-typed effect checklist (no vtable): Id, Name, Params, process, bypass.
 
 } // namespace App::Dsp
 

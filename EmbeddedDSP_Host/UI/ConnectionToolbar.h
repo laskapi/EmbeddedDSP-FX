@@ -1,7 +1,7 @@
 #ifndef EMBEDDEDDSP_HOST_CONNECTIONTOOLBAR_H
 #define EMBEDDEDDSP_HOST_CONNECTIONTOOLBAR_H
 
-#include <QFrame>
+#include <QWidget>
 #include <vector>
 
 class QComboBox;
@@ -14,7 +14,7 @@ namespace Host::Models { struct ConnectionInfo; }
 namespace Host::UI {
 
 /// @brief Toolbar for managing device connections.
-class ConnectionToolbar : public QFrame {
+class ConnectionToolbar : public QWidget {
     Q_OBJECT
 public:
     explicit ConnectionToolbar(Core::AppController& controller, QWidget *parent = nullptr);

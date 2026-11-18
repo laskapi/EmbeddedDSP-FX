@@ -46,6 +46,8 @@ qt_add_executable(EmbeddedDSP_Host
     Processing/AudioFrameWorker.cpp
     Processing/FftProcessor.h Processing/FftProcessor.cpp
     Core/AppController.h Core/AppController.cpp
+    Core/ReportAckGuard.h Core/ReportAckGuard.cpp
+    Core/GetRequestDebouncer.h Core/GetRequestDebouncer.cpp
     UI/Spectrum/SpectrumCommon.h
     UI/Spectrum/SpectrumPlotHost.h UI/Spectrum/SpectrumPlotHost.cpp
     UI/Spectrum/SpectrumPlotView.h UI/Spectrum/SpectrumPlotView.cpp
@@ -60,7 +62,7 @@ qt_add_executable(EmbeddedDSP_Host
     UI/Effects/ParameterItem.h UI/Effects/ParameterItem.cpp
     UI/Effects/ParameterRack.h UI/Effects/ParameterRack.cpp
     UI/Effects/EffectItem.h UI/Effects/EffectItem.cpp
-    UI/Effects/EffectChainArrow.h UI/Effects/EffectChainArrow.cpp
+    UI/Effects/EffectDragHandle.h UI/Effects/EffectDragHandle.cpp
     UI/Effects/EffectRack.h UI/Effects/EffectRack.cpp
     UI/Effects/MasterVolumeControl.h UI/Effects/MasterVolumeControl.cpp
 )

@@ -5,7 +5,7 @@
 
 namespace Host::Models {
 
-/// @brief Parses MCU text manifest (C:/E:/P: lines) into a DeviceManifest.
+/// @brief Parse the device manifest text into DeviceManifest.
 [[nodiscard]] DeviceManifest parseDeviceManifest(const QString& manifestText);
 
 } // namespace Host::Models

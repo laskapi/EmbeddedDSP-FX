@@ -6,10 +6,10 @@
 #include "DSP/EmptyEffect.h"
 #include "DSP/DelayEffect.h"
 #include "DSP/OverdriveEffect.h"
-#include "Protocol/ProtocolCommon.h"
 #include <variant>
 #include <array>
 #include <algorithm>
+#include <cstddef>
 #include <utility>
 
 namespace App::Dsp {
@@ -19,14 +19,14 @@ using EffectVariant = std::variant<EmptyEffect, DelayEffect, OverdriveEffect>;
 /// @brief FX slots plus fixed master volume as the last processing step.
 class FxChain {
 public:
-    /// @brief Firmware chain capacity (emitted as manifest C:SLOTS).
+    /// @brief Firmware rack capacity (emitted as manifest C:SLOTS).
     static constexpr std::size_t kMaxEffectSlots = 4;
 
     /// @brief Persisted chain state (flash-friendly POD; not wired to flash yet).
     struct Settings {
         static constexpr uint32_t kMagic = 0x44535046; // "DSPF" — DSP FX blob tag
         uint32_t magic;
-        uint8_t slotCount; // always kMaxEffectSlots in v1
+        uint8_t slotCount;
         struct SlotData {
             uint8_t effectId;
             bool bypassed;
@@ -121,9 +121,19 @@ public:
         }
     }
 
-    void swapSlots(std::size_t a, std::size_t b) noexcept {
-        if (a < kMaxEffectSlots && b < kMaxEffectSlots) {
-            std::swap(m_slots[a], m_slots[b]);
+    /// @brief Moves effect at @p from to index @p to.
+    void moveEffect(std::size_t from, std::size_t to) noexcept {
+        if (from >= kMaxEffectSlots || to >= kMaxEffectSlots || from == to) {
+            return;
+        }
+        if (from < to) {
+            std::rotate(m_slots.begin() + static_cast<std::ptrdiff_t>(from),
+                        m_slots.begin() + static_cast<std::ptrdiff_t>(from + 1),
+                        m_slots.begin() + static_cast<std::ptrdiff_t>(to + 1));
+        } else {
+            std::rotate(m_slots.begin() + static_cast<std::ptrdiff_t>(to),
+                        m_slots.begin() + static_cast<std::ptrdiff_t>(from),
+                        m_slots.begin() + static_cast<std::ptrdiff_t>(from + 1));
         }
     }
 

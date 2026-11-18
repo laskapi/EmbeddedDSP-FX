@@ -7,7 +7,6 @@
 
 using namespace Host::Processing;
 
-/// @brief Tests the FftProcessor's ability to handle various signal types.
 class FftProcessorTest : public ::testing::Test {
 protected:
     const size_t fftSize = 256;
@@ -20,7 +19,7 @@ TEST_F(FftProcessorTest, SilenceResultsInMinimumMagnitude) {
 
     const auto& spectrum = processor.processFrame(input);
 
-    // With zero input, all bins should be at or near the minimum dB floor (-100 dB)
+    // Silence maps to the processor dB floor.
     for (float db : spectrum) {
         EXPECT_NEAR(db, -100.0f, 0.1f);
     }
@@ -28,26 +27,22 @@ TEST_F(FftProcessorTest, SilenceResultsInMinimumMagnitude) {
 
 TEST_F(FftProcessorTest, DCOffsetProducesPeakAtBinZero) {
     FftProcessor processor(fftSize);
-    // Constant signal (DC offset) - all samples at max positive value
     std::vector<int16_t> input(fftSize, 32767);
 
     const auto& spectrum = processor.processFrame(input);
 
-    // Find index of maximum magnitude
     auto maxIt = std::max_element(spectrum.begin(), spectrum.end());
     int peakIndex = std::distance(spectrum.begin(), maxIt);
 
-    // For a constant signal, the peak must be at bin 0 (0 Hz)
     EXPECT_EQ(peakIndex, 0);
-    EXPECT_GT(*maxIt, -10.0f); // Peak should be significant
+    EXPECT_GT(*maxIt, -10.0f);
 }
 
 TEST_F(FftProcessorTest, DetectsSineWavePeak) {
     FftProcessor processor(fftSize);
-    const float frequency = 440.0f; // Standard A4 note
+    const float frequency = 440.0f;
     std::vector<int16_t> input(fftSize);
 
-    // Generate 440Hz sine wave
     for (size_t i = 0; i < fftSize; ++i) {
         float time = static_cast<float>(i) / sampleRate;
         float sample = std::sin(2.0f * std::numbers::pi_v<float> * frequency * time);
@@ -56,16 +51,38 @@ TEST_F(FftProcessorTest, DetectsSineWavePeak) {
 
     const auto& spectrum = processor.processFrame(input);
 
-    // Expected bin calculation: f / (fs / N)
-    // 440 / (44100 / 256) = 2.55 -> peak should be around bin 2 or 3
+    // bin ≈ f / (fs / N) = 440 / (44100 / 256) ≈ 2.55
     auto maxIt = std::max_element(spectrum.begin(), spectrum.end());
     int peakIndex = std::distance(spectrum.begin(), maxIt);
 
     EXPECT_TRUE(peakIndex == 2 || peakIndex == 3);
-    EXPECT_GT(*maxIt, -20.0f); // Should be a strong peak
-    
-    // Check that other bins far from the peak are much lower
+    EXPECT_GT(*maxIt, -20.0f);
+
     if (spectrum.size() > 10) {
         EXPECT_LT(spectrum[10], -40.0f);
     }
+}
+
+TEST_F(FftProcessorTest, PushSamplesEmitsOnHopAfterFill) {
+    constexpr size_t kFft = 256;
+    constexpr size_t kHop = 128;
+    FftProcessor processor(kFft, kHop);
+    std::vector<int16_t> chunk(64, 1000);
+
+    int emissions = 0;
+    // First spectrum only after a full window is filled.
+    for (size_t n = 0; n < kFft / chunk.size(); ++n) {
+        if (processor.pushSamples(chunk) != nullptr) {
+            ++emissions;
+        }
+    }
+    EXPECT_EQ(emissions, 1);
+
+    emissions = 0;
+    for (size_t n = 0; n < kHop / chunk.size(); ++n) {
+        if (processor.pushSamples(chunk) != nullptr) {
+            ++emissions;
+        }
+    }
+    EXPECT_EQ(emissions, 1);
 }

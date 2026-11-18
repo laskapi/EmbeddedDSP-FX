@@ -11,7 +11,7 @@
 
 namespace App::Comm {
 
-/// @brief Writes capability manifest (C:/E:/P:) into @p buf; returns length before trailing '\\0'.
+/// @brief Fill @p buf with the text manifest; returns bytes written (no trailing '\\0' in the count).
 [[nodiscard]] inline std::size_t writeManifest(App::SharedBuffer::View<char> buf,
                                                std::size_t slotCount) noexcept
 {
@@ -34,8 +34,9 @@ namespace App::Comm {
 
         for (uint8_t i = 0; i < T::ParamCount; ++i) {
             const auto& p = T::Params[i];
-            written = std::snprintf(dest + offset, maxSize - offset, ";P:%s:%.2f:%.2f:%.2f",
-                                    p.name, p.min, p.max, p.defaultValue);
+            written = std::snprintf(dest + offset, maxSize - offset,
+                                    ";P:%s:%.2f:%.2f:%.2f:%s",
+                                    p.name, p.min, p.max, p.defaultValue, p.unit);
             if (written > 0 && static_cast<std::size_t>(written) < (maxSize - offset)) {
                 offset += static_cast<std::size_t>(written);
             }

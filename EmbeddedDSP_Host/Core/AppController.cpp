@@ -26,6 +26,8 @@ AppController::AppController(std::unique_ptr<IConnectionScanner> connectionScann
                              std::unique_ptr<AudioFrameWorker> audioWorker,
                              QObject* parent)
     : QObject(parent)
+    , m_ackGuard(this)
+    , m_getDebouncer(this)
 {
     m_deviceSession = deviceSession.release();
     m_audioWorker = audioWorker.release();
@@ -36,14 +38,21 @@ AppController::AppController(std::unique_ptr<IConnectionScanner> connectionScann
     m_workerThread.adopt(m_connectionScanner);
 
     connect(m_audioWorker, &AudioFrameWorker::spectrumReady, this, &AppController::spectrumReady);
-    connect(m_deviceSession, &DeviceSession::manifestReady, this, &AppController::manifestReady);
+    connect(m_deviceSession, &DeviceSession::manifestReady, this, &AppController::onManifestReady);
     connect(m_deviceSession, &DeviceSession::audioFrameReady, m_audioWorker, &AudioFrameWorker::processFrame);
-    connect(m_deviceSession, &DeviceSession::controlPacketReady, this, &AppController::onControlPacketReady);
+    connect(m_deviceSession, &DeviceSession::controlPacketReady, this, &AppController::onReportPacket);
     connect(m_deviceSession, &DeviceSession::connectionStatusChanged,
             this, &AppController::onConnectionStatusChanged);
     connect(m_deviceSession, &DeviceSession::errorOccurred, this, &AppController::errorOccurred);
     connect(m_connectionScanner, &IConnectionScanner::connectionsUpdated,
             this, &AppController::connectionsUpdated);
+
+    connect(&m_ackGuard, &ReportAckGuard::recoverSoft, this, &AppController::onAckRecoverSoft);
+    connect(&m_ackGuard, &ReportAckGuard::recoverHard, this, &AppController::onAckRecoverHard);
+    connect(&m_getDebouncer, &GetRequestDebouncer::getParamPacketReady,
+            this, &AppController::sendDebouncedGetParam);
+    connect(&m_getDebouncer, &GetRequestDebouncer::getMasterPacketReady,
+            this, &AppController::sendDebouncedGetMaster);
 
     m_workerThread.start();
     QMetaObject::invokeMethod(m_connectionScanner, &IConnectionScanner::start, Qt::QueuedConnection);
@@ -72,6 +81,7 @@ void AppController::setParameter(int slotIndex, int paramIndex, float value) {
     pkt.paramId = toProtocolByte(paramIndex);
     pkt.setValue(value);
     dispatchControlPacket(pkt);
+    m_getDebouncer.noteParamChanged(slotIndex, paramIndex);
 }
 
 void AppController::setEffectType(int slotIndex, int effectTypeId) {
@@ -81,6 +91,7 @@ void AppController::setEffectType(int slotIndex, int effectTypeId) {
     pkt.effectTypeId = toProtocolByte(effectTypeId);
     pkt.setValue(0.0f);
     dispatchControlPacket(pkt);
+    m_ackGuard.expectEffectType(slotIndex);
 }
 
 void AppController::setBypass(int slotIndex, bool bypass) {
@@ -89,6 +100,7 @@ void AppController::setBypass(int slotIndex, bool bypass) {
     pkt.slotId = toProtocolByte(slotIndex);
     pkt.setValue(bypass ? 1.0f : 0.0f);
     dispatchControlPacket(pkt);
+    m_ackGuard.expectBypass(slotIndex);
 }
 
 void AppController::setMasterVolume(float gain) {
@@ -96,6 +108,56 @@ void AppController::setMasterVolume(float gain) {
     pkt.command = ::Protocol::Command::SetMasterVolume;
     pkt.setValue(gain);
     dispatchControlPacket(pkt);
+    m_getDebouncer.noteMasterChanged();
+}
+
+void AppController::moveEffect(int fromSlot, int toSlot) {
+    if (fromSlot == toSlot) {
+        return;
+    }
+    ::Protocol::ControlPacket pkt;
+    pkt.command = ::Protocol::Command::MoveEffect;
+    pkt.slotId = toProtocolByte(fromSlot);
+    pkt.targetSlotId = toProtocolByte(toSlot);
+    pkt.setValue(0.0f);
+    dispatchControlPacket(pkt);
+    m_ackGuard.expectEffectTypesAll();
+}
+
+void AppController::sendDebouncedGetParam(Protocol::ControlPacket pkt) {
+    dispatchControlPacket(pkt);
+    m_ackGuard.expectParam(static_cast<int>(pkt.slotId), static_cast<int>(pkt.paramId));
+}
+
+void AppController::sendDebouncedGetMaster(Protocol::ControlPacket pkt) {
+    dispatchControlPacket(pkt);
+    m_ackGuard.expectMasterVolume();
+}
+
+void AppController::onManifestReady(const DeviceManifest& manifest) {
+    if (manifest.slotCount <= 0) {
+        m_getDebouncer.stop();
+        m_ackGuard.stop();
+        emit errorOccurred(tr("Manifest missing C:SLOTS."));
+        emit manifestReady(manifest);
+        return;
+    }
+    m_ackGuard.start(manifest.slotCount);
+    emit manifestReady(manifest);
+}
+
+void AppController::onAckRecoverSoft() {
+    requestSync();
+}
+
+void AppController::onAckRecoverHard() {
+    if (m_lastConnectionId.isEmpty()) {
+        emit errorOccurred(tr("Device sync failed."));
+        return;
+    }
+    emit errorOccurred(tr("Device sync failed — reconnecting…"));
+    disconnectDevice();
+    connectDevice(m_lastConnectionId);
 }
 
 void AppController::onConnectionStatusChanged(bool connected, const QString& portName) {
@@ -103,30 +165,37 @@ void AppController::onConnectionStatusChanged(bool connected, const QString& por
     emit connectionChanged(connected, portName);
 
     if (connected) {
+        m_lastConnectionId = portName;
         QMetaObject::invokeMethod(m_connectionScanner, &IConnectionScanner::stop, Qt::QueuedConnection);
         requestSync();
     } else {
+        m_getDebouncer.stop();
+        m_ackGuard.stop();
         QMetaObject::invokeMethod(m_connectionScanner, &IConnectionScanner::start, Qt::QueuedConnection);
     }
 }
 
-void AppController::onControlPacketReady(const Protocol::ControlPacket& pkt) {
+void AppController::onReportPacket(const Protocol::ControlPacket& pkt) {
     using ::Protocol::Command;
 
     switch (pkt.command) {
     case Command::ReportParam:
+        m_ackGuard.onReportParam(static_cast<int>(pkt.slotId), static_cast<int>(pkt.paramId));
         emit slotParameterUpdated(static_cast<int>(pkt.slotId),
                                   static_cast<int>(pkt.paramId),
                                   pkt.value());
         break;
     case Command::ReportEffectType:
+        m_ackGuard.onReportEffectType(static_cast<int>(pkt.slotId));
         emit slotEffectTypeUpdated(static_cast<int>(pkt.slotId),
                                    static_cast<int>(pkt.effectTypeId));
         break;
     case Command::ReportBypass:
+        m_ackGuard.onReportBypass(static_cast<int>(pkt.slotId));
         emit slotBypassUpdated(static_cast<int>(pkt.slotId), pkt.value() > 0.5f);
         break;
     case Command::ReportMasterVolume:
+        m_ackGuard.onReportMasterVolume();
         emit masterVolumeUpdated(pkt.value());
         break;
     default:

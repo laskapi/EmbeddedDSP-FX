@@ -7,10 +7,7 @@
 
 namespace App::Comm {
 
-/// @brief Routes host→device control packets to FxChain or UsbTx (GetState).
-///
-/// Structural Set* commands enqueue Report* echoes (Idle only). SetParam has no
-/// echo (Host already owns the slider value; avoids report flood while dragging).
+/// @brief Routes host→device control packets to FxChain / UsbTx.
 class CommandDispatcher {
 public:
     CommandDispatcher(Dsp::FxChain& chain, UsbTx& usbTx) noexcept
@@ -47,11 +44,16 @@ public:
                 m_usbTx.enqueueSlotReports(m_chain, slotId);
                 break;
 
-            case Protocol::Command::SwapSlots: {
-                const uint8_t other = pkt.targetSlotId;
-                m_chain.swapSlots(slotId, other);
-                m_usbTx.enqueueSlotReports(m_chain, slotId);
-                m_usbTx.enqueueSlotReports(m_chain, other);
+            case Protocol::Command::MoveEffect: {
+                const uint8_t to = pkt.targetSlotId;
+                if (slotId >= Dsp::FxChain::kMaxEffectSlots
+                    || to >= Dsp::FxChain::kMaxEffectSlots) {
+                    break;
+                }
+                m_chain.moveEffect(slotId, to);
+                for (uint8_t i = 0; i < Dsp::FxChain::kMaxEffectSlots; ++i) {
+                    m_usbTx.enqueueSlotReports(m_chain, i);
+                }
                 break;
             }
 
@@ -61,6 +63,20 @@ public:
 
             case Protocol::Command::SetMasterVolume:
                 m_chain.setMasterGain(pkt.value());
+                break;
+
+            case Protocol::Command::GetParam:
+                if (slotId < Dsp::FxChain::kMaxEffectSlots) {
+                    const uint8_t paramId = pkt.paramId;
+                    float value = 0.0f;
+                    std::visit([paramId, &value](auto& fx) {
+                        value = fx.paramValue(paramId);
+                    }, m_chain.slot(slotId));
+                    m_usbTx.enqueueParamReport(slotId, paramId, value);
+                }
+                break;
+
+            case Protocol::Command::GetMasterVolume:
                 m_usbTx.enqueueMasterVolumeReport(m_chain.masterGain());
                 break;
 

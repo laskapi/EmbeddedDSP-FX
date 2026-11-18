@@ -5,11 +5,14 @@
 #include "Models/DeviceModel.h"
 #include "Protocol/ControlPacket.h"
 
+#include <algorithm>
 #include <utility>
 
 namespace Host::Device {
 
 namespace {
+
+constexpr int kSlots = DemoDevice::kSlotCount;
 
 [[nodiscard]] const Host::Models::EffectSpec* findSpec(int effectTypeId) {
     static const Host::Models::DeviceManifest kManifest = Demo::getDemoManifest();
@@ -126,7 +129,7 @@ bool DemoDevice::writeControlPacket(const Protocol::ControlPacket& pkt) {
         const auto manifest = Demo::getDemoManifest();
         emit manifestReady(manifest);
 
-        for (int i = 0; i < kSlotCount; ++i) {
+        for (int i = 0; i < kSlots; ++i) {
             emitSlotReports(i);
         }
         emitMasterVolumeReport();
@@ -135,7 +138,7 @@ bool DemoDevice::writeControlPacket(const Protocol::ControlPacket& pkt) {
     }
     case Command::SetEffectType: {
         const int slot = pkt.slotId;
-        if (slot < 0 || slot >= kSlotCount) {
+        if (slot < 0 || slot >= kSlots) {
             break;
         }
         applyEffectDefaults(slot, pkt.effectTypeId);
@@ -145,16 +148,16 @@ bool DemoDevice::writeControlPacket(const Protocol::ControlPacket& pkt) {
     case Command::SetParam: {
         const int slot = pkt.slotId;
         const int param = pkt.paramId;
-        if (slot < 0 || slot >= kSlotCount || param < 0 || param >= kMaxParams) {
+        if (slot < 0 || slot >= kSlots || param < 0 || param >= kMaxParams) {
             break;
         }
-        // Option A: no ReportParam echo (matches MCU).
+        // No ReportParam echo (matches MCU SetParam).
         m_slots[static_cast<std::size_t>(slot)].params[static_cast<std::size_t>(param)] = pkt.value();
         break;
     }
     case Command::BypassToggle: {
         const int slot = pkt.slotId;
-        if (slot < 0 || slot >= kSlotCount) {
+        if (slot < 0 || slot >= kSlots) {
             break;
         }
         m_slots[static_cast<std::size_t>(slot)].bypassed = pkt.value() > 0.5f;
@@ -163,26 +166,51 @@ bool DemoDevice::writeControlPacket(const Protocol::ControlPacket& pkt) {
     }
     case Command::ClearSlot: {
         const int slot = pkt.slotId;
-        if (slot < 0 || slot >= kSlotCount) {
+        if (slot < 0 || slot >= kSlots) {
             break;
         }
         applyEffectDefaults(slot, 0);
         emitSlotReports(slot);
         break;
     }
-    case Command::SwapSlots: {
-        const int a = pkt.slotId;
-        const int b = pkt.targetSlotId;
-        if (a < 0 || a >= kSlotCount || b < 0 || b >= kSlotCount) {
+    case Command::MoveEffect: {
+        const int from = pkt.slotId;
+        const int to = pkt.targetSlotId;
+        if (from < 0 || from >= kSlots || to < 0 || to >= kSlots || from == to) {
             break;
         }
-        std::swap(m_slots[static_cast<std::size_t>(a)], m_slots[static_cast<std::size_t>(b)]);
-        emitSlotReports(a);
-        emitSlotReports(b);
+        if (from < to) {
+            std::rotate(m_slots.begin() + from,
+                        m_slots.begin() + from + 1,
+                        m_slots.begin() + to + 1);
+        } else {
+            std::rotate(m_slots.begin() + to,
+                        m_slots.begin() + from,
+                        m_slots.begin() + from + 1);
+        }
+        for (int i = 0; i < kSlots; ++i) {
+            emitSlotReports(i);
+        }
         break;
     }
     case Command::SetMasterVolume:
         m_masterGain = pkt.value();
+        break;
+    case Command::GetParam: {
+        const int slot = pkt.slotId;
+        const int param = pkt.paramId;
+        if (slot < 0 || slot >= kSlots || param < 0 || param >= kMaxParams) {
+            break;
+        }
+        ::Protocol::ControlPacket pPkt;
+        pPkt.command = ::Protocol::Command::ReportParam;
+        pPkt.slotId = static_cast<uint8_t>(slot);
+        pPkt.paramId = static_cast<uint8_t>(param);
+        pPkt.setValue(m_slots[static_cast<std::size_t>(slot)].params[static_cast<std::size_t>(param)]);
+        emit controlPacketReady(pPkt);
+        break;
+    }
+    case Command::GetMasterVolume:
         emitMasterVolumeReport();
         break;
     default:

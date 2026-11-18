@@ -1,5 +1,6 @@
 #include "Core/AppController.h"
 #include "UI/mainwindow.h"
+#include "UI/UiTheme.h"
 #include "Models/ConnectionInfo.h"
 #include "Device/ConnectionScanner.h"
 #include "Device/DeviceFactory.h"
@@ -22,9 +23,13 @@ int main(int argc, char* argv[]) {
 
     QApplication a(argc, argv);
 
+    Host::UI::UiTheme::applyApplicationPalette(a);
+
     QFile styleFile(":/UI/style.qss");
     if (styleFile.open(QFile::ReadOnly)) {
-        a.setStyleSheet(styleFile.readAll());
+        const QString qss = Host::UI::UiTheme::resolveStyleSheet(
+            QString::fromUtf8(styleFile.readAll()));
+        a.setStyleSheet(qss);
     }
 
     auto connectionScanner = std::make_unique<Host::Device::ConnectionScanner>();

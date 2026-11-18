@@ -1,9 +1,9 @@
 #ifndef EMBEDDEDDSP_HOST_ABSTRACTRACK_H
 #define EMBEDDEDDSP_HOST_ABSTRACTRACK_H
 
-#include <QFrame>
 #include <QLayout>
 #include <QList>
+#include <QWidget>
 #include <algorithm>
 #include <concepts>
 #include "UI/Effects/AbstractRackItem.h"
@@ -14,9 +14,9 @@ template<typename T>
 concept IsRackItem = std::derived_from<T, AbstractRackItem>;
 
 template <IsRackItem T, typename LayoutT = QVBoxLayout>
-class AbstractRack : public QFrame {
+class AbstractRack : public QWidget {
 public:
-    explicit AbstractRack(QWidget* parent = nullptr) : QFrame(parent) {
+    explicit AbstractRack(QWidget* parent = nullptr) : QWidget(parent) {
         m_layout = new LayoutT(this);
         m_layout->setContentsMargins(0, 0, 0, 0);
         m_layout->setSpacing(10);
@@ -37,13 +37,13 @@ public:
     }
 
 protected:
+    /// @brief Reorders @c m_items and refreshes indices (layout refresh is subclass duty).
     void moveItem(int from, int to) {
-        if (from < 0 || from >= m_items.size() || to < 0 || to >= m_items.size()) return;
-
+        if (from < 0 || from >= m_items.size() || to < 0 || to >= m_items.size() || from == to) {
+            return;
+        }
         m_items.move(from, to);
-        m_layout->insertWidget(to, m_items[to]);
-
-        for (int i = std::min(from, to); i <= std::max(from, to); ++i) {
+        for (int i = 0; i < m_items.size(); ++i) {
             m_items[i]->setIndex(i);
         }
     }

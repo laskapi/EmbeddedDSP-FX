@@ -8,25 +8,26 @@
 
 namespace Host::Models {
 
-/// @brief Specification for a single effect parameter.
+/// @brief One effect knob as described by the device.
 struct ParamSpec {
     QString name;
     float min;
     float max;
     float defaultValue;
+    QString unit;
 };
 
-/// @brief Specification for an effect and its parameters.
+/// @brief One effect type and its knobs.
 struct EffectSpec {
     uint8_t id;
     QString name;
     QList<ParamSpec> params;
 };
 
-/// @brief Full device capabilities (manifest) received during handshake.
+/// @brief Parsed device manifest (effects + C:SLOTS).
 struct DeviceManifest {
     QMap<int, EffectSpec> availableEffects;
-    int slotCount{0};
+    int slotCount{0}; ///< Active rack slots from firmware C:SLOTS.
 };
 
 } // namespace Host::Models

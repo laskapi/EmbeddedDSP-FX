@@ -12,7 +12,7 @@
 namespace Host::UI::Spectrum {
 
 SpectrumPanel::SpectrumPanel(Core::AppController& controller, QWidget *parent)
-    : QFrame(parent)
+    : QWidget(parent)
 {
     auto* mainGrid = new QGridLayout(this);
     mainGrid->setContentsMargins(0, 0, 0, 0);

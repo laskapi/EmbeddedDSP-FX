@@ -1,7 +1,7 @@
 #ifndef EMBEDDEDDSP_HOST_SPECTRUMPANEL_H
 #define EMBEDDEDDSP_HOST_SPECTRUMPANEL_H
 
-#include <QFrame>
+#include <QWidget>
 
 class QSlider;
 class QLabel;
@@ -15,7 +15,7 @@ class SpectrumAxisX;
 class SpectrumAxisY;
 
 /// @brief Container combining spectrum plot, axes, and zoom controls.
-class SpectrumPanel : public QFrame {
+class SpectrumPanel : public QWidget {
     Q_OBJECT
 public:
     explicit SpectrumPanel(Core::AppController& controller, QWidget *parent = nullptr);

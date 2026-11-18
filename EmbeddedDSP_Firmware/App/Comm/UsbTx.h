@@ -76,6 +76,14 @@ public:
         pushReport(Protocol::Command::ReportMasterVolume, 0, 0, gain);
     }
 
+    /// @brief Queues one ReportParam (Idle only; used by GetParam).
+    void enqueueParamReport(uint8_t slotId, uint8_t paramId, float value) noexcept {
+        if (isSyncActive() || slotId >= App::Dsp::FxChain::kMaxEffectSlots) {
+            return;
+        }
+        pushReport(Protocol::Command::ReportParam, slotId, paramId, value);
+    }
+
     /// @brief Zero-copy audio slot; drops oldest frame if the ring is full.
     [[nodiscard]] Protocol::AudioFrame& acquireAudioFrame() noexcept {
         Protocol::AudioFrame* slot = m_audioTx.acquireWrite();

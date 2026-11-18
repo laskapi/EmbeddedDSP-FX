@@ -5,18 +5,17 @@
 
 namespace App::Dsp {
 
-/// @brief Pass-through null effect (empty slot placeholder).
+/// @brief Empty slot: does nothing to the audio.
 class EmptyEffect {
 public:
     static constexpr uint8_t Id = 0x00;
     static constexpr const char* Name = "None";
     static constexpr uint8_t ParamCount = 0;
-    static constexpr EffectParam Params[1] = {}; // empty-array workaround for ParamCount 0
+    static constexpr EffectParam Params[1] = {}; // need a non-empty array when ParamCount is 0
     static_assert(ParamCount <= kMaxEffectParams);
 
     EmptyEffect() noexcept = default;
 
-    /// @brief Same shape as other effects; sample rate is unused (pass-through placeholder).
     explicit EmptyEffect(float sampleRate) noexcept {
         updateSampleRate(sampleRate);
     }
