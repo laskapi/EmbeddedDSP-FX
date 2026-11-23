@@ -93,10 +93,7 @@ EffectRack::EffectRack(AppController& controller, QWidget *parent)
 
 void EffectRack::onManifestReady(const DeviceManifest& manifest) {
     clear();
-    m_syncedSlotsCount = 0;
-    m_expectedSlotsCount = manifest.slotCount;
-    m_isSyncing = true;
-    m_delayOwner = -1;
+    m_slotsToInit = manifest.slotCount;
 
     int maxParamCount = 0;
     for (const auto& spec : manifest.availableEffects) {
@@ -121,6 +118,7 @@ void EffectRack::clear() {
         delete child;
     }
     clearRack();
+    m_slotsToInit = -1;
     m_delayOwner = -1;
 }
 
@@ -260,12 +258,8 @@ void EffectRack::onSlotEffectTypeUpdated(int slotIndex, int effectTypeId) {
         }
         refreshDelayExclusivity();
 
-        if (m_isSyncing) {
-            m_syncedSlotsCount++;
-            if (m_syncedSlotsCount >= m_expectedSlotsCount) {
-                m_isSyncing = false;
-                emit rackReady();
-            }
+        if (m_slotsToInit > 0 && --m_slotsToInit == 0) {
+            emit rackReady();
         }
     }
 }

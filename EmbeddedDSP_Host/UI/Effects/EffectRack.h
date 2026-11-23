@@ -52,9 +52,9 @@ private:
 
     Host::Core::AppController& m_appController;
     QWidget* m_dropIndicator{nullptr};
-    int m_syncedSlotsCount{0};
-    int m_expectedSlotsCount{0};
-    bool m_isSyncing{false};
+    /// @brief ReportEffectType count before rackReady (-1 = not waiting).
+    int m_slotsToInit{-1};
+    /// @brief Slot that currently holds Delay (-1 = none).
     int m_delayOwner{-1};
 };
 
