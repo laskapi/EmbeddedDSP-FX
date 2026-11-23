@@ -2,6 +2,7 @@
 #define EMBEDDEDDSP_FIRMWARE_DELAY_EFFECT_H
 
 #include "DSP/AudioEffectConcept.h"
+#include "Protocol/ProtocolCommon.h"
 #include "SharedBuffer.h"
 #include <algorithm>
 #include <cstring>
@@ -11,7 +12,7 @@ namespace App::Dsp {
 /// @brief Mono digital delay (time / feedback / mix) using SharedBuffer.
 class DelayEffect {
 public:
-    static constexpr uint8_t Id = 0x01;
+    static constexpr uint8_t Id = Protocol::EffectId::Delay;
     static constexpr const char* Name = "Delay";
     static constexpr uint8_t ParamCount = 3;
     static_assert(ParamCount <= kMaxEffectParams);

@@ -29,6 +29,9 @@ public:
     /// @brief Sets the list of available effects for the combo box.
     void setAvailableEffects(const QMap<int, Host::Models::EffectSpec> &availableEffects);
 
+    /// @brief Enables/disables one effect entry in the type combo (e.g. exclusive Delay).
+    void setEffectChoiceEnabled(int effectTypeId, bool enabled);
+
     /// @brief Reserves ParameterRack capacity and locks this slot's total height.
     void lockHeightForParamCapacity(int maxParamCount);
 

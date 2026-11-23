@@ -1,5 +1,6 @@
 #include "Device/Demo/DemoManifestProvider.h"
 #include "Device/Demo/DemoDevice.h"
+#include "Protocol/ProtocolCommon.h"
 
 using namespace Host::Models;
 
@@ -9,14 +10,14 @@ DeviceManifest getDemoManifest() {
     DeviceManifest manifest;
     manifest.slotCount = DemoDevice::kSlotCount;
 
-    // Match firmware EmptyEffect / Delay / Overdrive ids and param metadata.
+    // Ids from Protocol::EffectId (same as firmware effect classes).
     EffectSpec none;
-    none.id = 0;
+    none.id = Protocol::EffectId::Empty;
     none.name = QStringLiteral("None");
     manifest.availableEffects[none.id] = none;
 
     EffectSpec delay;
-    delay.id = 1;
+    delay.id = Protocol::EffectId::Delay;
     delay.name = QStringLiteral("Delay");
     delay.params = {
         {QStringLiteral("Time"), 0.01f, 1.0f, 0.5f, QStringLiteral("s")},
@@ -26,7 +27,7 @@ DeviceManifest getDemoManifest() {
     manifest.availableEffects[delay.id] = delay;
 
     EffectSpec overdrive;
-    overdrive.id = 2;
+    overdrive.id = Protocol::EffectId::Overdrive;
     overdrive.name = QStringLiteral("Overdrive");
     overdrive.params = {
         {QStringLiteral("Gain"), 1.0f, 20.0f, 5.0f},

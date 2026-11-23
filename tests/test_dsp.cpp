@@ -85,3 +85,16 @@ TEST(FxChainTest, SettingsRoundTrip) {
         EXPECT_FLOAT_EQ(fx.paramValue(0), 0.22f);
     }, restored.slot(1));
 }
+
+TEST(FxChainTest, RejectsSecondDelay) {
+    FxChain chain{Protocol::SAMPLE_RATE_HZ};
+    chain.setEffectByIndex(0, DelayEffect::Id);
+    chain.setEffectByIndex(1, DelayEffect::Id);
+
+    EXPECT_TRUE(std::holds_alternative<DelayEffect>(chain.slot(0)));
+    EXPECT_FALSE(std::holds_alternative<DelayEffect>(chain.slot(1)));
+
+    // Same-slot Delay → Delay stays allowed.
+    chain.setEffectByIndex(0, DelayEffect::Id);
+    EXPECT_TRUE(std::holds_alternative<DelayEffect>(chain.slot(0)));
+}

@@ -6,6 +6,7 @@
 #include "UI/Effects/AbstractRack.h"
 #include "UI/Effects/EffectItem.h"
 #include "Models/DeviceModel.h"
+#include "Protocol/ProtocolCommon.h"
 
 class QPaintEvent;
 
@@ -47,12 +48,14 @@ private:
     [[nodiscard]] int insertIndexFor(int x) const;
     void showDropIndicator(int insertBefore);
     void hideDropIndicator();
+    void refreshDelayExclusivity();
 
     Host::Core::AppController& m_appController;
     QWidget* m_dropIndicator{nullptr};
     int m_syncedSlotsCount{0};
     int m_expectedSlotsCount{0};
     bool m_isSyncing{false};
+    int m_delayOwner{-1};
 };
 
 } // namespace Host::UI::Effects

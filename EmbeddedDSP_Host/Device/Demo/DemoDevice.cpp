@@ -4,6 +4,7 @@
 #include "Device/Demo/DemoManifestProvider.h"
 #include "Models/DeviceModel.h"
 #include "Protocol/ControlPacket.h"
+#include "Protocol/ProtocolCommon.h"
 
 #include <algorithm>
 #include <utility>
@@ -178,6 +179,23 @@ bool DemoDevice::writeControlPacket(const Protocol::ControlPacket& pkt) {
         const int slot = pkt.slotId;
         if (slot < 0 || slot >= kSlots) {
             break;
+        }
+        // Match FxChain: only one Delay (shared delay-line RAM on MCU).
+        if (pkt.effectTypeId == Protocol::EffectId::Delay) {
+            bool delayElsewhere = false;
+            for (int i = 0; i < kSlots; ++i) {
+                if (i == slot) {
+                    continue;
+                }
+                if (m_slots[static_cast<std::size_t>(i)].effectTypeId == Protocol::EffectId::Delay) {
+                    delayElsewhere = true;
+                    break;
+                }
+            }
+            if (delayElsewhere) {
+                emitSlotReports(slot); // snap-back: report unchanged type
+                break;
+            }
         }
         applyEffectDefaults(slot, pkt.effectTypeId);
         emitSlotReports(slot);

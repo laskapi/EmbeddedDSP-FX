@@ -5,6 +5,8 @@
 #include <QComboBox>
 #include <QPushButton>
 #include <QSizePolicy>
+#include <QStandardItem>
+#include <QStandardItemModel>
 #include <QVBoxLayout>
 
 namespace Host::UI::Effects {
@@ -62,6 +64,14 @@ void EffectItem::setAvailableEffects(const QMap<int, Host::Models::EffectSpec> &
         m_typeCombo->addItem(spec.name, spec.id);
     }
     m_typeCombo->blockSignals(false);
+}
+
+void EffectItem::setEffectChoiceEnabled(int effectTypeId, bool enabled) {
+    const int row = m_typeCombo->findData(effectTypeId);
+    if (row < 0) {
+        return;
+    }
+    static_cast<QStandardItemModel*>(m_typeCombo->model())->item(row)->setEnabled(enabled);
 }
 
 void EffectItem::lockHeightForParamCapacity(int maxParamCount) {

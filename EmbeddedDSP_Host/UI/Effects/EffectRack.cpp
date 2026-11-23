@@ -96,6 +96,7 @@ void EffectRack::onManifestReady(const DeviceManifest& manifest) {
     m_syncedSlotsCount = 0;
     m_expectedSlotsCount = manifest.slotCount;
     m_isSyncing = true;
+    m_delayOwner = -1;
 
     int maxParamCount = 0;
     for (const auto& spec : manifest.availableEffects) {
@@ -120,6 +121,7 @@ void EffectRack::clear() {
         delete child;
     }
     clearRack();
+    m_delayOwner = -1;
 }
 
 void EffectRack::syncItemLayout() {
@@ -251,6 +253,13 @@ void EffectRack::onSlotEffectTypeUpdated(int slotIndex, int effectTypeId) {
     if (auto *item = getItem(slotIndex)) {
         item->applyEffectType(effectTypeId);
 
+        if (effectTypeId == Protocol::EffectId::Delay) {
+            m_delayOwner = slotIndex;
+        } else if (m_delayOwner == slotIndex) {
+            m_delayOwner = -1;
+        }
+        refreshDelayExclusivity();
+
         if (m_isSyncing) {
             m_syncedSlotsCount++;
             if (m_syncedSlotsCount >= m_expectedSlotsCount) {
@@ -258,6 +267,13 @@ void EffectRack::onSlotEffectTypeUpdated(int slotIndex, int effectTypeId) {
                 emit rackReady();
             }
         }
+    }
+}
+
+void EffectRack::refreshDelayExclusivity() {
+    for (int i = 0; i < itemCount(); ++i) {
+        getItem(i)->setEffectChoiceEnabled(Protocol::EffectId::Delay,
+                                           m_delayOwner < 0 || m_delayOwner == i);
     }
 }
 

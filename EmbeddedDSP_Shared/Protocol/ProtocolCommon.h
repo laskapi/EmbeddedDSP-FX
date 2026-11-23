@@ -15,6 +15,13 @@ inline constexpr float SAMPLE_RATE_HZ = 48000.0f;
 /// @brief User preset bank size (indices 0 .. kUserPresetCount-1).
 inline constexpr uint8_t kUserPresetCount = 10;
 
+/// @brief Wire effect type ids (ControlPacket::effectTypeId / manifest E:<id>).
+namespace EffectId {
+inline constexpr uint8_t Empty = 0x00;
+inline constexpr uint8_t Delay = 0x01;
+inline constexpr uint8_t Overdrive = 0x02;
+} // namespace EffectId
+
 } // namespace Protocol
 
 /// @brief Start-of-frame byte values.

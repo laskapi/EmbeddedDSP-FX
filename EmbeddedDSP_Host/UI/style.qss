@@ -38,6 +38,16 @@ QComboBox QAbstractItemView::item {
     border-left: 3px solid transparent;
 }
 
+QComboBox QAbstractItemView::item:disabled {
+    color: {{textMuted}};
+    background-color: {{panel}};
+}
+
+QComboBox QAbstractItemView::item:disabled:hover {
+    color: {{textMuted}};
+    background-color: {{panel}};
+}
+
 QComboBox QAbstractItemView::item:hover {
     background-color: {{listHover}};
     color: {{text}};

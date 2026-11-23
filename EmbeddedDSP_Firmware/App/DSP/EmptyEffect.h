@@ -2,13 +2,14 @@
 #define EMBEDDEDDSP_FIRMWARE_EMPTY_EFFECT_H
 
 #include "DSP/AudioEffectConcept.h"
+#include "Protocol/ProtocolCommon.h"
 
 namespace App::Dsp {
 
 /// @brief Empty slot: does nothing to the audio.
 class EmptyEffect {
 public:
-    static constexpr uint8_t Id = 0x00;
+    static constexpr uint8_t Id = Protocol::EffectId::Empty;
     static constexpr const char* Name = "None";
     static constexpr uint8_t ParamCount = 0;
     static constexpr EffectParam Params[1] = {}; // need a non-empty array when ParamCount is 0

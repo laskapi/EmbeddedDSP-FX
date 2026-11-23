@@ -52,6 +52,17 @@ public:
         if (slotId >= kMaxEffectSlots) {
             return;
         }
+ /// @details At most one Delay (shared delay-line RAM); second request is ignored.
+        if (effectId == DelayEffect::Id) {
+            for (std::size_t i = 0; i < kMaxEffectSlots; ++i) {
+                if (i == slotId) {
+                    continue;
+                }
+                if (std::holds_alternative<DelayEffect>(m_slots[i])) {
+                    return;
+                }
+            }
+        }
 
         auto trySet = [&]<typename T>() {
             if (T::Id == effectId) {
