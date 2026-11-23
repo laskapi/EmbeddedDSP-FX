@@ -79,6 +79,23 @@ QPushButton:checked {
     color: {{accent}};
 }
 
+#presetBar #presetButton {
+    min-width: 28px;
+    max-width: 28px;
+    padding: 4px 0;
+}
+
+#presetBar #presetButton:checked {
+    background-color: {{accentMuted}};
+    border: 1px solid {{accent}};
+    color: {{accent}};
+}
+
+#presetBar #presetSaveButton {
+    min-width: 56px;
+    margin-left: 4px;
+}
+
 Host--UI--Spectrum--SpectrumPanel {
     background-color: transparent;
     border: 1px solid {{border}};

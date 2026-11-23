@@ -18,6 +18,8 @@ add_executable(dsp_unit_tests
         ../EmbeddedDSP_Firmware/App/Comm/UsbRx.h
         ../EmbeddedDSP_Firmware/App/Comm/CommandDispatcher.h
         ../EmbeddedDSP_Firmware/App/Comm/UsbTx.h
+        ../EmbeddedDSP_Firmware/App/Storage/PresetStore.h
+        ../EmbeddedDSP_Firmware/App/Storage/PresetStore.cpp
         ../EmbeddedDSP_Firmware/App/DSP/MasterVolume.h
         ../EmbeddedDSP_Firmware/App/DSP/FxChain.h
         ../EmbeddedDSP_Firmware/App/Comm/ManifestBuilder.h

@@ -65,6 +65,7 @@ qt_add_executable(EmbeddedDSP_Host
     UI/Effects/EffectDragHandle.h UI/Effects/EffectDragHandle.cpp
     UI/Effects/EffectRack.h UI/Effects/EffectRack.cpp
     UI/Effects/MasterVolumeControl.h UI/Effects/MasterVolumeControl.cpp
+    UI/Effects/PresetBar.h UI/Effects/PresetBar.cpp
 )
 
 qt_add_resources(EmbeddedDSP_Host "styles"

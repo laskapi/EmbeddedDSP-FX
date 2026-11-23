@@ -1,12 +1,9 @@
 #ifndef EMBEDDEDDSP_DYNAMIC_AUDIO_EFFECT_CONCEPT_H
 #define EMBEDDEDDSP_DYNAMIC_AUDIO_EFFECT_CONCEPT_H
 
-#include <stdint.h>
+#include "DSP/FxLimits.h"
 
 namespace App::Dsp {
-
-/// @brief How many params one effect may expose.
-inline constexpr uint8_t kMaxEffectParams = 8;
 
 /// @brief Name, range, default and unit for one knob (goes into the manifest).
 struct EffectParam {

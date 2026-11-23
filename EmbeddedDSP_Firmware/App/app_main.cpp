@@ -5,6 +5,7 @@
 #include "Comm/UsbRx.h"
 #include "Comm/UsbTx.h"
 #include "Comm/CommandDispatcher.h"
+#include "Storage/PresetStore.h"
 
 #include <cstdint>
 
@@ -16,10 +17,11 @@ namespace
 
     Audio::I2sDma i2sDma{};
     Dsp::FxChain fxChain{Protocol::SAMPLE_RATE_HZ};
+    Storage::PresetStore presetStore{};
 
     Comm::UsbRx usbRx{};
     Comm::UsbTx usbTx{};
-    Comm::CommandDispatcher commandDispatcher{fxChain, usbTx};
+    Comm::CommandDispatcher commandDispatcher{fxChain, usbTx, presetStore};
 }
 
 extern "C" {
@@ -46,6 +48,12 @@ void on_i2s_dma_full(void)
 void app_main(void)
 {
     APP_LOG("Firmware starting...");
+
+    presetStore.init();
+    Dsp::ChainSettings bootSettings{};
+    if (presetStore.load(presetStore.activePreset(), bootSettings)) {
+        (void)fxChain.applySettings(bootSettings);
+    }
 
     i2sDma.start();
 

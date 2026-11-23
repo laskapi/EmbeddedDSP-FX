@@ -100,17 +100,10 @@ void EffectItem::setupEffect(int effectTypeId) {
 }
 
 void EffectItem::applyEffectType(int effectTypeId) {
-    if (m_typeCombo
-        && m_typeCombo->currentIndex() >= 0
-        && m_typeCombo->currentData().toInt() == effectTypeId) {
-        return;
-    }
-
     const int index = m_typeCombo ? m_typeCombo->findData(effectTypeId) : -1;
-    if (index == -1) {
+    if (index < 0) {
         return;
     }
-
     m_typeCombo->blockSignals(true);
     m_typeCombo->setCurrentIndex(index);
     m_typeCombo->blockSignals(false);

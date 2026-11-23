@@ -19,6 +19,7 @@ enum class Command : uint8_t {
     ReportBypass        = 0x03,
     ManifestFollows     = 0x04, ///< Next bytes are null-terminated manifest text.
     ReportMasterVolume  = 0x05,
+    ReportActivePreset  = 0x06, ///< slotId = active user preset index (0..kUserPresetCount-1).
 
     // --- 0x10–0x1F: host → device ---
     // 0x10 reserved empty
@@ -31,7 +32,9 @@ enum class Command : uint8_t {
     GetState            = 0x17, ///< Full Manifest + reports from MCU.
     SetMasterVolume     = 0x18, ///< Gain 0..1 in value(); no Report* echo while dragging.
     GetParam            = 0x19, ///< → ReportParam (slotId + paramId).
-    GetMasterVolume     = 0x1A  ///< → ReportMasterVolume.
+    GetMasterVolume     = 0x1A, ///< → ReportMasterVolume.
+    SavePreset          = 0x1B, ///< slotId = preset index; persist current chain.
+    LoadPreset          = 0x1C  ///< slotId = preset index; apply + full sync reports.
 };
 
 #pragma pack(push, 1)

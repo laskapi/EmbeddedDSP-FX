@@ -124,6 +124,22 @@ void AppController::moveEffect(int fromSlot, int toSlot) {
     m_ackGuard.expectEffectTypesAll();
 }
 
+void AppController::savePreset(int presetId) {
+    ::Protocol::ControlPacket pkt;
+    pkt.command = ::Protocol::Command::SavePreset;
+    pkt.slotId = toProtocolByte(presetId);
+    pkt.setValue(0.0f);
+    dispatchControlPacket(pkt);
+}
+
+void AppController::loadPreset(int presetId) {
+    ::Protocol::ControlPacket pkt;
+    pkt.command = ::Protocol::Command::LoadPreset;
+    pkt.slotId = toProtocolByte(presetId);
+    pkt.setValue(0.0f);
+    dispatchControlPacket(pkt);
+}
+
 void AppController::sendDebouncedGetParam(Protocol::ControlPacket pkt) {
     dispatchControlPacket(pkt);
     m_ackGuard.expectParam(static_cast<int>(pkt.slotId), static_cast<int>(pkt.paramId));
@@ -197,6 +213,9 @@ void AppController::onReportPacket(const Protocol::ControlPacket& pkt) {
     case Command::ReportMasterVolume:
         m_ackGuard.onReportMasterVolume();
         emit masterVolumeUpdated(pkt.value());
+        break;
+    case Command::ReportActivePreset:
+        emit activePresetUpdated(static_cast<int>(pkt.slotId));
         break;
     default:
         break;

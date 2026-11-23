@@ -117,6 +117,52 @@ void DemoDevice::emitMasterVolumeReport() {
     emit controlPacketReady(masterPkt);
 }
 
+void DemoDevice::emitActivePresetReport() {
+    ::Protocol::ControlPacket pkt;
+    pkt.command = ::Protocol::Command::ReportActivePreset;
+    pkt.slotId = static_cast<uint8_t>(m_activePreset);
+    pkt.setValue(0.0f);
+    emit controlPacketReady(pkt);
+}
+
+void DemoDevice::emitChainState() {
+    for (int i = 0; i < kSlots; ++i) {
+        emitSlotReports(i);
+    }
+    emitMasterVolumeReport();
+    emitActivePresetReport();
+}
+
+void DemoDevice::emitFullState() {
+    const auto manifest = Demo::getDemoManifest();
+    emit manifestReady(manifest);
+    emitChainState();
+    m_simulator->start();
+}
+
+void DemoDevice::savePreset(int presetId) {
+    PresetSnapshot snap;
+    snap.masterGain = m_masterGain;
+    snap.slotStates = m_slots;
+    m_presets[static_cast<std::size_t>(presetId)] = snap;
+    m_activePreset = presetId;
+}
+
+bool DemoDevice::loadPreset(int presetId) {
+    if (presetId < 0 || presetId >= kPresetCount) {
+        return false;
+    }
+    m_activePreset = presetId;
+    const auto& opt = m_presets[static_cast<std::size_t>(presetId)];
+    if (!opt.has_value()) {
+        resetSlotsToEmpty();
+        return true;
+    }
+    m_masterGain = opt->masterGain;
+    m_slots = opt->slotStates;
+    return true;
+}
+
 bool DemoDevice::writeControlPacket(const Protocol::ControlPacket& pkt) {
     if (!m_isOpen) {
         return false;
@@ -125,17 +171,9 @@ bool DemoDevice::writeControlPacket(const Protocol::ControlPacket& pkt) {
     using ::Protocol::Command;
 
     switch (pkt.command) {
-    case Command::GetState: {
-        const auto manifest = Demo::getDemoManifest();
-        emit manifestReady(manifest);
-
-        for (int i = 0; i < kSlots; ++i) {
-            emitSlotReports(i);
-        }
-        emitMasterVolumeReport();
-        m_simulator->start();
+    case Command::GetState:
+        emitFullState();
         break;
-    }
     case Command::SetEffectType: {
         const int slot = pkt.slotId;
         if (slot < 0 || slot >= kSlots) {
@@ -213,6 +251,25 @@ bool DemoDevice::writeControlPacket(const Protocol::ControlPacket& pkt) {
     case Command::GetMasterVolume:
         emitMasterVolumeReport();
         break;
+    case Command::SavePreset: {
+        const int presetId = pkt.slotId;
+        if (presetId < 0 || presetId >= kPresetCount) {
+            break;
+        }
+        savePreset(presetId);
+        emitActivePresetReport();
+        break;
+    }
+    case Command::LoadPreset: {
+        const int presetId = pkt.slotId;
+        if (presetId < 0 || presetId >= kPresetCount) {
+            break;
+        }
+        if (loadPreset(presetId)) {
+            emitChainState();
+        }
+        break;
+    }
     default:
         break;
     }

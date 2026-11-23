@@ -3,6 +3,7 @@
 #include "Comm/UsbRx.h"
 #include "Comm/UsbTx.h"
 #include "Comm/CommandDispatcher.h"
+#include "Storage/PresetStore.h"
 #include "DSP/MasterVolume.h"
 #include "Protocol/ProtocolCommon.h"
 #include "DSP/FxChain.h"
@@ -23,6 +24,7 @@ using App::Dsp::EmptyEffect;
 using App::Comm::UsbRx;
 using App::Comm::UsbTx;
 using App::Comm::CommandDispatcher;
+using App::Storage::PresetStore;
 
 namespace {
 
@@ -36,11 +38,15 @@ uint8_t captureTransmit(uint8_t* buf, uint16_t len) {
 /// UsbRx + dispatcher + UsbTx with captured TX chunks.
 struct ControlRxFixture {
     FxChain chain{SAMPLE_RATE_HZ};
+    PresetStore presets{};
     UsbRx usbRx{};
     UsbTx usbTx{&captureTransmit};
-    CommandDispatcher dispatcher{chain, usbTx};
+    CommandDispatcher dispatcher{chain, usbTx, presets};
 
-    ControlRxFixture() { g_txChunks.clear(); }
+    ControlRxFixture() {
+        g_txChunks.clear();
+        presets.init();
+    }
 
     void feed(const uint8_t* data, std::size_t length) {
         usbRx.onBytesReceived(data, length);
@@ -227,6 +233,7 @@ TEST(ControlRxTest, GetStateSyncViaUsbTx) {
 
     bool sawEffectType = false;
     bool sawMasterVolume = false;
+    bool sawActivePreset = false;
     for (const auto& chunk : g_txChunks) {
         if (chunk.size() != sizeof(ControlPacket)) {
             continue; // manifest text slice
@@ -244,9 +251,14 @@ TEST(ControlRxTest, GetStateSyncViaUsbTx) {
             sawMasterVolume = true;
             EXPECT_FLOAT_EQ(pkt.value(), MasterVolume::kDefaultGain);
         }
+        if (pkt.command == Command::ReportActivePreset) {
+            sawActivePreset = true;
+            EXPECT_EQ(pkt.slotId, 0);
+        }
     }
     EXPECT_TRUE(sawEffectType);
     EXPECT_TRUE(sawMasterVolume);
+    EXPECT_TRUE(sawActivePreset);
 
     bool sawNoneInManifest = false;
     for (const auto& chunk : g_txChunks) {
@@ -398,6 +410,64 @@ TEST(ControlRxTest, GetMasterVolumeEnqueuesReport) {
     std::memcpy(&pkt, g_txChunks.front().data(), sizeof(pkt));
     EXPECT_EQ(pkt.command, Command::ReportMasterVolume);
     EXPECT_FLOAT_EQ(pkt.value(), 0.33f);
+}
+
+TEST(ControlRxTest, LoadEmptyPresetClearsChain) {
+    ControlRxFixture fx;
+    fx.chain.setEffectByIndex(0, DelayEffect::Id);
+    fx.chain.setMasterGain(0.25f);
+
+    ControlPacket load{};
+    load.command = Command::LoadPreset;
+    load.slotId = 2; // never saved
+    load.applyCRC();
+    const auto* loadBytes = reinterpret_cast<const uint8_t*>(&load);
+    fx.feed(loadBytes, sizeof(ControlPacket));
+    fx.process();
+
+    EXPECT_EQ(fx.presets.activePreset(), 2);
+    EXPECT_FALSE(fx.usbTx.isSyncActive());
+    EXPECT_TRUE(std::holds_alternative<EmptyEffect>(fx.chain.slot(0)));
+    EXPECT_FLOAT_EQ(fx.chain.masterGain(), App::Dsp::ChainSettings::kDefaultMasterGain);
+}
+
+TEST(ControlRxTest, SaveAndLoadPresetRoundTrip) {
+    ControlRxFixture fx;
+    fx.chain.setEffectByIndex(0, OverdriveEffect::Id);
+    fx.chain.setMasterGain(0.61f);
+    std::visit([](auto& effect) { effect.setParamValue(0, 4.25f); }, fx.chain.slot(0));
+
+    ControlPacket save{};
+    save.command = Command::SavePreset;
+    save.slotId = 3;
+    save.applyCRC();
+    const auto* saveBytes = reinterpret_cast<const uint8_t*>(&save);
+    fx.feed(saveBytes, sizeof(ControlPacket));
+    fx.process();
+    EXPECT_EQ(fx.presets.activePreset(), 3);
+
+    fx.chain.setEffectByIndex(0, EmptyEffect::Id);
+    fx.chain.setMasterGain(0.1f);
+
+    ControlPacket load{};
+    load.command = Command::LoadPreset;
+    load.slotId = 3;
+    load.applyCRC();
+    const auto* loadBytes = reinterpret_cast<const uint8_t*>(&load);
+    fx.feed(loadBytes, sizeof(ControlPacket));
+    fx.process();
+
+    EXPECT_FALSE(fx.usbTx.isSyncActive());
+    EXPECT_FLOAT_EQ(fx.chain.masterGain(), 0.61f);
+    EXPECT_TRUE(std::holds_alternative<OverdriveEffect>(fx.chain.slot(0)));
+    std::visit([](auto& effect) {
+        using T = std::decay_t<decltype(effect)>;
+        if constexpr (std::is_same_v<T, OverdriveEffect>) {
+            EXPECT_FLOAT_EQ(effect.paramValue(0), 4.25f);
+        } else {
+            FAIL() << "Expected OverdriveEffect after LoadPreset";
+        }
+    }, fx.chain.slot(0));
 }
 
 TEST(ControlRxTest, BypassToggleSetsAbsoluteAndReports) {

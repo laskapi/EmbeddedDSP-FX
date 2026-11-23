@@ -61,6 +61,8 @@ add_executable(${CMAKE_PROJECT_NAME}
         App/SharedBuffer.h
         App/SpscQueue.h
         App/DSP/DelayEffect.h
+        App/DSP/FxLimits.h
+        App/DSP/ChainSettings.h
         App/DSP/FxChain.h
         App/Comm/ManifestBuilder.h
         App/DSP/AudioEffectConcept.h
@@ -74,6 +76,8 @@ add_executable(${CMAKE_PROJECT_NAME}
         App/Comm/UsbRx.h
         App/Comm/CommandDispatcher.h
         App/Comm/UsbTx.h
+        App/Storage/PresetStore.h
+        App/Storage/PresetStore.cpp
 
         # Shared Protocols (Contract)
         ../EmbeddedDSP_Shared/Protocol/ControlPacket.h

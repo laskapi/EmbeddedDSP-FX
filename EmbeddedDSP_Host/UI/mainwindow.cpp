@@ -2,6 +2,7 @@
 #include "UI/ConnectionToolbar.h"
 #include "UI/Effects/EffectRack.h"
 #include "UI/Effects/MasterVolumeControl.h"
+#include "UI/Effects/PresetBar.h"
 #include "UI/Spectrum/SpectrumPanel.h"
 #include "Core/AppController.h"
 #include <QHBoxLayout>
@@ -51,6 +52,7 @@ MainWindow::~MainWindow() {
 
 void MainWindow::setupUiLayout() {
     m_connectionToolbar = new ConnectionToolbar(m_appController, this);
+    m_presetBar = new Effects::PresetBar(m_appController, this);
     m_spectrumPanel = new Spectrum::SpectrumPanel(m_appController, this);
     m_effectsRack = new Effects::EffectRack(m_appController, this);
     m_masterVolume = new Effects::MasterVolumeControl(m_appController, this);
@@ -73,6 +75,7 @@ void MainWindow::setupUiLayout() {
     layout->setSpacing(4);
 
     layout->addWidget(m_connectionToolbar);
+    layout->addWidget(m_presetBar);
     layout->addWidget(m_spectrumPanel, 1);
     layout->addWidget(m_fxStrip);
 
@@ -83,6 +86,10 @@ void MainWindow::setupUiLayout() {
 
 void MainWindow::animateFxStrip(bool show) {
     if (show) {
+        // Intro only when strip is collapsed (avoid re-animating on accidental rackReady).
+        if (m_fxStrip->maximumHeight() > 0) {
+            return;
+        }
         // Wait for layout to process new items before measuring
         QTimer::singleShot(0, this, [this]() {
             const int rackH = m_effectsRack->sizeHint().height();

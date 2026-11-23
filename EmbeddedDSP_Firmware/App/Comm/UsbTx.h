@@ -32,7 +32,7 @@ public:
         : m_transmit(transmit) {}
 
     /// @brief Starts GetState reply and enables host audio streaming.
-    void beginSync(App::Dsp::FxChain& chain) noexcept {
+    void beginSync(App::Dsp::FxChain& chain, uint8_t activePreset = 0) noexcept {
         if (m_phase != Phase::Idle) {
             return;
         }
@@ -41,8 +41,8 @@ public:
         using enum App::SharedBuffer::Owner;
         assert(App::g_sharedBuffer.acquire(Manifest));
         const auto manifestBuf = App::g_sharedBuffer.get<char>(Manifest);
-        m_manifestSize = writeManifest(manifestBuf, App::Dsp::FxChain::kMaxEffectSlots);
-        enqueueAllReports(chain);
+        m_manifestSize = writeManifest(manifestBuf, App::Dsp::kMaxEffectSlots);
+        enqueueAllReports(chain, activePreset);
         m_phase = Phase::Marker;
     }
 
@@ -54,7 +54,7 @@ public:
 
     /// @brief Queues ReportEffectType + Bypass + Params for one slot (Idle only).
     void enqueueSlotReports(App::Dsp::FxChain& chain, uint8_t slotId) noexcept {
-        if (isSyncActive() || slotId >= App::Dsp::FxChain::kMaxEffectSlots) {
+        if (isSyncActive() || slotId >= App::Dsp::kMaxEffectSlots) {
             return;
         }
         enqueueSlotReportsUnchecked(chain, slotId);
@@ -62,7 +62,7 @@ public:
 
     /// @brief Queues ReportBypass for one slot (Idle only).
     void enqueueBypassReport(uint8_t slotId, bool bypassed) noexcept {
-        if (isSyncActive() || slotId >= App::Dsp::FxChain::kMaxEffectSlots) {
+        if (isSyncActive() || slotId >= App::Dsp::kMaxEffectSlots) {
             return;
         }
         pushReport(Protocol::Command::ReportBypass, slotId, 0, bypassed ? 1.0f : 0.0f);
@@ -78,10 +78,30 @@ public:
 
     /// @brief Queues one ReportParam (Idle only; used by GetParam).
     void enqueueParamReport(uint8_t slotId, uint8_t paramId, float value) noexcept {
-        if (isSyncActive() || slotId >= App::Dsp::FxChain::kMaxEffectSlots) {
+        if (isSyncActive() || slotId >= App::Dsp::kMaxEffectSlots) {
             return;
         }
         pushReport(Protocol::Command::ReportParam, slotId, paramId, value);
+    }
+
+    /// @brief Queues ReportActivePreset (Idle only).
+    void enqueueActivePresetReport(uint8_t presetId) noexcept {
+        if (isSyncActive()) {
+            return;
+        }
+        pushReport(Protocol::Command::ReportActivePreset, presetId, 0, 0.0f);
+    }
+
+    /// @brief Queues all slot/master/activePreset Report* without manifest (Idle only).
+    void enqueueAllReports(App::Dsp::FxChain& chain, uint8_t activePreset = 0) noexcept {
+        if (isSyncActive()) {
+            return;
+        }
+        for (uint8_t slotId = 0; slotId < App::Dsp::kMaxEffectSlots; ++slotId) {
+            enqueueSlotReportsUnchecked(chain, slotId);
+        }
+        pushReport(Protocol::Command::ReportMasterVolume, 0, 0, chain.masterGain());
+        pushReport(Protocol::Command::ReportActivePreset, activePreset, 0, 0.0f);
     }
 
     /// @brief Zero-copy audio slot; drops oldest frame if the ring is full.
@@ -225,13 +245,6 @@ private:
                 pushReport(Protocol::Command::ReportParam, slotId, p, fx.paramValue(p));
             }
         }, chain.slot(slotId));
-    }
-
-    void enqueueAllReports(App::Dsp::FxChain& chain) noexcept {
-        for (uint8_t slotId = 0; slotId < App::Dsp::FxChain::kMaxEffectSlots; ++slotId) {
-            enqueueSlotReportsUnchecked(chain, slotId);
-        }
-        pushReport(Protocol::Command::ReportMasterVolume, 0, 0, chain.masterGain());
     }
 
     TransmitFn m_transmit;

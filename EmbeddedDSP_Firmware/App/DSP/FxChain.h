@@ -3,6 +3,7 @@
 
 #include "DSP/MasterVolume.h"
 #include "DSP/AudioEffectConcept.h"
+#include "DSP/ChainSettings.h"
 #include "DSP/EmptyEffect.h"
 #include "DSP/DelayEffect.h"
 #include "DSP/OverdriveEffect.h"
@@ -19,21 +20,6 @@ using EffectVariant = std::variant<EmptyEffect, DelayEffect, OverdriveEffect>;
 /// @brief FX slots plus fixed master volume as the last processing step.
 class FxChain {
 public:
-    /// @brief Firmware rack capacity (emitted as manifest C:SLOTS).
-    static constexpr std::size_t kMaxEffectSlots = 4;
-
-    /// @brief Persisted chain state (flash-friendly POD; not wired to flash yet).
-    struct Settings {
-        static constexpr uint32_t kMagic = 0x44535046; // "DSPF" — DSP FX blob tag
-        uint32_t magic;
-        uint8_t slotCount;
-        struct SlotData {
-            uint8_t effectId;
-            bool bypassed;
-            float params[kMaxEffectParams];
-        } slots[kMaxEffectSlots];
-    };
-
     explicit FxChain(float sampleRate) noexcept
         : m_sampleRate(sampleRate) {}
 
@@ -63,7 +49,9 @@ public:
 
     /// @brief Replaces the effect in a slot by effect id.
     void setEffectByIndex(std::size_t slotId, std::size_t effectId) {
-        if (slotId >= kMaxEffectSlots) return;
+        if (slotId >= kMaxEffectSlots) {
+            return;
+        }
 
         auto trySet = [&]<typename T>() {
             if (T::Id == effectId) {
@@ -78,17 +66,19 @@ public:
         }(std::make_index_sequence<std::variant_size_v<EffectVariant>>{});
     }
 
-    /// @brief Snapshots current chain into Settings.
-    [[nodiscard]] Settings captureSettings() const {
-        Settings s{};
-        s.magic = Settings::kMagic;
+    /// @brief Snapshots current chain into ChainSettings.
+    [[nodiscard]] ChainSettings captureSettings() const {
+        ChainSettings s{};
+        s.magic = ChainSettings::kMagic;
+        s.version = ChainSettings::kVersion;
         s.slotCount = static_cast<uint8_t>(kMaxEffectSlots);
+        s.masterGain = m_master.gain();
 
         for (uint8_t i = 0; i < kMaxEffectSlots; ++i) {
             std::visit([&s, i](auto& fx) {
                 using T = std::decay_t<decltype(fx)>;
                 s.slots[i].effectId = T::Id;
-                s.slots[i].bypassed = fx.isBypassed();
+                s.slots[i].bypassed = fx.isBypassed() ? 1u : 0u;
 
                 std::fill(std::begin(s.slots[i].params), std::end(s.slots[i].params), 0.0f);
                 for (uint8_t p = 0; p < T::ParamCount && p < kMaxEffectParams; ++p) {
@@ -99,20 +89,24 @@ public:
         return s;
     }
 
-    /// @brief Restores chain from Settings.
-    void applySettings(const Settings& s) {
-        if (s.magic != Settings::kMagic) return;
+    /// @brief Restores chain from ChainSettings.
+    [[nodiscard]] bool applySettings(const ChainSettings& s) {
+        if (s.magic != ChainSettings::kMagic || s.version != ChainSettings::kVersion) {
+            return false;
+        }
 
         for (uint8_t i = 0; i < kMaxEffectSlots; ++i) {
             setEffectByIndex(i, s.slots[i].effectId);
 
             std::visit([&s, i](auto& fx) {
-                fx.setBypassed(s.slots[i].bypassed);
+                fx.setBypassed(s.slots[i].bypassed != 0);
                 for (uint8_t p = 0; p < kMaxEffectParams; ++p) {
                     fx.setParamValue(p, s.slots[i].params[p]);
                 }
             }, m_slots[i]);
         }
+        m_master.setGain(s.masterGain);
+        return true;
     }
 
     void clearSlot(std::size_t slotIndex) noexcept {

@@ -8,6 +8,7 @@ namespace Host::UI {
     namespace Effects {
     class EffectRack;
     class MasterVolumeControl;
+    class PresetBar;
     }
     namespace Spectrum { class SpectrumPanel; }
     class ConnectionToolbar;
@@ -28,12 +29,11 @@ public:
 private:
     void setupUiLayout();
     void animateFxStrip(bool show);
-    
-    // State and Logic
+
     Core::AppController& m_appController;
 
-    // UI Components
     ConnectionToolbar *m_connectionToolbar{nullptr};
+    Effects::PresetBar *m_presetBar{nullptr};
     Spectrum::SpectrumPanel *m_spectrumPanel{nullptr};
     QWidget *m_fxStrip{nullptr};
     Effects::EffectRack *m_effectsRack{nullptr};

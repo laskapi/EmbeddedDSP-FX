@@ -22,6 +22,10 @@ inline constexpr char kMasterVolumeTitle[] = "masterVolumeTitle";
 inline constexpr char kMasterVolumeSlider[] = "masterVolumeSlider";
 inline constexpr char kMasterVolumeValue[] = "masterVolumeValue";
 
+inline constexpr char kPresetBar[] = "presetBar";
+inline constexpr char kPresetButton[] = "presetButton";
+inline constexpr char kPresetSaveButton[] = "presetSaveButton";
+
 } // namespace Host::UI::UiObjectNames
 
 #endif // EMBEDDEDDSP_HOST_UIOBJECTNAMES_H

@@ -53,11 +53,16 @@
 ENTRY(Reset_Handler)
 
 /* Specify the memory areas */
+/* App flash: sectors 0–6 (384K). Sector 7 (128K @ 0x08060000) reserved for user presets. */
 MEMORY
 {
 RAM (xrw)      : ORIGIN = 0x20000000, LENGTH = 128K
-FLASH (rx)      : ORIGIN = 0x8000000, LENGTH = 512K
+FLASH (rx)      : ORIGIN = 0x08000000, LENGTH = 384K
+FLASH_USER (r)  : ORIGIN = 0x08060000, LENGTH = 128K
 }
+
+_flash_user_start = ORIGIN(FLASH_USER);
+_flash_user_end   = ORIGIN(FLASH_USER) + LENGTH(FLASH_USER);
 
 /* Highest address of the user mode stack */
 _estack = ORIGIN(RAM) + LENGTH(RAM);    /* end of RAM */

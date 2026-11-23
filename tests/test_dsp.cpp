@@ -63,3 +63,25 @@ TEST(FxChainTest, SlotManagement) {
         EXPECT_EQ(std::decay_t<decltype(fx)>::Id, 2);
     }, chain.slot(0));
 }
+
+TEST(FxChainTest, SettingsRoundTrip) {
+    FxChain chain{Protocol::SAMPLE_RATE_HZ};
+    chain.setEffectByIndex(1, DelayEffect::Id);
+    chain.setMasterGain(0.47f);
+    std::visit([](auto& fx) {
+        fx.setBypassed(true);
+        fx.setParamValue(0, 0.22f);
+    }, chain.slot(1));
+
+    const auto snap = chain.captureSettings();
+    EXPECT_EQ(snap.magic, App::Dsp::ChainSettings::kMagic);
+
+    FxChain restored{Protocol::SAMPLE_RATE_HZ};
+    ASSERT_TRUE(restored.applySettings(snap));
+    EXPECT_FLOAT_EQ(restored.masterGain(), 0.47f);
+    EXPECT_TRUE(std::holds_alternative<DelayEffect>(restored.slot(1)));
+    std::visit([](auto& fx) {
+        EXPECT_TRUE(fx.isBypassed());
+        EXPECT_FLOAT_EQ(fx.paramValue(0), 0.22f);
+    }, restored.slot(1));
+}
