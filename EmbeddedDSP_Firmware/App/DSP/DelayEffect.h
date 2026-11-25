@@ -17,8 +17,14 @@ public:
     static constexpr uint8_t ParamCount = 3;
     static_assert(ParamCount <= kMaxEffectParams);
 
+    /// @brief Usable delay-line length (leave 2 samples for linear interpolation).
+    static constexpr int kMaxDelaySamples =
+        static_cast<int>(App::SharedBuffer::kCapacity / sizeof(float)) - 2;
+    static constexpr float kMaxTimeSec =
+        static_cast<float>(kMaxDelaySamples) / Protocol::SAMPLE_RATE_HZ;
+
     static constexpr EffectParam Params[ParamCount] = {
-        {"Time", 0.01f, 1.0f, 0.5f, "s"},
+        {"Time", 0.01f, kMaxTimeSec, 0.25f, "s"},
         {"Feedback", 0.0f, 0.95f, 0.3f},
         {"Mix", 0.0f, 1.0f, 0.4f}
     };
@@ -44,37 +50,39 @@ public:
     void process(float& left, float& right) noexcept {
         if (m_bypassed) return;
 
-        if (!App::g_sharedBuffer.acquire(App::SharedBuffer::Owner::Delay)) {
+        const auto buffer = App::g_sharedBuffer.acquire<float>(App::SharedBuffer::Owner::Delay);
+        if (!buffer) {
             m_needsClear = true;
             return; // dry while Manifest owns the arena
         }
 
-        const auto line = App::g_sharedBuffer.get<float>(App::SharedBuffer::Owner::Delay);
-        float* const buffer = line.data;
-        const int capacity = static_cast<int>(line.count);
+        const int capacity = static_cast<int>(buffer.count);
 
         if (m_needsClear) {
-            std::memset(buffer, 0, line.count * sizeof(float));
+            std::memset(buffer.data, 0, buffer.count * sizeof(float));
             m_writePos = 0;
             m_needsClear = false;
         }
 
-        float delaySamples = m_time * m_sampleRate;
+        const float delaySamples = m_time * m_sampleRate;
         float readPos = static_cast<float>(m_writePos) - delaySamples;
+        if (readPos < 0.0f) {
+            readPos += static_cast<float>(capacity);
+        }
 
-        while (readPos < 0.0f) readPos += static_cast<float>(capacity);
+        const int i0 = static_cast<int>(readPos);
+        const int i1 = (i0 + 1) % capacity;
+        const float frac = readPos - static_cast<float>(i0);
 
-        int i0 = static_cast<int>(readPos);
-        int i1 = (i0 + 1) % capacity;
-        float frac = readPos - static_cast<float>(i0);
+        const float delayed = buffer.data[i0] * (1.0f - frac) + buffer.data[i1] * frac;
+        const float input = 0.5f * (left + right);
 
-        float delayed = buffer[i0] * (1.0f - frac) + buffer[i1] * frac;
-
-        buffer[m_writePos] = left + (delayed * m_feedback);
+        buffer.data[m_writePos] = input + (delayed * m_feedback);
         m_writePos = (m_writePos + 1) % capacity;
 
-        left = (left * (1.0f - m_mix)) + (delayed * m_mix);
-        right = left; // mono delay output
+        const float out = (input * (1.0f - m_mix)) + (delayed * m_mix);
+        left = out;
+        right = out;
     }
 
     void setParamValue(uint8_t id, float val) noexcept {
@@ -97,7 +105,7 @@ public:
 private:
     int m_writePos{0};
     float m_sampleRate{};
-    float m_time{0.5f};
+    float m_time{0.25f};
     float m_feedback{0.3f};
     float m_mix{0.4f};
     bool m_bypassed{false};

@@ -39,8 +39,8 @@ public:
         m_audioStreamEnabled = true;
         clearReports();
         using enum App::SharedBuffer::Owner;
-        assert(App::g_sharedBuffer.acquire(Manifest));
-        const auto manifestBuf = App::g_sharedBuffer.get<char>(Manifest);
+        const auto manifestBuf = App::g_sharedBuffer.acquire<char>(Manifest);
+        assert(manifestBuf);
         m_manifestSize = writeManifest(manifestBuf, App::Dsp::kMaxEffectSlots);
         enqueueAllReports(chain, activePreset);
         m_phase = Phase::Marker;
@@ -137,7 +137,9 @@ public:
                     break;
                 }
                 case Phase::Manifest: {
-                    const auto arena = App::g_sharedBuffer.get(App::SharedBuffer::Owner::Manifest);
+                    const auto arena =
+                        App::g_sharedBuffer.acquire(App::SharedBuffer::Owner::Manifest);
+                    assert(arena);
                     m_pending = Pending::from(arena.data, m_manifestSize + 1); // + '\0'
                     flushPending(m_pending);
                     break;

@@ -1,6 +1,7 @@
 #ifndef EMBEDDEDDSP_FIRMWARE_MASTER_VOLUME_H
 #define EMBEDDEDDSP_FIRMWARE_MASTER_VOLUME_H
 
+#include "DSP/OnePoleLpf.h"
 #include "Protocol/ProtocolCommon.h"
 #include <algorithm>
 
@@ -13,10 +14,14 @@ public:
     static constexpr float kMinGain = 0.0f;
     static constexpr float kMaxGain = 1.0f;
 
-    /// @brief One-pole toward target; ~10 ms (alpha ≈ 1 - exp(-1/(tau*fs))).
-    static constexpr float kSmoothingTimeSec = 0.010f;
-    static constexpr float kSmoothingAlpha =
-        1.0f / (kSmoothingTimeSec * Protocol::SAMPLE_RATE_HZ);
+    MasterVolume() noexcept {
+        updateSampleRate(Protocol::SAMPLE_RATE_HZ);
+        m_smooth.reset(kDefaultGain);
+    }
+
+    void updateSampleRate(float sampleRate) noexcept {
+        m_smooth.setParamSmoothSampleRate(sampleRate);
+    }
 
     /// @brief Commanded gain (wire / UI); not the mid-ramp value.
     [[nodiscard]] float gain() const noexcept { return m_target; }
@@ -27,14 +32,14 @@ public:
 
     /// @brief Applies smoothed master gain to one stereo sample.
     void apply(float& left, float& right) noexcept {
-        m_current += kSmoothingAlpha * (m_target - m_current);
-        left *= m_current;
-        right *= m_current;
+        const float g = m_smooth.process(m_target);
+        left *= g;
+        right *= g;
     }
 
 private:
     float m_target{kDefaultGain};
-    float m_current{kDefaultGain};
+    OnePoleLpf m_smooth;
 };
 
 } // namespace App::Dsp

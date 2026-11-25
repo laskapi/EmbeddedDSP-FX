@@ -1,11 +1,15 @@
 #include <gtest/gtest.h>
 #include "DSP/OverdriveEffect.h"
 #include "DSP/DelayEffect.h"
+#include "DSP/TremoloEffect.h"
+#include "DSP/BitcrusherEffect.h"
 #include "DSP/FxChain.h"
 #include "Protocol/ProtocolCommon.h"
 
 using App::Dsp::OverdriveEffect;
 using App::Dsp::DelayEffect;
+using App::Dsp::TremoloEffect;
+using App::Dsp::BitcrusherEffect;
 using App::Dsp::FxChain;
 
 TEST(OverdriveTest, ClippingLogic) {
@@ -25,10 +29,27 @@ TEST(OverdriveTest, ClippingLogic) {
 
     overdrive.process(left, right);
 
-    // Hard clip asymptote ≈ 2/3 for this drive curve.
-    EXPECT_LT(left, 0.7f);
-    EXPECT_GT(left, 0.6f);
+    // Hard clip asymptote ≈ 2/3, then × default Level 0.7 → ≈ 0.467.
+    EXPECT_NEAR(left, (2.0f / 3.0f) * 0.7f, 0.02f);
     EXPECT_NEAR(left, right, 0.0001f);
+}
+
+TEST(OverdriveTest, LevelScalesOutputAfterClip) {
+    OverdriveEffect od{Protocol::SAMPLE_RATE_HZ};
+    od.setParamValue(0, 20.0f);
+    od.setParamValue(1, 1.0f);
+    od.setParamValue(2, 0.5f);
+
+    for (int i = 0; i < 500; ++i) {
+        float l = 1.0f;
+        float r = 1.0f;
+        od.process(l, r);
+    }
+
+    float left = 1.0f;
+    float right = 1.0f;
+    od.process(left, right);
+    EXPECT_NEAR(left, (2.0f / 3.0f) * 0.5f, 0.02f);
 }
 
 TEST(DelayTest, SignalPassThroughAndFeedback) {
@@ -97,4 +118,37 @@ TEST(FxChainTest, RejectsSecondDelay) {
     // Same-slot Delay → Delay stays allowed.
     chain.setEffectByIndex(0, DelayEffect::Id);
     EXPECT_TRUE(std::holds_alternative<DelayEffect>(chain.slot(0)));
+}
+
+TEST(TremoloTest, DepthZeroIsUnityGain) {
+    TremoloEffect trem{Protocol::SAMPLE_RATE_HZ};
+    trem.setParamValue(0, 4.0f);
+    trem.setParamValue(1, 0.0f);
+
+    float left = 0.5f;
+    float right = -0.25f;
+    trem.process(left, right);
+    EXPECT_FLOAT_EQ(left, 0.5f);
+    EXPECT_FLOAT_EQ(right, -0.25f);
+}
+
+TEST(BitcrusherTest, MixZeroIsDry) {
+    BitcrusherEffect crush{Protocol::SAMPLE_RATE_HZ};
+    crush.setParamValue(0, 4.0f);
+    crush.setParamValue(1, 8.0f);
+    crush.setParamValue(3, 0.0f); // Mix
+
+    float left = 0.37f;
+    float right = -0.37f;
+    crush.process(left, right);
+    EXPECT_FLOAT_EQ(left, 0.37f);
+    EXPECT_FLOAT_EQ(right, -0.37f);
+}
+
+TEST(FxChainTest, CanPlaceTremoloAndBitcrusher) {
+    FxChain chain{Protocol::SAMPLE_RATE_HZ};
+    chain.setEffectByIndex(0, TremoloEffect::Id);
+    chain.setEffectByIndex(1, BitcrusherEffect::Id);
+    EXPECT_TRUE(std::holds_alternative<TremoloEffect>(chain.slot(0)));
+    EXPECT_TRUE(std::holds_alternative<BitcrusherEffect>(chain.slot(1)));
 }

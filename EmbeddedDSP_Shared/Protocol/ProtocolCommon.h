@@ -20,6 +20,8 @@ namespace EffectId {
 inline constexpr uint8_t Empty = 0x00;
 inline constexpr uint8_t Delay = 0x01;
 inline constexpr uint8_t Overdrive = 0x02;
+inline constexpr uint8_t Tremolo = 0x03;
+inline constexpr uint8_t Bitcrusher = 0x04;
 } // namespace EffectId
 
 } // namespace Protocol

@@ -7,6 +7,8 @@
 #include "DSP/EmptyEffect.h"
 #include "DSP/DelayEffect.h"
 #include "DSP/OverdriveEffect.h"
+#include "DSP/TremoloEffect.h"
+#include "DSP/BitcrusherEffect.h"
 #include <variant>
 #include <array>
 #include <algorithm>
@@ -15,20 +17,27 @@
 
 namespace App::Dsp {
 
-using EffectVariant = std::variant<EmptyEffect, DelayEffect, OverdriveEffect>;
+using EffectVariant = std::variant<EmptyEffect,
+                                   DelayEffect,
+                                   OverdriveEffect,
+                                   TremoloEffect,
+                                   BitcrusherEffect>;
 
 /// @brief FX slots plus fixed master volume as the last processing step.
 class FxChain {
 public:
     explicit FxChain(float sampleRate) noexcept
-        : m_sampleRate(sampleRate) {}
+        : m_sampleRate(sampleRate) {
+        m_master.updateSampleRate(m_sampleRate);
+    }
 
-    /// @brief Propagates a new sample rate to every slot (runtime SR change).
+    /// @brief Propagates a new sample rate to every slot and master (runtime SR change).
     void updateSampleRate(float sampleRate) noexcept {
         m_sampleRate = sampleRate;
         for (auto& slot : m_slots) {
             std::visit([this](auto& fx) { fx.updateSampleRate(m_sampleRate); }, slot);
         }
+        m_master.updateSampleRate(m_sampleRate);
     }
 
     /// @brief Runs all non-bypassed slot effects, then master volume.
