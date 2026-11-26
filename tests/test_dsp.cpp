@@ -3,6 +3,7 @@
 #include "DSP/DelayEffect.h"
 #include "DSP/TremoloEffect.h"
 #include "DSP/BitcrusherEffect.h"
+#include "DSP/EqEffect.h"
 #include "DSP/FxChain.h"
 #include "Protocol/ProtocolCommon.h"
 
@@ -10,6 +11,7 @@ using App::Dsp::OverdriveEffect;
 using App::Dsp::DelayEffect;
 using App::Dsp::TremoloEffect;
 using App::Dsp::BitcrusherEffect;
+using App::Dsp::EqEffect;
 using App::Dsp::FxChain;
 
 TEST(OverdriveTest, ClippingLogic) {
@@ -145,10 +147,34 @@ TEST(BitcrusherTest, MixZeroIsDry) {
     EXPECT_FLOAT_EQ(right, -0.37f);
 }
 
+TEST(EqTest, FlatGainsAreNearUnity) {
+    EqEffect eq{Protocol::SAMPLE_RATE_HZ};
+    // Defaults are 0 dB → identity coeffs.
+    float left = 0.25f;
+    float right = -0.25f;
+    eq.process(left, right);
+    EXPECT_FLOAT_EQ(left, 0.25f);
+    EXPECT_FLOAT_EQ(right, -0.25f);
+}
+
+TEST(EqTest, MidQParamRoundTrip) {
+    EqEffect eq{Protocol::SAMPLE_RATE_HZ};
+    eq.setParamValue(4, 2.5f);
+    EXPECT_FLOAT_EQ(eq.paramValue(4), 2.5f);
+    eq.setParamValue(4, 0.1f); // below min → clamp
+    EXPECT_FLOAT_EQ(eq.paramValue(4), EqEffect::Params[4].min);
+}
+
 TEST(FxChainTest, CanPlaceTremoloAndBitcrusher) {
     FxChain chain{Protocol::SAMPLE_RATE_HZ};
     chain.setEffectByIndex(0, TremoloEffect::Id);
     chain.setEffectByIndex(1, BitcrusherEffect::Id);
     EXPECT_TRUE(std::holds_alternative<TremoloEffect>(chain.slot(0)));
     EXPECT_TRUE(std::holds_alternative<BitcrusherEffect>(chain.slot(1)));
+}
+
+TEST(FxChainTest, CanPlaceEq) {
+    FxChain chain{Protocol::SAMPLE_RATE_HZ};
+    chain.setEffectByIndex(2, EqEffect::Id);
+    EXPECT_TRUE(std::holds_alternative<EqEffect>(chain.slot(2)));
 }

@@ -1,6 +1,7 @@
 #ifndef EMBEDDEDDSP_FIRMWARE_VIRTUAL_SOURCE_H
 #define EMBEDDEDDSP_FIRMWARE_VIRTUAL_SOURCE_H
 
+#include "DSP/DspMath.h"
 #include "Protocol/ProtocolCommon.h"
 #include <cmath>
 #include <stdint.h>
@@ -28,7 +29,7 @@ public:
         , m_type(waveform)
     {
         for (int i = 0; i < kLutSize; ++i) {
-            m_sinLut[i] = sinf(2.0f * 3.1415926535f * static_cast<float>(i) /
+            m_sinLut[i] = sinf(App::Dsp::Math::kTwoPi * static_cast<float>(i) /
                                static_cast<float>(kLutSize));
         }
     }

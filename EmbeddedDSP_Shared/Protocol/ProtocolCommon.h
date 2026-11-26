@@ -22,6 +22,7 @@ inline constexpr uint8_t Delay = 0x01;
 inline constexpr uint8_t Overdrive = 0x02;
 inline constexpr uint8_t Tremolo = 0x03;
 inline constexpr uint8_t Bitcrusher = 0x04;
+inline constexpr uint8_t Eq = 0x05;
 } // namespace EffectId
 
 } // namespace Protocol

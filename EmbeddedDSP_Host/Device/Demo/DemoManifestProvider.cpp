@@ -19,9 +19,9 @@ DeviceManifest getDemoManifest() {
     EffectSpec delay;
     delay.id = Protocol::EffectId::Delay;
     delay.name = QStringLiteral("Delay");
-    // Match DelayEffect::kMaxTimeSec (SharedBuffer 64 KiB / float - 2) @ SAMPLE_RATE_HZ.
+    // Match DelayEffect::kMaxTimeSec (SharedBuffer 64 KiB / int16 - 2) @ SAMPLE_RATE_HZ.
     constexpr float kDelayMaxTimeSec =
-        static_cast<float>((64 * 1024) / 4 - 2) / Protocol::SAMPLE_RATE_HZ;
+        static_cast<float>((64 * 1024) / 2 - 2) / Protocol::SAMPLE_RATE_HZ;
     delay.params = {
         {QStringLiteral("Time"), 0.01f, kDelayMaxTimeSec, 0.25f, QStringLiteral("s")},
         {QStringLiteral("Feedback"), 0.0f, 0.95f, 0.3f},
@@ -59,6 +59,18 @@ DeviceManifest getDemoManifest() {
         {QStringLiteral("Mix"), 0.0f, 1.0f, 1.0f}
     };
     manifest.availableEffects[bitcrusher.id] = bitcrusher;
+
+    EffectSpec eq;
+    eq.id = Protocol::EffectId::Eq;
+    eq.name = QStringLiteral("EQ");
+    eq.params = {
+        {QStringLiteral("Bass"), -12.0f, 12.0f, 0.0f, QStringLiteral("dB")},
+        {QStringLiteral("Mid"), -12.0f, 12.0f, 0.0f, QStringLiteral("dB")},
+        {QStringLiteral("Treble"), -12.0f, 12.0f, 0.0f, QStringLiteral("dB")},
+        {QStringLiteral("Freq"), 200.0f, 5000.0f, 1000.0f, QStringLiteral("Hz")},
+        {QStringLiteral("Q"), 0.3f, 8.0f, 0.7f}
+    };
+    manifest.availableEffects[eq.id] = eq;
 
     return manifest;
 }

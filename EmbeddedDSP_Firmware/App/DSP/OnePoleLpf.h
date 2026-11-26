@@ -1,6 +1,7 @@
 #ifndef EMBEDDEDDSP_FIRMWARE_ONE_POLE_LPF_H
 #define EMBEDDEDDSP_FIRMWARE_ONE_POLE_LPF_H
 
+#include "DSP/DspMath.h"
 #include <cmath>
 
 namespace App::Dsp {
@@ -25,8 +26,7 @@ public:
         if (sampleRate <= 0.0f) {
             return;
         }
-        const float w0 = 2.0f * 3.14159265f * cutoffHz / sampleRate;
-        m_coeff = 1.0f - std::expf(-w0);
+        m_coeff = 1.0f - std::expf(-Math::angularFreq(cutoffHz, sampleRate));
     }
 
     /// @brief Param/gain smoother: recalc coeff for @ref kParamSmoothTimeSec at @p sampleRate.

@@ -2,6 +2,7 @@
 #define EMBEDDEDDSP_FIRMWARE_TREMOLO_EFFECT_H
 
 #include "DSP/AudioEffectConcept.h"
+#include "DSP/DspMath.h"
 #include "DSP/OnePoleLpf.h"
 #include "Protocol/ProtocolCommon.h"
 #include <algorithm>
@@ -76,7 +77,7 @@ public:
             m_depth = std::clamp(val, Params[1].min, Params[1].max);
         } else if (id == 2) {
             m_stereo = std::clamp(val, Params[2].min, Params[2].max);
-            const float shift = m_stereo * kPi;
+            const float shift = m_stereo * Math::kPi;
             m_stereoCos = std::cosf(shift);
             m_stereoSin = std::sinf(shift);
         }
@@ -100,11 +101,8 @@ public:
     [[nodiscard]] bool isBypassed() const noexcept { return m_bypassed; }
 
 private:
-    static constexpr float kPi = 3.14159265359f;
-    static constexpr float kTwoPi = 6.28318530718f;
-
     void updatePhaseIncrement() noexcept {
-        const float phaseInc = kTwoPi * m_rate / m_sampleRate;
+        const float phaseInc = Math::angularFreq(m_rate, m_sampleRate);
         m_cosInc = std::cosf(phaseInc);
         m_sinInc = std::sinf(phaseInc);
     }

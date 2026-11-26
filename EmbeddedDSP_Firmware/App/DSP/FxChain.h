@@ -9,6 +9,7 @@
 #include "DSP/OverdriveEffect.h"
 #include "DSP/TremoloEffect.h"
 #include "DSP/BitcrusherEffect.h"
+#include "DSP/EqEffect.h"
 #include <variant>
 #include <array>
 #include <algorithm>
@@ -21,7 +22,8 @@ using EffectVariant = std::variant<EmptyEffect,
                                    DelayEffect,
                                    OverdriveEffect,
                                    TremoloEffect,
-                                   BitcrusherEffect>;
+                                   BitcrusherEffect,
+                                   EqEffect>;
 
 /// @brief FX slots plus fixed master volume as the last processing step.
 class FxChain {

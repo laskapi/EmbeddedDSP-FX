@@ -5,11 +5,12 @@
 #include "Protocol/ProtocolCommon.h"
 #include "SharedBuffer.h"
 #include <algorithm>
+#include <cstdint>
 #include <cstring>
 
 namespace App::Dsp {
 
-/// @brief Mono digital delay (time / feedback / mix) using SharedBuffer.
+/// @brief Mono digital delay (time / feedback / mix) using int16 SharedBuffer line.
 class DelayEffect {
 public:
     static constexpr uint8_t Id = Protocol::EffectId::Delay;
@@ -17,9 +18,12 @@ public:
     static constexpr uint8_t ParamCount = 3;
     static_assert(ParamCount <= kMaxEffectParams);
 
+    /// @brief Packed delay-line sample type (2x length vs float in the same arena).
+    using Sample = std::int16_t;
+
     /// @brief Usable delay-line length (leave 2 samples for linear interpolation).
     static constexpr int kMaxDelaySamples =
-        static_cast<int>(App::SharedBuffer::kCapacity / sizeof(float)) - 2;
+        static_cast<int>(App::SharedBuffer::kCapacity / sizeof(Sample)) - 2;
     static constexpr float kMaxTimeSec =
         static_cast<float>(kMaxDelaySamples) / Protocol::SAMPLE_RATE_HZ;
 
@@ -50,7 +54,7 @@ public:
     void process(float& left, float& right) noexcept {
         if (m_bypassed) return;
 
-        const auto buffer = App::g_sharedBuffer.acquire<float>(App::SharedBuffer::Owner::Delay);
+        const auto buffer = App::g_sharedBuffer.acquire<Sample>(App::SharedBuffer::Owner::Delay);
         if (!buffer) {
             m_needsClear = true;
             return; // dry while Manifest owns the arena
@@ -59,7 +63,7 @@ public:
         const int capacity = static_cast<int>(buffer.count);
 
         if (m_needsClear) {
-            std::memset(buffer.data, 0, buffer.count * sizeof(float));
+            std::memset(buffer.data, 0, buffer.count * sizeof(Sample));
             m_writePos = 0;
             m_needsClear = false;
         }
@@ -74,10 +78,11 @@ public:
         const int i1 = (i0 + 1) % capacity;
         const float frac = readPos - static_cast<float>(i0);
 
-        const float delayed = buffer.data[i0] * (1.0f - frac) + buffer.data[i1] * frac;
+        const float delayed =
+            decode(buffer.data[i0]) * (1.0f - frac) + decode(buffer.data[i1]) * frac;
         const float input = 0.5f * (left + right);
 
-        buffer.data[m_writePos] = input + (delayed * m_feedback);
+        buffer.data[m_writePos] = encode(input + delayed * m_feedback);
         m_writePos = (m_writePos + 1) % capacity;
 
         const float out = (input * (1.0f - m_mix)) + (delayed * m_mix);
@@ -103,6 +108,17 @@ public:
     [[nodiscard]] bool isBypassed() const noexcept { return m_bypassed; }
 
 private:
+    static constexpr float kScale = 32767.0f;
+
+    [[nodiscard]] static float decode(Sample s) noexcept {
+        return static_cast<float>(s) / kScale;
+    }
+
+    [[nodiscard]] static Sample encode(float x) noexcept {
+        const float clamped = std::clamp(x, -1.0f, 1.0f);
+        return static_cast<Sample>(clamped * kScale);
+    }
+
     int m_writePos{0};
     float m_sampleRate{};
     float m_time{0.25f};

@@ -66,10 +66,13 @@ add_executable(${CMAKE_PROJECT_NAME}
         App/DSP/FxChain.h
         App/Comm/ManifestBuilder.h
         App/DSP/AudioEffectConcept.h
+        App/DSP/DspMath.h
         App/DSP/OnePoleLpf.h
         App/DSP/OverdriveEffect.h
         App/DSP/TremoloEffect.h
         App/DSP/BitcrusherEffect.h
+        App/DSP/Biquad.h
+        App/DSP/EqEffect.h
         App/DSP/EmptyEffect.h
         App/Audio/VirtualSource.h
         App/Audio/Source.h
