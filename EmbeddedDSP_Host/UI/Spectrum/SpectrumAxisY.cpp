@@ -3,24 +3,32 @@
 #include <QPainter>
 #include <QPaintEvent>
 #include <QEvent>
+#include <cmath>
 
 namespace Host::UI::Spectrum {
 
 SpectrumAxisY::SpectrumAxisY(QWidget* parent)
     : QWidget(parent)
 {
-    setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Expanding);
+    setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
+    ensurePolished();
+    updateMetrics();
 }
 
 QSize SpectrumAxisY::sizeHint() const {
     return QSize(m_maxLabelWidth + 4, 150);
 }
 
+QSize SpectrumAxisY::minimumSizeHint() const {
+    return sizeHint();
+}
+
 void SpectrumAxisY::updateMetrics() {
     QFontMetrics fm(font());
     m_labelHeight = fm.height();
-    m_maxLabelWidth = fm.horizontalAdvance("-120");
-    
+    m_maxLabelWidth = fm.horizontalAdvance(QStringLiteral("-120"));
+    setFixedWidth(m_maxLabelWidth + 4);
+
     updateGeometry();
     update();
 }
@@ -32,43 +40,76 @@ void SpectrumAxisY::changeEvent(QEvent* event) {
     QWidget::changeEvent(event);
 }
 
-void SpectrumAxisY::setDbRange(float minDb, float maxDb) {
-    if (std::abs(m_minDb - minDb) > 0.1f || std::abs(m_maxDb - maxDb) > 0.1f) {
-        m_minDb = minDb;
-        m_maxDb = maxDb;
+void SpectrumAxisY::setFftDbRange(float minDb, float maxDb) {
+    if (maxDb <= minDb) {
+        return;
+    }
+    if (std::abs(m_fftMinDb - minDb) > 0.1f || std::abs(m_fftMaxDb - maxDb) > 0.1f) {
+        m_fftMinDb = minDb;
+        m_fftMaxDb = maxDb;
         update();
     }
+}
+
+void SpectrumAxisY::setEqMode(bool eqMode) {
+    if (m_eqMode == eqMode) {
+        return;
+    }
+    m_eqMode = eqMode;
+    update();
 }
 
 void SpectrumAxisY::paintEvent(QPaintEvent*) {
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing, true);
-    
-    painter.setPen(palette().text().color());
 
-    const int dbStep = 20;
-    const int numSteps = static_cast<int>(std::abs(m_minDb) / dbStep);
     const int marginV = AXIS_TOP_BOTTOM_MARGIN;
     const int usableHeight = height() - (2 * marginV);
 
+    if (m_eqMode) {
+        drawEqTicks(painter, marginV, usableHeight);
+    } else {
+        drawFftTicks(painter, marginV, usableHeight);
+    }
+}
+
+void SpectrumAxisY::drawFftTicks(QPainter& painter, int marginV, int usableHeight) const {
+    painter.setPen(palette().text().color());
+
     auto drawLabel = [&](float db) {
-        float t = dbToPos(db, m_minDb, m_maxDb);
+        const float t = dbToPos(db, m_fftMinDb, m_fftMaxDb);
         const int y = marginV + usableHeight - static_cast<int>(t * usableHeight);
-        
-        painter.drawText(QRect(0, y - m_labelHeight/2, width(), m_labelHeight),
+        painter.drawText(QRect(0, y - m_labelHeight / 2, width(), m_labelHeight),
                          Qt::AlignRight | Qt::AlignVCenter,
                          QString::number(static_cast<int>(db)));
     };
 
+    const int dbStep = 20;
+    const int numSteps = static_cast<int>(std::abs(m_fftMinDb) / dbStep);
     for (int i = 0; i <= numSteps; ++i) {
         const float db = -static_cast<float>(i * dbStep);
-        if (db < m_minDb) break;
-        
-        if (std::abs(db - m_minDb) > 8.0f) {
+        if (db < m_fftMinDb) {
+            break;
+        }
+        if (std::abs(db - m_fftMinDb) > 8.0f) {
             drawLabel(db);
         }
     }
-    drawLabel(m_minDb);
+    drawLabel(m_fftMinDb);
+}
+
+void SpectrumAxisY::drawEqTicks(QPainter& painter, int marginV, int usableHeight) const {
+    painter.setPen(palette().text().color());
+
+    constexpr int kStep = 6;
+    for (int db = static_cast<int>(std::ceil(EQ_MIN_DB / kStep) * kStep);
+         db <= static_cast<int>(EQ_MAX_DB); db += kStep) {
+        const float t = dbToPos(static_cast<float>(db), EQ_MIN_DB, EQ_MAX_DB);
+        const int y = marginV + usableHeight - static_cast<int>(t * usableHeight);
+        painter.drawText(QRect(0, y - m_labelHeight / 2, width(), m_labelHeight),
+                         Qt::AlignRight | Qt::AlignVCenter,
+                         QString::number(db));
+    }
 }
 
 } // namespace Host::UI::Spectrum

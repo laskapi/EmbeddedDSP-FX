@@ -19,6 +19,7 @@ qt_add_executable(EmbeddedDSP_Host
     UI/mainwindow.cpp
     UI/mainwindow.h
     Models/DeviceModel.h
+    Models/EqCurveState.h
     Models/DeviceManifestParser.h
     Models/DeviceManifestParser.cpp
     Models/ConnectionInfo.h
@@ -62,6 +63,9 @@ qt_add_executable(EmbeddedDSP_Host
     UI/Effects/ParameterItem.h UI/Effects/ParameterItem.cpp
     UI/Effects/ParameterRack.h UI/Effects/ParameterRack.cpp
     UI/Effects/EffectItem.h UI/Effects/EffectItem.cpp
+    UI/Effects/EqChrome.h UI/Effects/EqChrome.cpp
+    UI/Effects/EqCurveButton.h UI/Effects/EqCurveButton.cpp
+    UI/Effects/EqCurveColorPool.h
     UI/Effects/EffectDragHandle.h UI/Effects/EffectDragHandle.cpp
     UI/Effects/EffectRack.h UI/Effects/EffectRack.cpp
     UI/Effects/MasterVolumeControl.h UI/Effects/MasterVolumeControl.cpp

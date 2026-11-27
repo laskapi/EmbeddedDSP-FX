@@ -3,6 +3,7 @@
 
 #include "DSP/AudioEffectConcept.h"
 #include "DSP/Biquad.h"
+#include "Dsp/EqToneStack.h"
 #include "Protocol/ProtocolCommon.h"
 #include <algorithm>
 #include <cmath>
@@ -17,8 +18,8 @@ public:
     static constexpr uint8_t ParamCount = 5;
     static_assert(ParamCount <= kMaxEffectParams);
 
-    static constexpr float kBassHz = 250.0f;
-    static constexpr float kTrebleHz = 4000.0f;
+    static constexpr float kBassHz = Shared::Dsp::kEqBassHz;
+    static constexpr float kTrebleHz = Shared::Dsp::kEqTrebleHz;
 
     static constexpr EffectParam Params[ParamCount] = {
         {"Bass", -12.0f, 12.0f, 0.0f, "dB"},
@@ -101,19 +102,19 @@ public:
 
 private:
     void updateLow() noexcept {
-        m_low = (std::fabsf(m_bassDb) < 0.01f)
+        m_low = (std::fabs(m_bassDb) < Shared::Dsp::kEqGainBypassDb)
             ? BiquadCoeffs::identity()
             : BiquadCoeffs::lowShelf(m_sampleRate, kBassHz, m_bassDb);
     }
 
     void updateMid() noexcept {
-        m_mid = (std::fabsf(m_midDb) < 0.01f)
+        m_mid = (std::fabs(m_midDb) < Shared::Dsp::kEqGainBypassDb)
             ? BiquadCoeffs::identity()
             : BiquadCoeffs::peaking(m_sampleRate, m_midHz, m_midDb, m_midQ);
     }
 
     void updateHigh() noexcept {
-        m_high = (std::fabsf(m_trebleDb) < 0.01f)
+        m_high = (std::fabs(m_trebleDb) < Shared::Dsp::kEqGainBypassDb)
             ? BiquadCoeffs::identity()
             : BiquadCoeffs::highShelf(m_sampleRate, kTrebleHz, m_trebleDb);
     }

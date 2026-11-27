@@ -22,6 +22,10 @@ namespace Host::UI::Spectrum {
     /// @brief Frequency range for the X-axis.
     constexpr float MIN_FREQ = 20.0f;
     constexpr float MAX_FREQ = 20000.0f;
+
+    /// @brief Independent Y mapping for EQ |H(f)| overlay (0 dB = plot mid).
+    constexpr float EQ_MIN_DB = -18.0f;
+    constexpr float EQ_MAX_DB = 18.0f;
     
     inline const float LOG_MIN = std::log10(MIN_FREQ);
     inline const float LOG_MAX = std::log10(MAX_FREQ);

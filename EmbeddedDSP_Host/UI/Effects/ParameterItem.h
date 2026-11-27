@@ -18,6 +18,8 @@ public:
     /// @brief Updates UI state from external value (e.g., from STM32).
     void setValue(float value);
 
+    [[nodiscard]] float value() const noexcept { return m_value; }
+
 signals:
     void valueChanged(int paramIdx, float newValue);
 
@@ -29,6 +31,7 @@ private:
 
     Host::Models::ParamSpec m_spec;
     float m_range{0.0f};
+    float m_value{0.0f};
     QLabel *m_label{nullptr};
     QSlider *m_slider{nullptr};
 };

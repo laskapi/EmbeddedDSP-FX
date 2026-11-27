@@ -1,7 +1,10 @@
 #include "UI/Effects/EffectItem.h"
 #include "UI/Effects/EffectDragHandle.h"
+#include "UI/Effects/EqChrome.h"
 #include "UI/Effects/ParameterRack.h"
 #include "UI/UiObjectNames.h"
+#include "Protocol/ProtocolCommon.h"
+
 #include <QComboBox>
 #include <QPushButton>
 #include <QSizePolicy>
@@ -35,9 +38,16 @@ void EffectItem::setupUi() {
     m_parameterRack = new ParameterRack(this);
     connect(m_parameterRack, &ParameterRack::parameterChanged, this, [this](int paramIdx, float val) {
         emit parameterChanged(m_index, paramIdx, val);
+        requestEqCurvePublish();
+    });
+
+    m_eqChrome = new EqChrome(this);
+    connect(m_eqChrome, &EqChrome::visibilityChanged, this, [this]() {
+        requestEqCurvePublish(true);
     });
 
     m_bypassBtn = new QPushButton(tr("Bypass"), this);
+    m_bypassBtn->setObjectName(Host::UI::UiObjectNames::kEffectBypassButton);
     m_bypassBtn->setCheckable(true);
     {
         QSizePolicy sp = m_bypassBtn->sizePolicy();
@@ -49,6 +59,7 @@ void EffectItem::setupUi() {
 
     m_mainLayout->addWidget(m_dragHandle);
     m_mainLayout->addWidget(m_typeCombo);
+    m_mainLayout->addWidget(m_eqChrome);
     m_mainLayout->addWidget(m_parameterRack);
     m_mainLayout->addWidget(m_bypassBtn);
 
@@ -83,9 +94,24 @@ void EffectItem::lockHeightForParamCapacity(int maxParamCount) {
     setFixedHeight(sizeHint().height());
 }
 
+void EffectItem::setEqCurveColorPool(EqCurveColorPool* pool) {
+    if (m_eqChrome) {
+        m_eqChrome->setColorPool(pool);
+    }
+}
+
 void EffectItem::setBypassVisible(bool visible) {
     m_bypassBtn->setVisible(visible);
     m_bypassBtn->setEnabled(visible);
+}
+
+void EffectItem::requestEqCurvePublish(bool force) {
+    if (!m_eqChrome) {
+        return;
+    }
+    if (force || m_eqChrome->isCurveVisible()) {
+        emit eqCurveDirty();
+    }
 }
 
 void EffectItem::onTypeChanged(int index) {
@@ -95,18 +121,23 @@ void EffectItem::onTypeChanged(int index) {
 
 void EffectItem::onBypassToggled() {
     emit bypassToggled(m_index, m_bypassBtn->isChecked());
+    requestEqCurvePublish();
 }
 
 void EffectItem::setupEffect(int effectTypeId) {
+    m_effectTypeId = effectTypeId;
+
     if (!m_availableEffects.contains(effectTypeId)) {
         m_parameterRack->clearParams();
         setBypassVisible(false);
+        m_eqChrome->setActive(false);
         return;
     }
 
     const auto &spec = m_availableEffects[effectTypeId];
     m_parameterRack->rebuild(spec);
     setBypassVisible(effectTypeId != kEmptyEffectId);
+    m_eqChrome->setActive(effectTypeId == Protocol::EffectId::Eq);
 }
 
 void EffectItem::applyEffectType(int effectTypeId) {
@@ -127,10 +158,20 @@ void EffectItem::applyBypass(bool bypassed) {
     m_bypassBtn->blockSignals(true);
     m_bypassBtn->setChecked(bypassed);
     m_bypassBtn->blockSignals(false);
+    requestEqCurvePublish();
 }
 
 void EffectItem::applyParameter(int paramIndex, float value) {
     m_parameterRack->updateParam(paramIndex, value);
+    requestEqCurvePublish();
+}
+
+std::optional<Host::Models::EqCurveState> EffectItem::eqCurveState() const {
+    if (m_effectTypeId != Protocol::EffectId::Eq || !m_eqChrome || !m_parameterRack) {
+        return std::nullopt;
+    }
+    const bool bypassed = m_bypassBtn && m_bypassBtn->isChecked();
+    return m_eqChrome->curveState(*m_parameterRack, bypassed);
 }
 
 } // namespace Host::UI::Effects

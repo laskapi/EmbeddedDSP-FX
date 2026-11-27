@@ -1,6 +1,8 @@
 #ifndef EMBEDDEDDSP_HOST_SPECTRUMPANEL_H
 #define EMBEDDEDDSP_HOST_SPECTRUMPANEL_H
 
+#include "Models/EqCurveState.h"
+#include <QVector>
 #include <QWidget>
 
 class QSlider;
@@ -20,6 +22,9 @@ class SpectrumPanel : public QWidget {
 public:
     explicit SpectrumPanel(Core::AppController& controller, QWidget *parent = nullptr);
     ~SpectrumPanel() override = default;
+
+public slots:
+    void setEqCurves(const QVector<Host::Models::EqCurveState>& curves);
 
 private:
     SpectrumPlotHost* m_spectrumPlotHost{nullptr};

@@ -48,6 +48,13 @@ void ParameterRack::updateParam(int paramIdx, float value) {
     }
 }
 
+float ParameterRack::paramValue(int paramIdx) const {
+    if (auto *item = getItem(paramIdx)) {
+        return item->value();
+    }
+    return 0.0f;
+}
+
 int ParameterRack::paramRowHeight() const {
     // Matches ParameterItem: label + horizontal slider + 2px vertical margins.
     const int labelH = fontMetrics().height();

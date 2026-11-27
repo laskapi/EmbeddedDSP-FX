@@ -34,9 +34,14 @@ namespace App::Comm {
 
         for (uint8_t i = 0; i < T::ParamCount; ++i) {
             const auto& p = T::Params[i];
+            // snprintf %f expects double; cast is intentional (not accidental DSP promotion).
             written = std::snprintf(dest + offset, maxSize - offset,
                                     ";P:%s:%.2f:%.2f:%.2f:%s",
-                                    p.name, p.min, p.max, p.defaultValue, p.unit);
+                                    p.name,
+                                    static_cast<double>(p.min),
+                                    static_cast<double>(p.max),
+                                    static_cast<double>(p.defaultValue),
+                                    p.unit);
             if (written > 0 && static_cast<std::size_t>(written) < (maxSize - offset)) {
                 offset += static_cast<std::size_t>(written);
             }

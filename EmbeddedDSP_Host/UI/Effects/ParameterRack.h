@@ -24,6 +24,9 @@ public:
 
     void updateParam(int paramIdx, float value);
 
+    [[nodiscard]] int paramCount() const { return itemCount(); }
+    [[nodiscard]] float paramValue(int paramIdx) const;
+
 signals:
     void parameterChanged(int paramIdx, float newValue);
 

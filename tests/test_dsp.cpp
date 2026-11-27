@@ -1,10 +1,13 @@
 #include <gtest/gtest.h>
+#include <cmath>
 #include "DSP/OverdriveEffect.h"
 #include "DSP/DelayEffect.h"
 #include "DSP/TremoloEffect.h"
 #include "DSP/BitcrusherEffect.h"
 #include "DSP/EqEffect.h"
 #include "DSP/FxChain.h"
+#include "Dsp/BiquadCoeffs.h"
+#include "Dsp/EqToneStack.h"
 #include "Protocol/ProtocolCommon.h"
 
 using App::Dsp::OverdriveEffect;
@@ -155,6 +158,36 @@ TEST(EqTest, FlatGainsAreNearUnity) {
     eq.process(left, right);
     EXPECT_FLOAT_EQ(left, 0.25f);
     EXPECT_FLOAT_EQ(right, -0.25f);
+}
+
+TEST(BiquadCoeffsTest, IdentityMagnitudeIsFlat) {
+    using Shared::Dsp::BiquadCoeffs;
+    const auto c = BiquadCoeffs::identity();
+    const float fs = Protocol::SAMPLE_RATE_HZ;
+    EXPECT_NEAR(c.magnitudeDb(100.0f, fs), 0.0f, 0.01f);
+    EXPECT_NEAR(c.magnitudeDb(1000.0f, fs), 0.0f, 0.01f);
+    EXPECT_NEAR(c.magnitudeDb(8000.0f, fs), 0.0f, 0.01f);
+}
+
+TEST(BiquadCoeffsTest, PeakingBoostNearCenterFreq) {
+    using Shared::Dsp::BiquadCoeffs;
+    const float fs = Protocol::SAMPLE_RATE_HZ;
+    const float f0 = 1000.0f;
+    const auto c = BiquadCoeffs::peaking(fs, f0, 6.0f, 1.0f);
+    EXPECT_NEAR(c.magnitudeDb(f0, fs), 6.0f, 0.15f);
+    EXPECT_LT(std::fabs(c.magnitudeDb(100.0f, fs)), 1.5f);
+}
+
+TEST(EqToneStackTest, FlatParamsNearZeroDb) {
+    const float fs = Protocol::SAMPLE_RATE_HZ;
+    EXPECT_NEAR(Shared::Dsp::eqCascadeMagnitudeDb(fs, 0.0f, 0.0f, 0.0f, 1000.0f, 0.7f, 1000.0f),
+                0.0f, 0.05f);
+}
+
+TEST(EqToneStackTest, MidBoostNearCenter) {
+    const float fs = Protocol::SAMPLE_RATE_HZ;
+    const float db = Shared::Dsp::eqCascadeMagnitudeDb(fs, 0.0f, 6.0f, 0.0f, 1000.0f, 1.0f, 1000.0f);
+    EXPECT_NEAR(db, 6.0f, 0.2f);
 }
 
 TEST(EqTest, MidQParamRoundTrip) {

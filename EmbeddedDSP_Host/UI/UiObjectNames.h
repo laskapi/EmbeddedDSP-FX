@@ -12,6 +12,8 @@ inline constexpr char kSpectrumUnitLabel[] = "SpectrumUnitLabel";
 inline constexpr char kSpectrumAxisX[] = "SpectrumAxisX";
 
 inline constexpr char kEffectItemBox[] = "effectItemBox";
+inline constexpr char kEffectEqCurveButton[] = "effectEqCurveButton";
+inline constexpr char kEffectBypassButton[] = "effectBypassButton";
 inline constexpr char kEffectDragHandle[] = "effectDragHandle";
 /// @brief QMimeData format for EffectItem chain reorder drags.
 inline constexpr char kEffectDragMimeType[] = "application/x-embeddeddsp-effect-index";

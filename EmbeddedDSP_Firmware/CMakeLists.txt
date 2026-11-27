@@ -66,7 +66,6 @@ add_executable(${CMAKE_PROJECT_NAME}
         App/DSP/FxChain.h
         App/Comm/ManifestBuilder.h
         App/DSP/AudioEffectConcept.h
-        App/DSP/DspMath.h
         App/DSP/OnePoleLpf.h
         App/DSP/OverdriveEffect.h
         App/DSP/TremoloEffect.h
@@ -85,11 +84,14 @@ add_executable(${CMAKE_PROJECT_NAME}
         App/Storage/PresetStore.h
         App/Storage/PresetStore.cpp
 
-        # Shared Protocols (Contract)
+        # Shared (wire + DSP design math)
         ../EmbeddedDSP_Shared/Protocol/ControlPacket.h
         ../EmbeddedDSP_Shared/Protocol/AudioFrame.h
         ../EmbeddedDSP_Shared/Protocol/ProtocolCommon.h
         ../EmbeddedDSP_Shared/Protocol/Checksums.h
+        ../EmbeddedDSP_Shared/Dsp/DspMath.h
+        ../EmbeddedDSP_Shared/Dsp/BiquadCoeffs.h
+        ../EmbeddedDSP_Shared/Dsp/EqToneStack.h
         # USB Device Stack
         USB_DEVICE/Target/usbd_conf.c
         USB_DEVICE/App/usb_device.c
@@ -148,6 +150,12 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
 target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
         $<$<CONFIG:Debug>:LOG_ENABLED>
         USE_VIRTUAL_AUDIO=$<BOOL:${USE_VIRTUAL_AUDIO}>
+)
+
+# Catch accidental float→double promotions in our C++ (not Cube/HAL C).
+target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE
+        $<$<COMPILE_LANGUAGE:CXX>:-Wdouble-promotion>
+        $<$<COMPILE_LANGUAGE:CXX>:-Werror=double-promotion>
 )
 
 # Workaround for unwanted libob.a dependency in C++ builds

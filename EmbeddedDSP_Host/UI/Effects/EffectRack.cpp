@@ -105,11 +105,14 @@ void EffectRack::onManifestReady(const DeviceManifest& manifest) {
         item->setAvailableEffects(manifest.availableEffects);
         item->lockHeightForParamCapacity(maxParamCount);
 
+        item->setEqCurveColorPool(&m_eqCurveColors);
         connect(item, &EffectItem::parameterChanged, &m_appController, &AppController::setParameter);
         connect(item, &EffectItem::typeChanged, &m_appController, &AppController::setEffectType);
         connect(item, &EffectItem::bypassToggled, &m_appController, &AppController::setBypass);
+        connect(item, &EffectItem::eqCurveDirty, this, &EffectRack::publishEqCurves);
     }
     syncItemLayout();
+    publishEqCurves();
 }
 
 void EffectRack::clear() {
@@ -118,8 +121,23 @@ void EffectRack::clear() {
         delete child;
     }
     clearRack();
+    m_eqCurveColors.reset();
     m_slotsToInit = -1;
     m_delayOwner = -1;
+    publishEqCurves();
+}
+
+void EffectRack::publishEqCurves() {
+    QVector<Host::Models::EqCurveState> curves;
+    curves.reserve(itemCount());
+    for (int i = 0; i < itemCount(); ++i) {
+        if (EffectItem* item = getItem(i)) {
+            if (auto state = item->eqCurveState()) {
+                curves.push_back(*state);
+            }
+        }
+    }
+    emit eqCurvesChanged(curves);
 }
 
 void EffectRack::syncItemLayout() {
@@ -137,6 +155,7 @@ void EffectRack::syncItemLayout() {
 void EffectRack::optimisticMove(int from, int to) {
     moveItem(from, to);
     syncItemLayout();
+    publishEqCurves();
 }
 
 void EffectRack::paintEvent(QPaintEvent* event) {
@@ -261,6 +280,8 @@ void EffectRack::onSlotEffectTypeUpdated(int slotIndex, int effectTypeId) {
         if (m_slotsToInit > 0 && --m_slotsToInit == 0) {
             emit rackReady();
         }
+        // Type change may show/hide EQ curve controls.
+        publishEqCurves();
     }
 }
 

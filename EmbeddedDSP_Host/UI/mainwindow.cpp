@@ -41,6 +41,9 @@ MainWindow::MainWindow(Core::AppController& controller, QWidget *parent)
         animateFxStrip(true);
     });
 
+    connect(m_effectsRack, &Effects::EffectRack::eqCurvesChanged,
+            m_spectrumPanel, &Spectrum::SpectrumPanel::setEqCurves);
+
     connect(&m_appController, &Core::AppController::errorOccurred, this,
             [this](const QString &errorMessage) {
                 statusBar()->showMessage(tr("Error: %1").arg(errorMessage), 5000);
@@ -81,7 +84,7 @@ void MainWindow::setupUiLayout() {
 
     setCentralWidget(centralWidget);
 
-    setMinimumSize(1000, 600);
+    setMinimumSize(1000, 740);
 }
 
 void MainWindow::animateFxStrip(bool show) {

@@ -3,9 +3,12 @@
 
 #include <QWidget>
 #include <QHBoxLayout>
+#include <QVector>
 #include "UI/Effects/AbstractRack.h"
 #include "UI/Effects/EffectItem.h"
+#include "UI/Effects/EqCurveColorPool.h"
 #include "Models/DeviceModel.h"
+#include "Models/EqCurveState.h"
 #include "Protocol/ProtocolCommon.h"
 
 class QPaintEvent;
@@ -34,6 +37,8 @@ public slots:
 signals:
     /// @brief Fired once every slot has its initial sync reports.
     void rackReady();
+    /// @brief Snapshot of EQ curves currently toggled on (Host overlay).
+    void eqCurvesChanged(const QVector<Host::Models::EqCurveState>& curves);
 
 protected:
     void paintEvent(QPaintEvent* event) override;
@@ -49,9 +54,11 @@ private:
     void showDropIndicator(int insertBefore);
     void hideDropIndicator();
     void refreshDelayExclusivity();
+    void publishEqCurves();
 
     Host::Core::AppController& m_appController;
     QWidget* m_dropIndicator{nullptr};
+    EqCurveColorPool m_eqCurveColors;
     /// @brief ReportEffectType count before rackReady (-1 = not waiting).
     int m_slotsToInit{-1};
     /// @brief Slot that currently holds Delay (-1 = none).

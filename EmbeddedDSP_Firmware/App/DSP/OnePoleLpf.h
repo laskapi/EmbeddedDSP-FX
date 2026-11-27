@@ -1,7 +1,7 @@
 #ifndef EMBEDDEDDSP_FIRMWARE_ONE_POLE_LPF_H
 #define EMBEDDEDDSP_FIRMWARE_ONE_POLE_LPF_H
 
-#include "DSP/DspMath.h"
+#include "Dsp/DspMath.h"
 #include <cmath>
 
 namespace App::Dsp {
@@ -15,7 +15,7 @@ inline constexpr float kParamSmoothTimeSec = 0.010f;
                                         float knobMax = 1.0f) noexcept {
     const float span = knobMax - knobMin;
     const float t = (span > 0.0f) ? (tone - knobMin) / span : 0.0f;
-    return 400.0f * std::powf(25.0f, t); // 400 * 25^1 = 10 kHz
+    return 400.0f * std::pow(25.0f, t); // 400 * 25^1 = 10 kHz
 }
 
 /// @brief Cheap 1-pole low-pass: y += a * (x - y).
@@ -26,7 +26,7 @@ public:
         if (sampleRate <= 0.0f) {
             return;
         }
-        m_coeff = 1.0f - std::expf(-Math::angularFreq(cutoffHz, sampleRate));
+        m_coeff = 1.0f - std::exp(-Shared::Dsp::angularFreq(cutoffHz, sampleRate));
     }
 
     /// @brief Param/gain smoother: recalc coeff for @ref kParamSmoothTimeSec at @p sampleRate.
@@ -34,7 +34,7 @@ public:
         if (sampleRate <= 0.0f) {
             return;
         }
-        m_coeff = 1.0f - std::expf(-1.0f / (kParamSmoothTimeSec * sampleRate));
+        m_coeff = 1.0f - std::exp(-1.0f / (kParamSmoothTimeSec * sampleRate));
     }
 
     [[nodiscard]] float process(float x) noexcept {

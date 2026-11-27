@@ -33,6 +33,7 @@ ParameterItem::ParameterItem(int index, const Host::Models::ParamSpec &spec, QWi
 }
 
 void ParameterItem::setValue(float value) {
+    m_value = value;
     const int pos = (m_range > 0.0f)
         ? static_cast<int>((value - m_spec.min) / m_range * SLIDER_RESOLUTION)
         : 0;
@@ -49,6 +50,7 @@ void ParameterItem::setValue(float value) {
 
 void ParameterItem::onSliderMoved(int pos) {
     float value = m_spec.min + (static_cast<float>(pos) / SLIDER_RESOLUTION) * m_range;
+    m_value = value;
     updateLabel(value);
 
     emit valueChanged(m_index, value);

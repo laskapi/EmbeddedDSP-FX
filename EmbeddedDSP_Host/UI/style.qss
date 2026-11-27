@@ -89,6 +89,41 @@ QPushButton:checked {
     color: {{accent}};
 }
 
+#effectEqCurveButton {
+    min-width: 58px;
+    max-width: 58px;
+    min-height: 24px;
+    max-height: 24px;
+    padding: 0;
+    color: {{accent}};
+    border: 1px solid {{border}};
+    background-color: {{window}};
+}
+
+#effectEqCurveButton:hover {
+    border: 1px solid {{accent}};
+    background-color: {{panelHover}};
+}
+
+#effectBypassButton {
+    color: {{textMuted}};
+    border: 1px solid {{border}};
+    background-color: transparent;
+    font-weight: normal;
+}
+
+#effectBypassButton:hover {
+    color: {{text}};
+    border: 1px solid {{accent}};
+    background-color: {{panelHover}};
+}
+
+#effectBypassButton:checked {
+    color: {{textDim}};
+    border: 1px dashed {{border}};
+    background-color: {{window}};
+}
+
 #presetBar #presetButton {
     min-width: 28px;
     max-width: 28px;
@@ -219,6 +254,11 @@ Host--UI--Effects--ParameterItem QSlider::handle:horizontal:hover {
     background-color: {{panel}};
     border: 1px solid {{border}};
     border-radius: 8px;
+}
+
+#masterVolumeBox:hover {
+    border: 1px solid {{accent}};
+    background-color: {{panelHover}};
 }
 
 #masterVolumeTitle {
