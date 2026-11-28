@@ -14,7 +14,7 @@ public:
     static constexpr uint8_t Id = Protocol::EffectId::Overdrive;
     static constexpr const char* Name = "Overdrive";
     static constexpr uint8_t ParamCount = 3;
-    static_assert(ParamCount <= kMaxEffectParams);
+    static_assert(ParamCount <= Protocol::kMaxEffectParams);
 
     static constexpr EffectParam Params[ParamCount] = {
         {"Gain", 1.0f, 20.0f, 5.0f},

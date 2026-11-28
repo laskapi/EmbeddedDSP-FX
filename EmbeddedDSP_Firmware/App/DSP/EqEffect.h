@@ -16,7 +16,7 @@ public:
     static constexpr uint8_t Id = Protocol::EffectId::Eq;
     static constexpr const char* Name = "EQ";
     static constexpr uint8_t ParamCount = 5;
-    static_assert(ParamCount <= kMaxEffectParams);
+    static_assert(ParamCount <= Protocol::kMaxEffectParams);
 
     static constexpr float kBassHz = Shared::Dsp::kEqBassHz;
     static constexpr float kTrebleHz = Shared::Dsp::kEqTrebleHz;

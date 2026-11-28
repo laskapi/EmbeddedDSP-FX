@@ -11,7 +11,7 @@ namespace Host::Core { class AppController; }
 
 namespace Host::UI::Effects {
 
-/// @brief User preset bank 0..9 + Save (explicit persist, no auto-save).
+/// @brief User preset bank (UI labels 1..9, wire ids 0..8) + Save.
 class PresetBar : public QWidget {
     Q_OBJECT
 public:
@@ -24,6 +24,7 @@ private slots:
     void onSaveClicked();
 
 private:
+    /// @param presetId Wire index 0 .. kUserPresetCount-1.
     void setSelectedPreset(int presetId);
     void setEnabledState(bool enabled);
 

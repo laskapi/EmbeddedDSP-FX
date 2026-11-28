@@ -103,7 +103,7 @@ public:
                 s.slots[i].bypassed = fx.isBypassed() ? 1u : 0u;
 
                 std::fill(std::begin(s.slots[i].params), std::end(s.slots[i].params), 0.0f);
-                for (uint8_t p = 0; p < T::ParamCount && p < kMaxEffectParams; ++p) {
+                for (uint8_t p = 0; p < T::ParamCount && p < Protocol::kMaxEffectParams; ++p) {
                     s.slots[i].params[p] = fx.paramValue(p);
                 }
             }, m_slots[i]);
@@ -122,7 +122,7 @@ public:
 
             std::visit([&s, i](auto& fx) {
                 fx.setBypassed(s.slots[i].bypassed != 0);
-                for (uint8_t p = 0; p < kMaxEffectParams; ++p) {
+                for (uint8_t p = 0; p < Protocol::kMaxEffectParams; ++p) {
                     fx.setParamValue(p, s.slots[i].params[p]);
                 }
             }, m_slots[i]);

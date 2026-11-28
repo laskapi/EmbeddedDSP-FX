@@ -15,7 +15,7 @@ public:
     static constexpr uint8_t Id = Protocol::EffectId::Bitcrusher;
     static constexpr const char* Name = "Bitcrusher";
     static constexpr uint8_t ParamCount = 4;
-    static_assert(ParamCount <= kMaxEffectParams);
+    static_assert(ParamCount <= Protocol::kMaxEffectParams);
 
     static constexpr EffectParam Params[ParamCount] = {
         {"Bits", 4.0f, 16.0f, 8.0f},

@@ -16,7 +16,7 @@ public:
     static constexpr uint8_t Id = Protocol::EffectId::Delay;
     static constexpr const char* Name = "Delay";
     static constexpr uint8_t ParamCount = 3;
-    static_assert(ParamCount <= kMaxEffectParams);
+    static_assert(ParamCount <= Protocol::kMaxEffectParams);
 
     /// @brief Packed delay-line sample type (2x length vs float in the same arena).
     using Sample = std::int16_t;

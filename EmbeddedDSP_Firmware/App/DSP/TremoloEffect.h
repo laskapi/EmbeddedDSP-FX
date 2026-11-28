@@ -16,7 +16,7 @@ public:
     static constexpr uint8_t Id = Protocol::EffectId::Tremolo;
     static constexpr const char* Name = "Tremolo";
     static constexpr uint8_t ParamCount = 3;
-    static_assert(ParamCount <= kMaxEffectParams);
+    static_assert(ParamCount <= Protocol::kMaxEffectParams);
 
     static constexpr EffectParam Params[ParamCount] = {
         {"Rate", 0.5f, 12.0f, 4.0f, "Hz"},

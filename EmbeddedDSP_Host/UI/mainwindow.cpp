@@ -1,21 +1,25 @@
 #include "UI/mainwindow.h"
 #include "UI/ConnectionToolbar.h"
+#include "UI/Effects/EffectItem.h"
 #include "UI/Effects/EffectRack.h"
 #include "UI/Effects/MasterVolumeControl.h"
 #include "UI/Effects/PresetBar.h"
 #include "UI/Spectrum/SpectrumPanel.h"
 #include "Core/AppController.h"
+#include "Protocol/ProtocolCommon.h"
+
 #include <QHBoxLayout>
 #include <QPropertyAnimation>
 #include <QSizePolicy>
 #include <QStatusBar>
-#include <QTimer>
 #include <QVBoxLayout>
 #include <algorithm>
 
 namespace {
-    constexpr const char* PROP_MAX_HEIGHT = "maximumHeight";
+constexpr const char* PROP_MAX_HEIGHT = "maximumHeight";
 constexpr std::string_view WINDOW_TITLE = "EmbeddedDSP Host - Universal Control";
+constexpr int kMinWindowWidth = 1000;
+constexpr int kSpectrumMinHeight = 150;
 }
 
 namespace Host::UI {
@@ -24,7 +28,7 @@ MainWindow::MainWindow(Core::AppController& controller, QWidget *parent)
     : QMainWindow(parent)
     , m_appController(controller)
 {
-    setWindowTitle(QString::fromUtf8(WINDOW_TITLE.data(),WINDOW_TITLE.size()));
+    setWindowTitle(QString::fromUtf8(WINDOW_TITLE.data(), WINDOW_TITLE.size()));
 
     setupUiLayout();
 
@@ -70,7 +74,6 @@ void MainWindow::setupUiLayout() {
     m_fxStrip->setMaximumHeight(0);
     m_fxStrip->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
     m_effectsRack->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
-    m_masterVolume->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
 
     auto *centralWidget = new QWidget(this);
     auto *layout = new QVBoxLayout(centralWidget);
@@ -78,13 +81,51 @@ void MainWindow::setupUiLayout() {
     layout->setSpacing(4);
 
     layout->addWidget(m_connectionToolbar);
-    layout->addWidget(m_presetBar);
     layout->addWidget(m_spectrumPanel, 1);
+    layout->addWidget(m_presetBar);
     layout->addWidget(m_fxStrip);
 
     setCentralWidget(centralWidget);
+    setMinimumWidth(kMinWindowWidth);
 
-    setMinimumSize(1000, 740);
+    m_presetBar->setVisible(false);
+
+    m_fxStripHeight = measureFxStripHeight();
+    ensureWindowFitsFxStrip(m_fxStripHeight);
+}
+
+int MainWindow::measureFxStripHeight() {
+    auto* probe = new Effects::EffectItem(0, this);
+    probe->setAttribute(Qt::WA_DontShowOnScreen);
+    probe->lockHeightForParamCapacity(Protocol::kMaxEffectParams);
+    const int slotH = probe->sizeHint().height();
+    delete probe;
+
+    m_masterVolume->setFixedHeight(slotH);
+    return slotH;
+}
+
+void MainWindow::ensureWindowFitsFxStrip(int fxStripHeight) {
+    auto* lay = qobject_cast<QVBoxLayout*>(centralWidget()->layout());
+    const QMargins margins = lay ? lay->contentsMargins() : QMargins{};
+    const int spacing = lay ? lay->spacing() : 0;
+    // toolbar + spectrum + presets + fxStrip => 3 gaps between 4 rows
+    constexpr int kRowGaps = 3;
+
+    const int chrome =
+        m_connectionToolbar->sizeHint().height()
+        + m_presetBar->sizeHint().height()
+        + statusBar()->sizeHint().height()
+        + margins.top() + margins.bottom()
+        + spacing * kRowGaps;
+
+    const int spectrumMin = std::max(kSpectrumMinHeight, m_spectrumPanel->minimumSizeHint().height());
+    const int needed = chrome + spectrumMin + std::max(0, fxStripHeight);
+    const int newMin = std::max(minimumHeight(), needed);
+    setMinimumHeight(newMin);
+    if (height() < newMin) {
+        resize(width(), newMin);
+    }
 }
 
 void MainWindow::animateFxStrip(bool show) {
@@ -93,29 +134,25 @@ void MainWindow::animateFxStrip(bool show) {
         if (m_fxStrip->maximumHeight() > 0) {
             return;
         }
-        // Wait for layout to process new items before measuring
-        QTimer::singleShot(0, this, [this]() {
-            const int rackH = m_effectsRack->sizeHint().height();
-            const int masterH = m_masterVolume->sizeHint().height();
-            const int endH = std::max(rackH, masterH);
 
-            auto *animation = new QPropertyAnimation(m_fxStrip, PROP_MAX_HEIGHT);
-            animation->setDuration(400);
-            animation->setEasingCurve(QEasingCurve::InOutQuad);
-            animation->setStartValue(0);
-            animation->setEndValue(endH);
-            animation->start(QAbstractAnimation::DeleteWhenStopped);
-        });
+        m_presetBar->setVisible(true);
+
+        auto *animation = new QPropertyAnimation(m_fxStrip, PROP_MAX_HEIGHT);
+        animation->setDuration(400);
+        animation->setEasingCurve(QEasingCurve::InOutQuad);
+        animation->setStartValue(0);
+        animation->setEndValue(m_fxStripHeight);
+        animation->start(QAbstractAnimation::DeleteWhenStopped);
     } else {
+        m_presetBar->setVisible(false);
+
         auto *animation = new QPropertyAnimation(m_fxStrip, PROP_MAX_HEIGHT);
         animation->setDuration(300);
         animation->setEasingCurve(QEasingCurve::InQuad);
         animation->setStartValue(m_fxStrip->height());
         animation->setEndValue(0);
 
-        // Clear rack only AFTER animation finishes
         connect(animation, &QPropertyAnimation::finished, m_effectsRack, &Effects::EffectRack::clear);
-
         animation->start(QAbstractAnimation::DeleteWhenStopped);
     }
 }

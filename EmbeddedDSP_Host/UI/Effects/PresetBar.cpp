@@ -14,11 +14,12 @@ PresetBar::PresetBar(Host::Core::AppController& controller, QWidget* parent)
     setObjectName(QLatin1String(UiObjectNames::kPresetBar));
 
     auto* layout = new QHBoxLayout(this);
-    layout->setContentsMargins(8, 0, 8, 0);
+    layout->setContentsMargins(8, 4, 8, 12);
     layout->setSpacing(4);
 
     for (int i = 0; i < Protocol::kUserPresetCount; ++i) {
-        auto* btn = new QPushButton(QString::number(i), this);
+        // UI label 1..N maps to wire preset id i (0..N-1).
+        auto* btn = new QPushButton(QString::number(i + 1), this);
         btn->setObjectName(QLatin1String(UiObjectNames::kPresetButton));
         btn->setCheckable(true);
         btn->setFixedWidth(28);

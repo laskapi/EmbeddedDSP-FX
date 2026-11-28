@@ -2,6 +2,7 @@
 #include "UI/Effects/EffectItem.h"
 #include "UI/UiObjectNames.h"
 #include "Core/AppController.h"
+#include "Protocol/ProtocolCommon.h"
 
 #include <QDragEnterEvent>
 #include <QDragLeaveEvent>
@@ -95,15 +96,10 @@ void EffectRack::onManifestReady(const DeviceManifest& manifest) {
     clear();
     m_slotsToInit = manifest.slotCount;
 
-    int maxParamCount = 0;
-    for (const auto& spec : manifest.availableEffects) {
-        maxParamCount = std::max(maxParamCount, static_cast<int>(spec.params.size()));
-    }
-
     for (int i = 0; i < manifest.slotCount; ++i) {
         auto *item = createItem(this);
         item->setAvailableEffects(manifest.availableEffects);
-        item->lockHeightForParamCapacity(maxParamCount);
+        item->lockHeightForParamCapacity(Protocol::kMaxEffectParams);
 
         item->setEqCurveColorPool(&m_eqCurveColors);
         connect(item, &EffectItem::parameterChanged, &m_appController, &AppController::setParameter);

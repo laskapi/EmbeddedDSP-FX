@@ -43,7 +43,7 @@ inline constexpr std::size_t kPresetRecordSize = sizeof(PresetRecord);
 static_assert(kPresetRecordSize % 8u == 0u,
               "PresetRecord size must be 8-byte aligned for flash slots");
 
-/// @brief Append-only user presets in reserved Flash sector (10 slots).
+/// @brief Append-only user presets in reserved Flash sector (kUserPresetCount banks).
 class PresetStore {
 public:
     static constexpr uint8_t kPresetCount = Protocol::kUserPresetCount;

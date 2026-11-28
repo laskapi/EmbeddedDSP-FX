@@ -19,7 +19,7 @@ enum class Command : uint8_t {
     ReportBypass        = 0x03,
     ManifestFollows     = 0x04, ///< Next bytes are null-terminated manifest text.
     ReportMasterVolume  = 0x05,
-    ReportActivePreset  = 0x06, ///< slotId = active user preset index (0..kUserPresetCount-1).
+    ReportActivePreset  = 0x06, ///< slotId = active user preset wire index (0..kUserPresetCount-1).
 
     // --- 0x10–0x1F: host → device ---
     // 0x10 reserved empty

@@ -13,7 +13,7 @@ public:
     static constexpr const char* Name = "None";
     static constexpr uint8_t ParamCount = 0;
     static constexpr EffectParam Params[1] = {}; // need a non-empty array when ParamCount is 0
-    static_assert(ParamCount <= kMaxEffectParams);
+    static_assert(ParamCount <= Protocol::kMaxEffectParams);
 
     EmptyEffect() noexcept = default;
 

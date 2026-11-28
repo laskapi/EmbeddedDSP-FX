@@ -30,6 +30,12 @@ private:
     void setupUiLayout();
     void animateFxStrip(bool show);
 
+    /// @brief Probe one hidden EffectItem locked to kMaxEffectParams; cache strip height.
+    [[nodiscard]] int measureFxStripHeight();
+
+    /// @brief Raise min height / grow window if needed (never shrinks).
+    void ensureWindowFitsFxStrip(int fxStripHeight);
+
     Core::AppController& m_appController;
 
     ConnectionToolbar *m_connectionToolbar{nullptr};
@@ -38,6 +44,7 @@ private:
     QWidget *m_fxStrip{nullptr};
     Effects::EffectRack *m_effectsRack{nullptr};
     Effects::MasterVolumeControl *m_masterVolume{nullptr};
+    int m_fxStripHeight{0};
 };
 
 } // namespace Host::UI

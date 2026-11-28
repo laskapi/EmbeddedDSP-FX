@@ -16,7 +16,7 @@ class DemoDevice : public IDevice {
     Q_OBJECT
 public:
     /// @brief Matches App::Dsp::kMaxEffectSlots on firmware.
-    static constexpr int kSlotCount = 4;
+    static constexpr int kSlotCount = 6;
     static constexpr int kPresetCount = Protocol::kUserPresetCount;
 
     explicit DemoDevice(QObject* parent = nullptr);
